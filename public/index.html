@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Canagolf</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <div id="setup">
+    <h1>CANAGOLF</h1>
+    <p class="subtitle">Mini golf · physics-based · multiplayer</p>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="local">Local</button>
+      <button class="tab" data-tab="online">Online</button>
+    </div>
+
+    <div id="tab-local">
+      <div id="player-list"></div>
+      <div class="setup-actions">
+        <button id="add-player">+ Add Player</button>
+        <button id="start-game" class="btn-primary">Start Game ▶</button>
+      </div>
+    </div>
+
+    <div id="tab-online" hidden>
+      <input type="text" id="online-name" placeholder="Your name" maxlength="20" class="wide-input">
+      <div class="setup-actions">
+        <button id="btn-create" class="btn-primary">Create Room</button>
+      </div>
+      <div class="join-row">
+        <input type="text" id="join-code" placeholder="ABCD" maxlength="4">
+        <button id="btn-join">Join Room</button>
+      </div>
+      <p id="online-error" class="error-msg"></p>
+    </div>
+  </div>
+
+  <div id="lobby" hidden>
+    <div class="lobby-card">
+      <h2 class="lobby-title">Room <span id="lobby-code">----</span></h2>
+      <p class="lobby-hint">Share this code with friends</p>
+      <ul id="lobby-players"></ul>
+      <button id="lobby-start" class="btn-primary" hidden>Start Game ▶</button>
+      <p id="lobby-waiting" class="lobby-hint">Waiting for host to start…</p>
+    </div>
+  </div>
+
+  <div id="scoreboard" hidden>
+    <div class="scoreboard-card">
+      <h2 class="scoreboard-title">Hole Complete!</h2>
+      <ol id="scoreboard-list"></ol>
+      <button id="scoreboard-close" class="btn-primary">Play Again</button>
+      <p id="scoreboard-waiting" hidden class="lobby-hint">Waiting for host to close…</p>
+    </div>
+  </div>
+
+  <div id="game-ui" hidden>
+    <div id="hud"></div>
+    <canvas id="canvas"></canvas>
+    <p class="hint">Click anywhere to aim &amp; shoot · power = distance from ball</p>
+  </div>
+
+  <div id="debug-panel">
+    <div class="debug-title">⚙ Debug</div>
+
+    <div class="debug-section">
+      <div class="debug-section-title">Ball Physics</div>
+      <label>Max Power <span id="val-power">8.0</span>
+        <input type="range" id="sl-power" min="1" max="20" step="0.5" value="8">
+      </label>
+      <label>Power Scale <span id="val-scale">0.050</span>
+        <input type="range" id="sl-scale" min="0.01" max="0.15" step="0.005" value="0.05">
+      </label>
+      <label>Friction <span id="val-friction">0.995</span>
+        <input type="range" id="sl-friction" min="0.96" max="1.00" step="0.001" value="0.995">
+      </label>
+    </div>
+
+    <div class="debug-section">
+      <div class="debug-section-title">Sand</div>
+      <label>Friction <span id="val-sand">0.920</span>
+        <input type="range" id="sl-sand" min="0.70" max="1.00" step="0.005" value="0.920">
+      </label>
+    </div>
+
+    <div class="debug-section">
+      <div class="debug-section-title">Bouncy Wall</div>
+      <label>Restitution <span id="val-bouncy">1.60</span>
+        <input type="range" id="sl-bouncy" min="1.0" max="3.0" step="0.05" value="1.6">
+      </label>
+    </div>
+
+    <div class="debug-section">
+      <div class="debug-section-title">Sticky Wall</div>
+      <label>Restitution <span id="val-sticky">0.00</span>
+        <input type="range" id="sl-sticky" min="0.0" max="1.0" step="0.05" value="0">
+      </label>
+    </div>
+
+    <div class="debug-section">
+      <div class="debug-section-title">Slope</div>
+      <label>Inclination <span id="val-slope">0.018</span>
+        <input type="range" id="sl-slope" min="0.005" max="0.15" step="0.005" value="0.018">
+      </label>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/physics.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Canagolf — Map Editor</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #1a1a1a; color: #ccc;
+      font-family: monospace; font-size: 13px;
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      display: flex; align-items: center; gap: 10px;
+      padding: 6px 12px; background: #252525;
+      border-bottom: 1px solid #383838; flex-shrink: 0;
+    }
+    #toolbar label { display: flex; align-items: center; gap: 4px; color: #aaa; }
+    #toolbar input[type=number] {
+      width: 48px; background: #333; color: #ddd;
+      border: 1px solid #555; padding: 3px 5px; font-family: monospace;
+    }
+    #toolbar input[type=text] {
+      width: 110px; background: #333; color: #ddd;
+      border: 1px solid #555; padding: 3px 5px; font-family: monospace;
+    }
+    .sep { width: 1px; height: 22px; background: #444; flex-shrink: 0; }
+    button {
+      background: #2e2e2e; color: #ccc; border: 1px solid #555;
+      padding: 4px 10px; cursor: pointer; font-family: monospace; font-size: 12px;
+    }
+    button:hover { background: #3a3a3a; }
+    button.primary { background: #1e5c1e; border-color: #3a8a3a; color: #dfd; }
+    button.primary:hover { background: #256025; }
+    button.active-tool { background: #1a3060; border-color: #4a70cc; color: #adf; }
+    #status { color: #7a7; font-size: 11px; }
+    .spacer { flex: 1; }
+
+    /* ── Main area ── */
+    #main { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Palette ── */
+    #palette {
+      width: 150px; background: #1e1e1e; border-right: 1px solid #333;
+      padding: 6px; overflow-y: auto; flex-shrink: 0;
+    }
+    .pg { margin-bottom: 8px; }
+    .pg-title {
+      font-size: 10px; color: #666; text-transform: uppercase; letter-spacing: 1px;
+      padding-bottom: 3px; margin-bottom: 4px; border-bottom: 1px solid #2a2a2a;
+    }
+    .sg-title {
+      font-size: 9px; color: #555; text-transform: uppercase; letter-spacing: 0.5px;
+      margin: 3px 0 2px;
+    }
+    .tile-row { display: flex; flex-wrap: wrap; gap: 2px; margin-bottom: 2px; }
+    .swatch-btn {
+      width: 28px; height: 28px; cursor: pointer; flex-shrink: 0;
+      border: 2px solid transparent; border-radius: 2px; padding: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .swatch-btn:hover { border-color: #555; }
+    .swatch-btn.active { border-color: #4a9a4a; }
+
+    /* ── Canvas wrap ── */
+    #canvas-wrap {
+      flex: 1; overflow: auto; background: #111;
+      display: flex; align-items: flex-start; justify-content: flex-start;
+    }
+    #canvas { display: block; cursor: crosshair; }
+  </style>
+</head>
+<body>
+
+<div id="toolbar">
+  <label>W <input type="number" id="iw" value="30" min="5" max="100"></label>
+  <label>H <input type="number" id="ih" value="20" min="5" max="80"></label>
+  <button id="btn-resize">Resize</button>
+  <div class="sep"></div>
+  <button id="btn-load">Load ▲</button>
+  <input type="file" id="file-in" accept=".txt" hidden>
+  <div class="sep"></div>
+  <button id="btn-select">⬚ Select</button>
+  <div class="spacer"></div>
+  <label>Name <input type="text" id="iname" value="hole1"></label>
+  <button class="primary" id="btn-save">Save ▼</button>
+  <span id="status"></span>
+</div>
+
+<div id="main">
+  <div id="palette"></div>
+  <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
+</div>
+
+<script>
+// ── Tile definitions ──────────────────────────────────────────────────────────
+
+const T   = 24;           // pixels per tile in editor
+const FW  = '#3a7a35';    // fairway
+const WL  = '#5a5a5a';    // wall
+const SND = '#c8a84b';    // sand
+const WTR = '#2a7fd4';    // water
+
+function fill(color) {
+  return (ctx, x, y) => { ctx.fillStyle = color; ctx.fillRect(x, y, T, T); };
+}
+
+function drawWall(ctx, x, y) {
+  ctx.fillStyle = WL; ctx.fillRect(x, y, T, T);
+  ctx.strokeStyle = '#3a3a3a'; ctx.lineWidth = 1;
+  ctx.strokeRect(x+.5, y+.5, T-1, T-1);
+}
+
+function drawHole(ctx, x, y) {
+  ctx.fillStyle = '#111'; ctx.fillRect(x, y, T, T);
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(x+T/2, y+T/2, T/2-3, 0, Math.PI*2); ctx.fill();
+}
+
+function drawStart(ctx, x, y) {
+  ctx.fillStyle = FW; ctx.fillRect(x, y, T, T);
+  ctx.fillStyle = '#fff'; ctx.font = `bold ${T*.55}px monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('S', x+T/2, y+T/2);
+}
+
+function diag(tri, color) {
+  return (ctx, x, y) => {
+    ctx.fillStyle = FW; ctx.fillRect(x, y, T, T);
+    ctx.fillStyle = color; ctx.beginPath();
+    if (tri==='UR') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y); ctx.lineTo(x+T,y+T); }
+    if (tri==='LL') { ctx.moveTo(x,y);   ctx.lineTo(x,y+T); ctx.lineTo(x+T,y+T); }
+    if (tri==='UL') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y); ctx.lineTo(x,y+T);   }
+    if (tri==='LR') { ctx.moveTo(x+T,y); ctx.lineTo(x,y+T); ctx.lineTo(x+T,y+T); }
+    ctx.closePath(); ctx.fill();
+  };
+}
+
+function matCurve(corner, color) {
+  return (ctx, x, y) => {
+    ctx.fillStyle = FW; ctx.fillRect(x, y, T, T);
+    let ax, ay, a0, a1;
+    if (corner==='TL'){ax=x+T;ay=y+T;a0=Math.PI;     a1=Math.PI*1.5;}
+    if (corner==='TR'){ax=x;  ay=y+T;a0=Math.PI*1.5; a1=Math.PI*2;}
+    if (corner==='BL'){ax=x+T;ay=y;  a0=Math.PI*0.5; a1=Math.PI;}
+    if (corner==='BR'){ax=x;  ay=y;  a0=0;            a1=Math.PI*0.5;}
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.arc(ax,ay,T,a0,a1,false); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#2a2a2a'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(ax,ay,T,a0,a1,false); ctx.stroke();
+  };
+}
+
+function matBump(corner, color) {
+  return (ctx, x, y) => {
+    ctx.fillStyle = color; ctx.fillRect(x, y, T, T);
+    let ax, ay, a0, a1;
+    if (corner==='TL'){ax=x+T;ay=y+T;a0=Math.PI;     a1=Math.PI*1.5;}
+    if (corner==='TR'){ax=x;  ay=y+T;a0=Math.PI*1.5; a1=Math.PI*2;}
+    if (corner==='BL'){ax=x+T;ay=y;  a0=Math.PI*0.5; a1=Math.PI;}
+    if (corner==='BR'){ax=x;  ay=y;  a0=0;            a1=Math.PI*0.5;}
+    ctx.fillStyle = FW;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.arc(ax,ay,T,a0,a1,false); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#2a2a2a'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(ax,ay,T,a0,a1,false); ctx.stroke();
+  };
+}
+
+function slope(dir) {
+  const FACE = { U:'#72c45a', L:'#50a03c', R:'#2d6228', D:'#1c4d18' };
+  const CHEV = { U:'#1e5c15', L:'#1e5c15', R:'#6ec054', D:'#6ec054' };
+  return (ctx, x, y) => {
+    ctx.fillStyle = FACE[dir]; ctx.fillRect(x, y, T, T);
+    const cx = x+T/2, cy = y+T/2, a = T*0.28;
+    ctx.strokeStyle = CHEV[dir]; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+    ctx.beginPath();
+    if (dir==='R') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx+a,cy);   ctx.lineTo(cx-a,cy+a); }
+    if (dir==='L') { ctx.moveTo(cx+a,cy-a); ctx.lineTo(cx-a,cy);   ctx.lineTo(cx+a,cy+a); }
+    if (dir==='U') { ctx.moveTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); ctx.lineTo(cx+a,cy+a); }
+    if (dir==='D') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); ctx.lineTo(cx+a,cy-a); }
+    ctx.stroke();
+  };
+}
+
+function diagWall(fw) {
+  return (ctx, x, y) => {
+    ctx.fillStyle = WL; ctx.fillRect(x, y, T, T);
+    ctx.fillStyle = FW; ctx.beginPath();
+    if (fw==='LL') { ctx.moveTo(x,y);   ctx.lineTo(x,y+T);   ctx.lineTo(x+T,y+T); }
+    if (fw==='UR') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y);   ctx.lineTo(x+T,y+T); }
+    if (fw==='LR') { ctx.moveTo(x+T,y); ctx.lineTo(x,y+T);   ctx.lineTo(x+T,y+T); }
+    if (fw==='UL') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y);   ctx.lineTo(x,y+T);   }
+    ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = '#2a2a2a'; ctx.lineWidth = 1.5; ctx.beginPath();
+    if (fw==='LL'||fw==='UR') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y+T); }
+    else                      { ctx.moveTo(x+T,y); ctx.lineTo(x,y+T);   }
+    ctx.stroke();
+  };
+}
+
+function curve(corner) {
+  return (ctx, x, y) => {
+    ctx.fillStyle = WL; ctx.fillRect(x, y, T, T);
+    let ax, ay, a0, a1;
+    if (corner==='TL'){ax=x+T;ay=y+T;a0=Math.PI;      a1=Math.PI*1.5;}
+    if (corner==='TR'){ax=x;  ay=y+T;a0=Math.PI*1.5;  a1=Math.PI*2;}
+    if (corner==='BL'){ax=x+T;ay=y;  a0=Math.PI*0.5;  a1=Math.PI;}
+    if (corner==='BR'){ax=x;  ay=y;  a0=0;             a1=Math.PI*0.5;}
+    ctx.fillStyle = FW;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.arc(ax,ay,T,a0,a1,false); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#2a2a2a'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(ax,ay,T,a0,a1,false); ctx.stroke();
+  };
+}
+
+function bump(corner) {
+  return (ctx, x, y) => {
+    ctx.fillStyle = FW; ctx.fillRect(x, y, T, T);
+    let ax, ay, a0, a1;
+    if (corner==='TL'){ax=x+T;ay=y+T;a0=Math.PI;      a1=Math.PI*1.5;}
+    if (corner==='TR'){ax=x;  ay=y+T;a0=Math.PI*1.5;  a1=Math.PI*2;}
+    if (corner==='BL'){ax=x+T;ay=y;  a0=Math.PI*0.5;  a1=Math.PI;}
+    if (corner==='BR'){ax=x;  ay=y;  a0=0;             a1=Math.PI*0.5;}
+    ctx.fillStyle = WL;
+    ctx.beginPath(); ctx.moveTo(ax,ay); ctx.arc(ax,ay,T,a0,a1,false); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle='#2a2a2a'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(ax,ay,T,a0,a1,false); ctx.stroke();
+  };
+}
+
+// sg = subgroup: 'full' | 'diag' | 'curve' | 'bump' | '' (ungrouped)
+const TILES = [
+  // Basic
+  { c:'.', l:'Fairway',        g:'Basic', sg:'',     d:fill(FW)              },
+  { c:'S', l:'Start',          g:'Basic', sg:'',     d:drawStart             },
+  { c:'O', l:'Hole',           g:'Basic', sg:'',     d:drawHole              },
+  // Wall
+  { c:'#', l:'Wall',           g:'Wall',  sg:'full', d:drawWall                             },
+  { c:'+', l:'Bouncy wall',   g:'Wall',  sg:'full', d:(ctx,x,y)=>{
+      ctx.fillStyle='#e8940a'; ctx.fillRect(x,y,T,T);
+      ctx.strokeStyle='#9a5c00'; ctx.lineWidth=1.5; ctx.strokeRect(x+.5,y+.5,T-1,T-1);
+      const cx=x+T/2,cy=y+T/2,hw=T*.28,hh=T*.18;
+      ctx.lineJoin='round';
+      [-hh,hh].forEach(oy=>{ctx.beginPath();ctx.moveTo(cx-hw,cy+oy);ctx.lineTo(cx,cy+oy-hh);ctx.lineTo(cx+hw,cy+oy);ctx.stroke();});
+    }},
+  { c:'~', l:'Sticky wall',   g:'Wall',  sg:'full', d:(ctx,x,y)=>{
+      ctx.fillStyle='#3a4e7a'; ctx.fillRect(x,y,T,T);
+      ctx.strokeStyle='#1a2a4a'; ctx.lineWidth=1.5; ctx.strokeRect(x+.5,y+.5,T-1,T-1);
+      const cx=x+T/2,cy=y+T/2,s=T*.22;
+      ctx.setLineDash([2,2]);
+      ctx.beginPath();ctx.moveTo(cx-s,cy-s);ctx.lineTo(cx+s,cy+s);ctx.stroke();
+      ctx.beginPath();ctx.moveTo(cx+s,cy-s);ctx.lineTo(cx-s,cy+s);ctx.stroke();
+      ctx.setLineDash([]);
+    }},
+  { c:'i', l:'Wall ↗',         g:'Wall',  sg:'diag', d:diagWall('LL')        },
+  { c:'j', l:'Wall ↙',         g:'Wall',  sg:'diag', d:diagWall('UR')        },
+  { c:'k', l:'Wall ↖',         g:'Wall',  sg:'diag', d:diagWall('LR')        },
+  { c:'l', l:'Wall ↘',         g:'Wall',  sg:'diag', d:diagWall('UL')        },
+  { c:'1', l:'Wall curve ↖',   g:'Wall',  sg:'curve',d:curve('TL')           },
+  { c:'2', l:'Wall curve ↗',   g:'Wall',  sg:'curve',d:curve('TR')           },
+  { c:'3', l:'Wall curve ↙',   g:'Wall',  sg:'curve',d:curve('BL')           },
+  { c:'4', l:'Wall curve ↘',   g:'Wall',  sg:'curve',d:curve('BR')           },
+  { c:'5', l:'Wall bump ↖',    g:'Wall',  sg:'bump', d:bump('TL')            },
+  { c:'6', l:'Wall bump ↗',    g:'Wall',  sg:'bump', d:bump('TR')            },
+  { c:'7', l:'Wall bump ↙',    g:'Wall',  sg:'bump', d:bump('BL')            },
+  { c:'8', l:'Wall bump ↘',    g:'Wall',  sg:'bump', d:bump('BR')            },
+  // Sand
+  { c:'A', l:'Sand',           g:'Sand',  sg:'full', d:fill(SND)             },
+  { c:'a', l:'Sand ↗',         g:'Sand',  sg:'diag', d:diag('UR', SND)       },
+  { c:'b', l:'Sand ↙',         g:'Sand',  sg:'diag', d:diag('LL', SND)       },
+  { c:'c', l:'Sand ↖',         g:'Sand',  sg:'diag', d:diag('UL', SND)       },
+  { c:'d', l:'Sand ↘',         g:'Sand',  sg:'diag', d:diag('LR', SND)       },
+  { c:'m', l:'Sand curve ↖',   g:'Sand',  sg:'curve',d:matCurve('TL', SND)   },
+  { c:'n', l:'Sand curve ↗',   g:'Sand',  sg:'curve',d:matCurve('TR', SND)   },
+  { c:'o', l:'Sand curve ↙',   g:'Sand',  sg:'curve',d:matCurve('BL', SND)   },
+  { c:'p', l:'Sand curve ↘',   g:'Sand',  sg:'curve',d:matCurve('BR', SND)   },
+  { c:'q', l:'Sand bump ↖',    g:'Sand',  sg:'bump', d:matBump('TL', SND)    },
+  { c:'r', l:'Sand bump ↗',    g:'Sand',  sg:'bump', d:matBump('TR', SND)    },
+  { c:'s', l:'Sand bump ↙',    g:'Sand',  sg:'bump', d:matBump('BL', SND)    },
+  { c:'t', l:'Sand bump ↘',    g:'Sand',  sg:'bump', d:matBump('BR', SND)    },
+  // Water
+  { c:'W', l:'Water',          g:'Water', sg:'full', d:fill(WTR)             },
+  { c:'e', l:'Water ↗',        g:'Water', sg:'diag', d:diag('UR', WTR)       },
+  { c:'f', l:'Water ↙',        g:'Water', sg:'diag', d:diag('LL', WTR)       },
+  { c:'g', l:'Water ↖',        g:'Water', sg:'diag', d:diag('UL', WTR)       },
+  { c:'h', l:'Water ↘',        g:'Water', sg:'diag', d:diag('LR', WTR)       },
+  { c:'u', l:'Water curve ↖',  g:'Water', sg:'curve',d:matCurve('TL', WTR)   },
+  { c:'x', l:'Water curve ↗',  g:'Water', sg:'curve',d:matCurve('TR', WTR)   },
+  { c:'y', l:'Water curve ↙',  g:'Water', sg:'curve',d:matCurve('BL', WTR)   },
+  { c:'z', l:'Water curve ↘',  g:'Water', sg:'curve',d:matCurve('BR', WTR)   },
+  { c:'B', l:'Water bump ↖',   g:'Water', sg:'bump', d:matBump('TL', WTR)    },
+  { c:'C', l:'Water bump ↗',   g:'Water', sg:'bump', d:matBump('TR', WTR)    },
+  { c:'D', l:'Water bump ↙',   g:'Water', sg:'bump', d:matBump('BL', WTR)    },
+  { c:'E', l:'Water bump ↘',   g:'Water', sg:'bump', d:matBump('BR', WTR)    },
+  // Slope
+  { c:'^', l:'Slope ↑',        g:'Slope', sg:'',     d:slope('U')            },
+  { c:'v', l:'Slope ↓',        g:'Slope', sg:'',     d:slope('D')            },
+  { c:'<', l:'Slope ←',        g:'Slope', sg:'',     d:slope('L')            },
+  { c:'>', l:'Slope →',        g:'Slope', sg:'',     d:slope('R')            },
+];
+const TILE_BY_CHAR = Object.fromEntries(TILES.map(t => [t.c, t]));
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let mapW = 30, mapH = 20;
+let grid = [];
+let selected = '#';
+let painting = false;
+let paintChar = '#';
+
+// ── Selection state ───────────────────────────────────────────────────────────
+
+let selMode   = false;
+let selPhase  = null;    // 'drawing' | 'selected' | 'dragging'
+let selAnchor = null;    // {col,row} where rect-draw started
+let selRect   = null;    // {c0,r0,c1,r1} current normalized rect
+let selBuf    = null;    // 2D array of tile chars (lifted tiles)
+let selOrigin = null;    // {c,r} top-left at lift time
+let selPos    = null;    // {c,r} current top-left (changes during drag)
+let selW = 0, selH = 0;
+let dragAnchor = null;   // {col,row} cell where selection-move drag started
+
+function selNorm(a, b) {
+  return { c0: Math.min(a.col,b.col), r0: Math.min(a.row,b.row),
+           c1: Math.max(a.col,b.col), r1: Math.max(a.row,b.row) };
+}
+function inSel(col, row) {
+  if (!selRect || selPhase === 'drawing') return false;
+  return col >= selRect.c0 && col <= selRect.c1 && row >= selRect.r0 && row <= selRect.r1;
+}
+function liftSel() {
+  const { c0, r0, c1, r1 } = selRect;
+  selW = c1-c0+1; selH = r1-r0+1; selBuf = [];
+  for (let r = r0; r <= r1; r++) {
+    const row = [];
+    for (let c = c0; c <= c1; c++) {
+      row.push(grid[r]?.[c] ?? '.');
+      if (r > 0 && r < mapH-1 && c > 0 && c < mapW-1) grid[r][c] = '.';
+    }
+    selBuf.push(row);
+  }
+  selOrigin = { c: c0, r: r0 };
+  selPos    = { c: c0, r: r0 };
+}
+function dropSel() {
+  if (!selBuf) return;
+  for (let r = 0; r < selH; r++)
+    for (let c = 0; c < selW; c++) {
+      const gc = selPos.c+c, gr = selPos.r+r;
+      if (gr > 0 && gr < mapH-1 && gc > 0 && gc < mapW-1) grid[gr][gc] = selBuf[r][c];
+    }
+  clearSel();
+}
+function cancelSel() {
+  if (selBuf && selOrigin)
+    for (let r = 0; r < selH; r++)
+      for (let c = 0; c < selW; c++) {
+        const gc = selOrigin.c+c, gr = selOrigin.r+r;
+        if (gr >= 0 && gr < mapH && gc >= 0 && gc < mapW) grid[gr][gc] = selBuf[r][c];
+      }
+  clearSel();
+}
+function clearSel() {
+  selPhase = null; selRect = null; selBuf = null;
+  selOrigin = null; selPos = null; dragAnchor = null;
+  selW = 0; selH = 0;
+}
+
+function onSelMousedown(e) {
+  e.preventDefault();
+  const cell = cellAt(e);
+  if (selPhase === 'selected' && inSel(cell.col, cell.row)) {
+    dragAnchor = cell; selPhase = 'dragging';
+  } else {
+    cancelSel();
+    selAnchor = cell;
+    selRect = selNorm(cell, cell);
+    selPhase = 'drawing';
+  }
+  render();
+}
+function onSelMousemove(e) {
+  if (!selPhase) return;
+  const cell = cellAt(e);
+  if (selPhase === 'drawing') {
+    selRect = selNorm(selAnchor, cell); render();
+  } else if (selPhase === 'dragging') {
+    const dc = cell.col - dragAnchor.col, dr = cell.row - dragAnchor.row;
+    selPos = { c: selOrigin.c+dc, r: selOrigin.r+dr };
+    selRect = { c0: selPos.c, r0: selPos.r, c1: selPos.c+selW-1, r1: selPos.r+selH-1 };
+    render();
+  }
+}
+function onSelMouseup() {
+  if (selPhase === 'drawing') {
+    if (selRect.c0 === selRect.c1 && selRect.r0 === selRect.r1) { clearSel(); render(); return; }
+    liftSel(); selPhase = 'selected'; render();
+  } else if (selPhase === 'dragging') {
+    dropSel(); render();
+  }
+}
+
+function initGrid(w, h, preserve) {
+  const g = [];
+  for (let r = 0; r < h; r++) {
+    g[r] = [];
+    for (let c = 0; c < w; c++)
+      g[r][c] = preserve && grid[r]?.[c] != null ? grid[r][c] : '.';
+  }
+  // Force perimeter to wall
+  for (let c = 0; c < w; c++) { g[0][c] = '#'; g[h-1][c] = '#'; }
+  for (let r = 0; r < h; r++) { g[r][0] = '#'; g[r][w-1] = '#'; }
+  grid = g; mapW = w; mapH = h;
+}
+
+// ── Canvas ────────────────────────────────────────────────────────────────────
+
+const canvas = document.getElementById('canvas');
+const ctx    = canvas.getContext('2d');
+
+function resizeCanvas() {
+  canvas.width  = mapW * T;
+  canvas.height = mapH * T;
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let r = 0; r < mapH; r++) {
+    for (let c = 0; c < mapW; c++) {
+      const x = c*T, y = r*T;
+      const tile = TILE_BY_CHAR[grid[r][c]] || TILE_BY_CHAR['.'];
+      tile.d(ctx, x, y);
+      ctx.strokeStyle = 'rgba(0,0,0,0.18)';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(x, y, T, T);
+    }
+  }
+
+  // Selection drawing rect
+  if (selPhase === 'drawing' && selRect) {
+    const bx = selRect.c0*T, by = selRect.r0*T;
+    const bw = (selRect.c1-selRect.c0+1)*T, bh = (selRect.r1-selRect.r0+1)*T;
+    ctx.fillStyle = 'rgba(80,160,255,0.15)'; ctx.fillRect(bx, by, bw, bh);
+    ctx.strokeStyle = '#4af'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([4,3]); ctx.strokeRect(bx+.5, by+.5, bw-1, bh-1);
+    ctx.setLineDash([]);
+  }
+
+  // Floating selection buffer
+  if ((selPhase === 'selected' || selPhase === 'dragging') && selBuf && selPos) {
+    ctx.save(); ctx.globalAlpha = selPhase === 'dragging' ? 0.82 : 1;
+    for (let r = 0; r < selH; r++)
+      for (let c = 0; c < selW; c++) {
+        const px = (selPos.c+c)*T, py = (selPos.r+r)*T;
+        (TILE_BY_CHAR[selBuf[r][c]] || TILE_BY_CHAR['.']).d(ctx, px, py);
+        ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 0.5;
+        ctx.strokeRect(px, py, T, T);
+      }
+    ctx.restore();
+    const bx = selRect.c0*T, by = selRect.r0*T, bw = selW*T, bh = selH*T;
+    ctx.strokeStyle = '#4af'; ctx.lineWidth = 1.5;
+    ctx.setLineDash([4,3]); ctx.strokeRect(bx+.5, by+.5, bw-1, bh-1);
+    ctx.setLineDash([]);
+  }
+}
+
+// ── Input ─────────────────────────────────────────────────────────────────────
+
+function cellAt(e) {
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width  / rect.width;
+  const sy = canvas.height / rect.height;
+  return {
+    col: Math.floor((e.clientX - rect.left) * sx / T),
+    row: Math.floor((e.clientY - rect.top)  * sy / T),
+  };
+}
+
+function paintAt(e) {
+  const { col, row } = cellAt(e);
+  if (row < 0 || row >= mapH || col < 0 || col >= mapW) return;
+  if (row === 0 || row === mapH-1 || col === 0 || col === mapW-1) {
+    grid[row][col] = '#';
+  } else {
+    grid[row][col] = paintChar;
+  }
+  render();
+}
+
+canvas.addEventListener('mousedown', e => {
+  if (selMode) { onSelMousedown(e); return; }
+  e.preventDefault(); painting = true;
+  paintChar = e.button === 2 ? '.' : selected;
+  paintAt(e);
+});
+canvas.addEventListener('mousemove',  e => {
+  if (selMode) { onSelMousemove(e); return; }
+  if (painting) paintAt(e);
+});
+canvas.addEventListener('mouseup',    e => {
+  if (selMode) { onSelMouseup(e); return; }
+  painting = false;
+});
+canvas.addEventListener('mouseleave', ()  => { if (!selMode) painting = false; });
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+// ── Palette ───────────────────────────────────────────────────────────────────
+
+const paletteEl = document.getElementById('palette');
+
+const SG_ORDER = ['', 'full', 'diag', 'curve', 'bump'];
+const SG_LABEL = { diag: 'Diagonal', curve: 'Concave', bump: 'Convex' };
+const SW = 26; // swatch px
+
+function buildPalette() {
+  // Group by g, then by sg
+  const groups = {};
+  TILES.forEach(t => {
+    (groups[t.g] = groups[t.g] || {})[t.sg] = groups[t.g][t.sg] || [];
+    groups[t.g][t.sg].push(t);
+  });
+
+  Object.entries(groups).forEach(([gname, subs]) => {
+    const grp = document.createElement('div'); grp.className = 'pg';
+    const title = document.createElement('div'); title.className = 'pg-title';
+    title.textContent = gname; grp.appendChild(title);
+
+    SG_ORDER.forEach(sgKey => {
+      const tiles = subs[sgKey];
+      if (!tiles || !tiles.length) return;
+
+      if (SG_LABEL[sgKey]) {
+        const sgLbl = document.createElement('div');
+        sgLbl.className = 'sg-title';
+        sgLbl.textContent = SG_LABEL[sgKey];
+        grp.appendChild(sgLbl);
+      }
+
+      const row = document.createElement('div'); row.className = 'tile-row';
+      tiles.forEach(t => {
+        const btn = document.createElement('div');
+        btn.className = 'swatch-btn' + (t.c === selected ? ' active' : '');
+        btn.dataset.char = t.c; btn.title = t.l;
+
+        const sw = document.createElement('canvas');
+        sw.width = sw.height = SW;
+        const sc = sw.getContext('2d');
+        sc.save(); sc.scale(SW/T, SW/T); t.d(sc, 0, 0); sc.restore();
+
+        btn.appendChild(sw);
+        btn.addEventListener('click', () => {
+          selected = t.c;
+          document.querySelectorAll('.swatch-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          if (selMode) { selMode = false; btnSelect.classList.remove('active-tool'); }
+        });
+        row.appendChild(btn);
+      });
+      grp.appendChild(row);
+    });
+    paletteEl.appendChild(grp);
+  });
+}
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+
+document.getElementById('btn-resize').addEventListener('click', () => {
+  const w = Math.max(5, parseInt(document.getElementById('iw').value) || mapW);
+  const h = Math.max(5, parseInt(document.getElementById('ih').value) || mapH);
+  initGrid(w, h, true);
+  resizeCanvas(); render();
+});
+
+document.getElementById('btn-load').addEventListener('click', () => {
+  document.getElementById('file-in').click();
+});
+
+document.getElementById('file-in').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const rows = ev.target.result.trimEnd().split('\n').map(r => r.split(''));
+    const h = rows.length;
+    const w = Math.max(...rows.map(r => r.length));
+    rows.forEach(r => { while (r.length < w) r.push('.'); });
+    grid = rows; mapW = w; mapH = h;
+    document.getElementById('iw').value = w;
+    document.getElementById('ih').value = h;
+    document.getElementById('iname').value = file.name.replace(/\.txt$/, '');
+    resizeCanvas(); render();
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+document.getElementById('btn-save').addEventListener('click', async () => {
+  const name    = document.getElementById('iname').value.trim() || 'map';
+  const content = grid.map(r => r.join('')).join('\n') + '\n';
+
+  try {
+    const res = await fetch('/editor/save', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name, content }),
+    });
+    const data = await res.json();
+    if (data.ok) {
+      document.getElementById('status').textContent = `✓ Saved ${data.file}`;
+    } else {
+      document.getElementById('status').textContent = `✗ ${data.error}`;
+    }
+  } catch {
+    document.getElementById('status').textContent = '✗ Save failed';
+  }
+  setTimeout(() => { document.getElementById('status').textContent = ''; }, 2500);
+});
+
+// Select tool button
+const btnSelect = document.getElementById('btn-select');
+btnSelect.addEventListener('click', () => {
+  selMode = !selMode;
+  if (!selMode) { cancelSel(); render(); }
+  btnSelect.classList.toggle('active-tool', selMode);
+});
+
+// Keyboard: Escape cancels selection; tile chars select tile in paint mode
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') { cancelSel(); render(); return; }
+  if (e.target.tagName === 'INPUT') return;
+  if (selMode) return;
+  const tile = TILE_BY_CHAR[e.key];
+  if (!tile) return;
+  selected = e.key;
+  document.querySelectorAll('.swatch-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.char === e.key)
+  );
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+initGrid(mapW, mapH, false);
+// Default start + hole
+grid[Math.floor(mapH/2)][2]      = 'S';
+grid[Math.floor(mapH/2)][mapW-3] = 'O';
+buildPalette();
+resizeCanvas();
+render();
+</script>
+</body>
+</html>
