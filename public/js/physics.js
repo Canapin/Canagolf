@@ -63,6 +63,14 @@ const Physics = (function () {
     SLOPE_D:    'v',   // slope pushing ball downward
     SLOPE_L:    '<',   // slope pushing ball leftward
     SLOPE_R:    '>',   // slope pushing ball rightward
+    SLOPE_UL:   'F',   // slope pushing ball up-left
+    SLOPE_UR:   'G',   // slope pushing ball up-right
+    SLOPE_DL:   'H',   // slope pushing ball down-left
+    SLOPE_DR:   'I',   // slope pushing ball down-right
+    GHOST_R:    'J',   // one-way wall: ball passes going right, blocks going left
+    GHOST_L:    'K',   // one-way wall: ball passes going left
+    GHOST_U:    'L',   // one-way wall: ball passes going up
+    GHOST_D:    'M',   // one-way wall: ball passes going down
     WALL_UR:    'i',   // diagonal wall, solid upper-right triangle
     WALL_LL:    'j',   // diagonal wall, solid lower-left triangle
     WALL_UL:    'k',   // diagonal wall, solid upper-left triangle
@@ -77,13 +85,15 @@ const Physics = (function () {
     BUMP_BR:    '8',
   };
 
-  let   SAND_FRICTION  = 0.92;
-  let   SLOPE_FORCE    = 0.018;
+  let   SAND_FRICTION       = 0.92;
+  let   SLOPE_FORCE         = 0.018;
+  let   SLOPE_ROLL_FRICTION = 0.99;   // friction on slope tiles; higher = more inertia
+  let   BALL_RESTITUTION    = 0.5;  // ball-to-ball CoR: 0=inelastic (merge), 1=elastic (full exchange)
   let   BOUNCY_RESTITUTION  = 1.6;
   let   STICKY_RESTITUTION  = 0;
   const SAND_SET  = new Set(['A','a','b','c','d','m','n','o','p','q','r','s','t']);
   const WATER_SET = new Set(['W','e','f','g','h','u','x','y','z','B','C','D','E']);
-  const SLOPE_SET = new Set(['^','v','<','>']);
+  const SLOPE_SET = new Set(['^','v','<','>','F','G','H','I']);
 
   function isSandTile(t)  { return SAND_SET.has(t);  }
   function isWaterTile(t) { return WATER_SET.has(t); }
@@ -146,6 +156,8 @@ const Physics = (function () {
     if (tile === TILE.WALL)        return 1.0;
     if (tile === TILE.BOUNCY)      return BOUNCY_RESTITUTION;
     if (tile === TILE.STICKY_WALL) return STICKY_RESTITUTION;
+    if (tile === TILE.GHOST_R || tile === TILE.GHOST_L ||
+        tile === TILE.GHOST_U || tile === TILE.GHOST_D) return 1.0;
     return undefined;
   }
 
@@ -161,6 +173,12 @@ const Physics = (function () {
         const wallTile    = getTile(tiles, col, row);
         const restitution = wallRestitution(wallTile);
         if (restitution === undefined) continue;
+
+        // Ghost walls: skip collision when ball moves in the allowed direction
+        if (wallTile === TILE.GHOST_R && ball.vx > 0) continue;
+        if (wallTile === TILE.GHOST_L && ball.vx < 0) continue;
+        if (wallTile === TILE.GHOST_U && ball.vy < 0) continue;
+        if (wallTile === TILE.GHOST_D && ball.vy > 0) continue;
 
         const left   = col * TILE_SIZE;
         const top    = row * TILE_SIZE;
@@ -465,14 +483,21 @@ const Physics = (function () {
     }
 
     const curTile = tiles ? tileAt(tiles, ball.x, ball.y) : null;
-    const f = (curTile && isSandTile(curTile)) ? FRICTION * SAND_FRICTION : FRICTION;
+    const f = isSandTile(curTile)  ? FRICTION * SAND_FRICTION :
+              isSlopeTile(curTile) ? SLOPE_ROLL_FRICTION :
+              FRICTION;
     ball.vx *= f;
     ball.vy *= f;
 
-    if      (curTile === TILE.SLOPE_U) ball.vy -= SLOPE_FORCE;
-    else if (curTile === TILE.SLOPE_D) ball.vy += SLOPE_FORCE;
-    else if (curTile === TILE.SLOPE_L) ball.vx -= SLOPE_FORCE;
-    else if (curTile === TILE.SLOPE_R) ball.vx += SLOPE_FORCE;
+    const F2 = SLOPE_FORCE / Math.SQRT2;
+    if      (curTile === TILE.SLOPE_U)  ball.vy -= SLOPE_FORCE;
+    else if (curTile === TILE.SLOPE_D)  ball.vy += SLOPE_FORCE;
+    else if (curTile === TILE.SLOPE_L)  ball.vx -= SLOPE_FORCE;
+    else if (curTile === TILE.SLOPE_R)  ball.vx += SLOPE_FORCE;
+    else if (curTile === TILE.SLOPE_UL) { ball.vx -= F2; ball.vy -= F2; }
+    else if (curTile === TILE.SLOPE_UR) { ball.vx += F2; ball.vy -= F2; }
+    else if (curTile === TILE.SLOPE_DL) { ball.vx -= F2; ball.vy += F2; }
+    else if (curTile === TILE.SLOPE_DR) { ball.vx += F2; ball.vy += F2; }
 
     const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
     if (speed < MIN_SPEED && !isSlopeTile(curTile)) {
@@ -489,8 +514,8 @@ const Physics = (function () {
       if (ball.x > ball._maxX) ball._maxX = ball.x;
       if (ball.y < ball._minY) ball._minY = ball.y;
       if (ball.y > ball._maxY) ball._maxY = ball.y;
-      if (ball._stuckAge >= 90) {
-        if (ball._maxX - ball._minX < 5 && ball._maxY - ball._minY < 5) {
+      if (ball._stuckAge >= 120) {
+        if (ball._maxX - ball._minX < 3 && ball._maxY - ball._minY < 3) {
           ball.vx = 0;
           ball.vy = 0;
         }
@@ -534,15 +559,19 @@ const Physics = (function () {
         b.x += nx * half;
         b.y += ny * half;
 
-        // Elastic collision, equal mass: exchange normal velocity components
+        // Ball-to-ball collision with tunable restitution.
+        // impulse = (1+e)/2 × dot  (equal mass, CoR = BALL_RESTITUTION)
+        // e=1 → fully elastic (normal velocities exchanged)
+        // e=0 → perfectly inelastic (normal velocities averaged)
         const dvx = a.vx - b.vx;
         const dvy = a.vy - b.vy;
         const dot = dvx * nx + dvy * ny;
         if (dot > 0) {
-          a.vx -= dot * nx;
-          a.vy -= dot * ny;
-          b.vx += dot * nx;
-          b.vy += dot * ny;
+          const imp = (1 + BALL_RESTITUTION) / 2 * dot;
+          a.vx -= imp * nx;
+          a.vy -= imp * ny;
+          b.vx += imp * nx;
+          b.vy += imp * ny;
         }
       }
     }
@@ -576,9 +605,11 @@ const Physics = (function () {
     get POWER_SCALE()         { return POWER_SCALE;         }, set POWER_SCALE(v)         { POWER_SCALE         = v; },
     get FRICTION()            { return FRICTION;            }, set FRICTION(v)            { FRICTION            = v; },
     get SAND_FRICTION()       { return SAND_FRICTION;       }, set SAND_FRICTION(v)       { SAND_FRICTION       = v; },
+    get BALL_RESTITUTION()    { return BALL_RESTITUTION;    }, set BALL_RESTITUTION(v)    { BALL_RESTITUTION    = v; },
     get BOUNCY_RESTITUTION()  { return BOUNCY_RESTITUTION;  }, set BOUNCY_RESTITUTION(v)  { BOUNCY_RESTITUTION  = v; },
     get STICKY_RESTITUTION()  { return STICKY_RESTITUTION;  }, set STICKY_RESTITUTION(v)  { STICKY_RESTITUTION  = v; },
     get SLOPE_FORCE()         { return SLOPE_FORCE;         }, set SLOPE_FORCE(v)         { SLOPE_FORCE         = v; },
+    get SLOPE_ROLL_FRICTION() { return SLOPE_ROLL_FRICTION; }, set SLOPE_ROLL_FRICTION(v) { SLOPE_ROLL_FRICTION = v; },
     TILE,
     isSandTile, isWaterTile, isSlopeTile,
     parseMap,

@@ -9,17 +9,18 @@ const Renderer = (function () {
   const SAND_COLOR   = '#c8a84b';
   const WATER_COLOR  = '#2a7fd4';
   const SLOPE_FACE = {
-    [Physics.TILE.SLOPE_U]: '#72c45a',
-    [Physics.TILE.SLOPE_L]: '#50a03c',
-    [Physics.TILE.SLOPE_R]: '#2d6228',
-    [Physics.TILE.SLOPE_D]: '#1c4d18',
+    [Physics.TILE.SLOPE_U]:  '#72c45a',
+    [Physics.TILE.SLOPE_UL]: '#65bc52',
+    [Physics.TILE.SLOPE_UR]: '#509e40',
+    [Physics.TILE.SLOPE_L]:  '#50a03c',
+    [Physics.TILE.SLOPE_R]:  '#2d6228',
+    [Physics.TILE.SLOPE_DL]: '#1e5216',
+    [Physics.TILE.SLOPE_DR]: '#184510',
+    [Physics.TILE.SLOPE_D]:  '#1c4d18',
   };
-  const SLOPE_CHEV = {
-    [Physics.TILE.SLOPE_U]: '#1e5c15',
-    [Physics.TILE.SLOPE_L]: '#1e5c15',
-    [Physics.TILE.SLOPE_R]: '#6ec054',
-    [Physics.TILE.SLOPE_D]: '#6ec054',
-  };
+  const GHOST_FACE = '#848c84';
+  const GHOST_EDGE = '#5a625a';
+  const GHOST_CHEV = '#d4dcd4';
   const BOUNCY_FACE  = '#e8940a';
   const BOUNCY_EDGE  = '#9a5c00';
   const DRAG_FACE    = '#3a4e7a';
@@ -84,17 +85,48 @@ const Renderer = (function () {
       ctx.fillStyle = WATER_COLOR; ctx.fillRect(x, y, T, T); return;
     }
 
-    // Slope tiles — vivid green background + dark chevron
-    if (tile === Physics.TILE.SLOPE_U || tile === Physics.TILE.SLOPE_D ||
-        tile === Physics.TILE.SLOPE_L || tile === Physics.TILE.SLOPE_R) {
-      const cx = x + T / 2, cy = y + T / 2, a = T * 0.28;
+    // Slope tiles — shaded green + 4 fairway-coloured chevrons in quadrant grid
+    if (SLOPE_FACE[tile]) {
       ctx.fillStyle = SLOPE_FACE[tile]; ctx.fillRect(x, y, T, T);
-      ctx.strokeStyle = SLOPE_CHEV[tile]; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+      ctx.strokeStyle = FAIRWAY; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+      const a = T * 0.10;
+      for (let qx = 1; qx <= 3; qx += 2) {
+        for (let qy = 1; qy <= 3; qy += 2) {
+          const cx = x + qx * T / 4, cy = y + qy * T / 4;
+          ctx.beginPath();
+          if (tile === Physics.TILE.SLOPE_R)  { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx+a,cy);   ctx.lineTo(cx-a,cy+a); }
+          if (tile === Physics.TILE.SLOPE_L)  { ctx.moveTo(cx+a,cy-a); ctx.lineTo(cx-a,cy);   ctx.lineTo(cx+a,cy+a); }
+          if (tile === Physics.TILE.SLOPE_U)  { ctx.moveTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); ctx.lineTo(cx+a,cy+a); }
+          if (tile === Physics.TILE.SLOPE_D)  { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); ctx.lineTo(cx+a,cy-a); }
+          if (tile === Physics.TILE.SLOPE_UL) { ctx.moveTo(cx+a,cy);   ctx.lineTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); }
+          if (tile === Physics.TILE.SLOPE_UR) { ctx.moveTo(cx-a,cy);   ctx.lineTo(cx+a,cy-a); ctx.lineTo(cx,  cy+a); }
+          if (tile === Physics.TILE.SLOPE_DL) { ctx.moveTo(cx+a,cy);   ctx.lineTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); }
+          if (tile === Physics.TILE.SLOPE_DR) { ctx.moveTo(cx-a,cy);   ctx.lineTo(cx+a,cy+a); ctx.lineTo(cx,  cy-a); }
+          ctx.stroke();
+        }
+      }
+      return;
+    }
+
+    // Ghost walls — one-way: ball passes in chevron direction, blocks opposite
+    const GHOST_DIR = {
+      [Physics.TILE.GHOST_R]: 'R', [Physics.TILE.GHOST_L]: 'L',
+      [Physics.TILE.GHOST_U]: 'U', [Physics.TILE.GHOST_D]: 'D',
+    };
+    if (GHOST_DIR[tile]) {
+      const dir = GHOST_DIR[tile];
+      ctx.fillStyle = GHOST_FACE; ctx.fillRect(x, y, T, T);
+      ctx.strokeStyle = GHOST_EDGE; ctx.lineWidth = 1;
+      ctx.setLineDash([3, 2]);
+      ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
+      ctx.setLineDash([]);
+      const cx = x + T / 2, cy = y + T / 2, a = T * 0.26;
+      ctx.strokeStyle = GHOST_CHEV; ctx.lineWidth = 2; ctx.lineJoin = 'round';
       ctx.beginPath();
-      if (tile === Physics.TILE.SLOPE_R) { ctx.moveTo(cx-a, cy-a); ctx.lineTo(cx+a, cy); ctx.lineTo(cx-a, cy+a); }
-      if (tile === Physics.TILE.SLOPE_L) { ctx.moveTo(cx+a, cy-a); ctx.lineTo(cx-a, cy); ctx.lineTo(cx+a, cy+a); }
-      if (tile === Physics.TILE.SLOPE_U) { ctx.moveTo(cx-a, cy+a); ctx.lineTo(cx,   cy-a); ctx.lineTo(cx+a, cy+a); }
-      if (tile === Physics.TILE.SLOPE_D) { ctx.moveTo(cx-a, cy-a); ctx.lineTo(cx,   cy+a); ctx.lineTo(cx+a, cy-a); }
+      if (dir === 'R') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx+a,cy); ctx.lineTo(cx-a,cy+a); }
+      if (dir === 'L') { ctx.moveTo(cx+a,cy-a); ctx.lineTo(cx-a,cy); ctx.lineTo(cx+a,cy+a); }
+      if (dir === 'U') { ctx.moveTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); ctx.lineTo(cx+a,cy+a); }
+      if (dir === 'D') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); ctx.lineTo(cx+a,cy-a); }
       ctx.stroke();
       return;
     }
@@ -160,8 +192,6 @@ const Renderer = (function () {
       ctx.fillStyle = MAT_CURVE[tile];
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false);
       ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = WALL_EDGE; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(ax, ay, T, a0, a1, false); ctx.stroke();
       return;
     }
     if (MAT_BUMP[tile]) {
@@ -172,8 +202,6 @@ const Renderer = (function () {
       ctx.fillStyle = FAIRWAY;
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false);
       ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = WALL_EDGE; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.arc(ax, ay, T, a0, a1, false); ctx.stroke();
       return;
     }
 

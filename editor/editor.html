@@ -169,17 +169,47 @@ function matBump(corner, color) {
 }
 
 function slope(dir) {
-  const FACE = { U:'#72c45a', L:'#50a03c', R:'#2d6228', D:'#1c4d18' };
-  const CHEV = { U:'#1e5c15', L:'#1e5c15', R:'#6ec054', D:'#6ec054' };
+  const FACE = {
+    U:'#72c45a', UL:'#65bc52', UR:'#509e40',
+    L:'#50a03c',                              R:'#2d6228',
+    DL:'#1e5216',              DR:'#184510',  D:'#1c4d18',
+  };
   return (ctx, x, y) => {
     ctx.fillStyle = FACE[dir]; ctx.fillRect(x, y, T, T);
-    const cx = x+T/2, cy = y+T/2, a = T*0.28;
-    ctx.strokeStyle = CHEV[dir]; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+    const a = T * 0.10;
+    ctx.strokeStyle = FW; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
+    for (let qx = 1; qx <= 3; qx += 2) {
+      for (let qy = 1; qy <= 3; qy += 2) {
+        const cx = x + qx * T / 4, cy = y + qy * T / 4;
+        ctx.beginPath();
+        if (dir==='R')  { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx+a,cy);   ctx.lineTo(cx-a,cy+a); }
+        if (dir==='L')  { ctx.moveTo(cx+a,cy-a); ctx.lineTo(cx-a,cy);   ctx.lineTo(cx+a,cy+a); }
+        if (dir==='U')  { ctx.moveTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); ctx.lineTo(cx+a,cy+a); }
+        if (dir==='D')  { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); ctx.lineTo(cx+a,cy-a); }
+        if (dir==='UL') { ctx.moveTo(cx+a,cy);   ctx.lineTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); }
+        if (dir==='UR') { ctx.moveTo(cx-a,cy);   ctx.lineTo(cx+a,cy-a); ctx.lineTo(cx,  cy+a); }
+        if (dir==='DL') { ctx.moveTo(cx+a,cy);   ctx.lineTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); }
+        if (dir==='DR') { ctx.moveTo(cx-a,cy);   ctx.lineTo(cx+a,cy+a); ctx.lineTo(cx,  cy-a); }
+        ctx.stroke();
+      }
+    }
+  };
+}
+
+function ghostWall(dir) {
+  return (ctx, x, y) => {
+    ctx.fillStyle = '#848c84'; ctx.fillRect(x, y, T, T);
+    ctx.strokeStyle = '#5a625a'; ctx.lineWidth = 1;
+    ctx.setLineDash([3, 2]);
+    ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
+    ctx.setLineDash([]);
+    const cx = x + T/2, cy = y + T/2, a = T * 0.26;
+    ctx.strokeStyle = '#d4dcd4'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
     ctx.beginPath();
-    if (dir==='R') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx+a,cy);   ctx.lineTo(cx-a,cy+a); }
-    if (dir==='L') { ctx.moveTo(cx+a,cy-a); ctx.lineTo(cx-a,cy);   ctx.lineTo(cx+a,cy+a); }
-    if (dir==='U') { ctx.moveTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); ctx.lineTo(cx+a,cy+a); }
-    if (dir==='D') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); ctx.lineTo(cx+a,cy-a); }
+    if (dir==='R') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx+a,cy); ctx.lineTo(cx-a,cy+a); }
+    if (dir==='L') { ctx.moveTo(cx+a,cy-a); ctx.lineTo(cx-a,cy); ctx.lineTo(cx+a,cy+a); }
+    if (dir==='U') { ctx.moveTo(cx-a,cy+a); ctx.lineTo(cx,cy-a); ctx.lineTo(cx+a,cy+a); }
+    if (dir==='D') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx,cy+a); ctx.lineTo(cx+a,cy-a); }
     ctx.stroke();
   };
 }
@@ -299,6 +329,15 @@ const TILES = [
   { c:'v', l:'Slope ↓',        g:'Slope', sg:'',     d:slope('D')            },
   { c:'<', l:'Slope ←',        g:'Slope', sg:'',     d:slope('L')            },
   { c:'>', l:'Slope →',        g:'Slope', sg:'',     d:slope('R')            },
+  { c:'F', l:'Slope ↖',        g:'Slope', sg:'',     d:slope('UL')           },
+  { c:'G', l:'Slope ↗',        g:'Slope', sg:'',     d:slope('UR')           },
+  { c:'H', l:'Slope ↙',        g:'Slope', sg:'',     d:slope('DL')           },
+  { c:'I', l:'Slope ↘',        g:'Slope', sg:'',     d:slope('DR')           },
+  // Ghost walls
+  { c:'J', l:'Ghost →',        g:'Ghost', sg:'',     d:ghostWall('R')        },
+  { c:'K', l:'Ghost ←',        g:'Ghost', sg:'',     d:ghostWall('L')        },
+  { c:'L', l:'Ghost ↑',        g:'Ghost', sg:'',     d:ghostWall('U')        },
+  { c:'M', l:'Ghost ↓',        g:'Ghost', sg:'',     d:ghostWall('D')        },
 ];
 const TILE_BY_CHAR = Object.fromEntries(TILES.map(t => [t.c, t]));
 

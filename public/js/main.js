@@ -29,13 +29,15 @@
 
   (function () {
     const sliders = [
+      { id: 'sl-ball-rest', val: 'val-ball-rest', prop: 'BALL_RESTITUTION',   fmt: v => v.toFixed(2) },
       { id: 'sl-power',    val: 'val-power',    prop: 'MAX_POWER',          fmt: v => v.toFixed(1) },
       { id: 'sl-scale',    val: 'val-scale',    prop: 'POWER_SCALE',        fmt: v => v.toFixed(3) },
       { id: 'sl-friction', val: 'val-friction', prop: 'FRICTION',           fmt: v => v.toFixed(3) },
       { id: 'sl-sand',     val: 'val-sand',     prop: 'SAND_FRICTION',      fmt: v => v.toFixed(3) },
       { id: 'sl-bouncy',   val: 'val-bouncy',   prop: 'BOUNCY_RESTITUTION', fmt: v => v.toFixed(2) },
       { id: 'sl-sticky',   val: 'val-sticky',   prop: 'STICKY_RESTITUTION', fmt: v => v.toFixed(2) },
-      { id: 'sl-slope',    val: 'val-slope',    prop: 'SLOPE_FORCE',        fmt: v => v.toFixed(3) },
+      { id: 'sl-slope',    val: 'val-slope',    prop: 'SLOPE_FORCE',         fmt: v => v.toFixed(3) },
+      { id: 'sl-slope-rf', val: 'val-slope-rf', prop: 'SLOPE_ROLL_FRICTION', fmt: v => v.toFixed(4) },
     ];
     sliders.forEach(({ id, val, prop, fmt }) => {
       const input = document.getElementById(id);
