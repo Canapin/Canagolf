@@ -13,6 +13,7 @@
   const canvas       = document.getElementById('canvas');
   const ctx          = canvas.getContext('2d');
   const hudEl        = document.getElementById('hud');
+  const debugPanelEl = document.getElementById('debug-panel');
 
   const MARGIN = Physics.TILE_SIZE * 4; // rough border around the course
 
@@ -21,7 +22,10 @@
   let gameSession = null; // { mapList, mapIndex, playerNames, scores }
   let mouseX = 0;
   let mouseY = 0;
-  let loopId  = null;
+  let loopId      = null;
+  let lastTime    = 0;
+  let accumulator = 0;
+  const PHYSICS_STEP = 1000 / 240;
 
   // ── Online mode state ─────────────────────────────────────────────────────
   let socket           = null;
@@ -30,6 +34,34 @@
   let localPlayerIndex = -1;
   let isLocalHost      = false;
   let isOnlineHoleOver = false;
+
+  // ── Debug panel ───────────────────────────────────────────────────────────
+
+  (function () {
+    const sliders = [
+      { id: 'sl-ball-rest', val: 'val-ball-rest', prop: 'BALL_RESTITUTION',   fmt: v => v.toFixed(2) },
+      { id: 'sl-power',     val: 'val-power',     prop: 'MAX_POWER',          fmt: v => v.toFixed(1) },
+      { id: 'sl-scale',     val: 'val-scale',     prop: 'POWER_SCALE',        fmt: v => v.toFixed(3) },
+      { id: 'sl-friction',  val: 'val-friction',  prop: 'FRICTION',           fmt: v => v.toFixed(3) },
+      { id: 'sl-sand',      val: 'val-sand',      prop: 'SAND_FRICTION',      fmt: v => v.toFixed(3) },
+      { id: 'sl-bouncy',    val: 'val-bouncy',    prop: 'BOUNCY_RESTITUTION', fmt: v => v.toFixed(2) },
+      { id: 'sl-sticky',    val: 'val-sticky',    prop: 'STICKY_RESTITUTION', fmt: v => v.toFixed(2) },
+      { id: 'sl-slope',     val: 'val-slope',     prop: 'SLOPE_FORCE',        fmt: v => v.toFixed(3) },
+      { id: 'sl-slope-rf',  val: 'val-slope-rf',  prop: 'SLOPE_ROLL_FRICTION',fmt: v => v.toFixed(4) },
+    ];
+    sliders.forEach(({ id, val, prop, fmt }) => {
+      const input = document.getElementById(id);
+      const label = document.getElementById(val);
+      input.addEventListener('input', () => {
+        const v = parseFloat(input.value);
+        Physics[prop] = v;
+        label.textContent = fmt(v);
+      });
+      const current = Physics[prop];
+      input.value = current;
+      label.textContent = fmt(current);
+    });
+  })();
 
   // ── Tab switching ─────────────────────────────────────────────────────────
 
@@ -337,6 +369,8 @@
 
   function beginGame(map, playerNames) {
     if (loopId !== null) { cancelAnimationFrame(loopId); loopId = null; }
+    lastTime    = 0;
+    accumulator = 0;
 
     canvas.width  = map.width  * Physics.TILE_SIZE + MARGIN * 2;
     canvas.height = map.height * Physics.TILE_SIZE + MARGIN * 2;
@@ -348,6 +382,7 @@
       setupEl.hidden = true;
       lobbyEl.hidden = true;
       gameEl.hidden  = false;
+      debugPanelEl.hidden = isOnlineMode && !isLocalHost;
 document.addEventListener('mousemove', onMouseMove);
       canvas.addEventListener('click', onCanvasClick);
     }
@@ -386,8 +421,8 @@ document.addEventListener('mousemove', onMouseMove);
 
   // ── Game loop ─────────────────────────────────────────────────────────────
 
-  function loop() {
-    if (!game) return;
+  function physicsStep() {
+    if (!game) return null;
 
     const ball = Game.getCurrentBall(game);
     const wasMoving = Physics.isMoving(ball);
@@ -423,7 +458,7 @@ document.addEventListener('mousemove', onMouseMove);
       if (!isOnlineMode) {
         Game.onEliminated(game);
         updateHUD();
-        if (game.over) { render(); setTimeout(showEndScreen, 400); return; }
+        if (game.over) return 'over';
       } else {
         const p = Game.getCurrentPlayer(game);
         p.eliminated = true; p.ball.vx = 0; p.ball.vy = 0;
@@ -492,7 +527,7 @@ document.addEventListener('mousemove', onMouseMove);
             }
           } else {
             Game.onSink(game); updateHUD();
-            if (game.over) { render(); setTimeout(showEndScreen, 400); return; }
+            if (game.over) return 'over';
           }
           turnEnded = true;
         }
@@ -526,7 +561,7 @@ document.addEventListener('mousemove', onMouseMove);
     });
     if (nonCurStateChanged) {
       updateHUD();
-      if (game.over) { render(); setTimeout(showEndScreen, 400); return; }
+      if (game.over) return 'over';
     }
 
     // Teleporter — fires on entry (outside wasMoving so it works even at low speed)
@@ -560,7 +595,30 @@ document.addEventListener('mousemove', onMouseMove);
       }
     });
 
+    return null;
+  }
+
+  function loop(ts) {
+    if (!game) return;
+
+    const delta = lastTime === 0 ? PHYSICS_STEP : ts - lastTime;
+    lastTime = ts;
+    accumulator += Math.min(delta, 200);
+
+    let result = null;
+    while (accumulator >= PHYSICS_STEP) {
+      result = physicsStep();
+      accumulator -= PHYSICS_STEP;
+      if (result === 'over') { accumulator = 0; break; }
+    }
+
     render();
+
+    if (result === 'over') {
+      setTimeout(showEndScreen, 400);
+      return;
+    }
+
     loopId = requestAnimationFrame(loop);
   }
 

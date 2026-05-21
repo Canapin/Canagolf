@@ -9,7 +9,7 @@
   <body>
     <div id="setup">
       <img src="banner.png" id="banner" alt="Canagolf" />
-      <p class="subtitle">Mini golf · physics-based · multiplayer</p>
+      <p class="subtitle">Your new favourite game!</p>
 
       <div class="tabs">
         <button class="tab active" data-tab="local">Local</button>
@@ -21,7 +21,7 @@
           <label for="map-select-local">Map</label>
           <select id="map-select-local"></select>
         </div>
-        <div class="map-row" id="rounds-row" hidden>
+        <div class="map-row" id="rounds-row">
           <label for="rounds-input">Rounds</label>
           <input
             type="number"
@@ -69,7 +69,14 @@
         </div>
         <div id="lobby-rounds-row" hidden>
           <label for="rounds-input-lobby">Rounds</label>
-          <input type="number" id="rounds-input-lobby" value="10" min="1" max="99" style="width:60px" />
+          <input
+            type="number"
+            id="rounds-input-lobby"
+            value="10"
+            min="1"
+            max="99"
+            style="width: 60px"
+          />
         </div>
         <button id="lobby-start" class="btn-primary" hidden>
           Start Game ▶
@@ -95,6 +102,61 @@
       <p class="hint">
         Click anywhere to aim &amp; shoot · power = distance from ball
       </p>
+    </div>
+
+    <div id="debug-panel" hidden>
+      <div class="debug-title">⚙ Debug</div>
+
+      <div class="debug-section">
+        <div class="debug-section-title">Ball-to-Ball</div>
+        <label>Restitution <span id="val-ball-rest">0.50</span>
+          <input type="range" id="sl-ball-rest" min="0" max="1" step="0.05" value="0.5">
+        </label>
+      </div>
+
+      <div class="debug-section">
+        <div class="debug-section-title">Ball Physics</div>
+        <label>Max Power <span id="val-power">6.0</span>
+          <input type="range" id="sl-power" min="1" max="20" step="0.5" value="6">
+        </label>
+        <label>Power Scale <span id="val-scale">0.050</span>
+          <input type="range" id="sl-scale" min="0.01" max="0.15" step="0.005" value="0.05">
+        </label>
+        <label>Friction <span id="val-friction">0.995</span>
+          <input type="range" id="sl-friction" min="0.96" max="1.00" step="0.001" value="0.995">
+        </label>
+      </div>
+
+      <div class="debug-section">
+        <div class="debug-section-title">Sand</div>
+        <label>Friction <span id="val-sand">0.920</span>
+          <input type="range" id="sl-sand" min="0.70" max="1.00" step="0.005" value="0.92">
+        </label>
+      </div>
+
+      <div class="debug-section">
+        <div class="debug-section-title">Bouncy Wall</div>
+        <label>Restitution <span id="val-bouncy">1.60</span>
+          <input type="range" id="sl-bouncy" min="1.0" max="3.0" step="0.05" value="1.6">
+        </label>
+      </div>
+
+      <div class="debug-section">
+        <div class="debug-section-title">Sticky Wall</div>
+        <label>Restitution <span id="val-sticky">0.50</span>
+          <input type="range" id="sl-sticky" min="0.0" max="1.0" step="0.05" value="0.5">
+        </label>
+      </div>
+
+      <div class="debug-section">
+        <div class="debug-section-title">Slope</div>
+        <label>Inclination <span id="val-slope">0.018</span>
+          <input type="range" id="sl-slope" min="0.005" max="0.15" step="0.005" value="0.018">
+        </label>
+        <label>Roll Friction <span id="val-slope-rf">1.0000</span>
+          <input type="range" id="sl-slope-rf" min="0.990" max="1.000" step="0.0005" value="1">
+        </label>
+      </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>

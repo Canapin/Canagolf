@@ -137,13 +137,13 @@ const Physics = (function () {
     CIRCLE_WALL: "\\", // circular wall obstacle (full circle, radius = half tile)
   };
 
-  let SAND_FRICTION = 0.92;
+  let SAND_FRICTION = 0.96;
   let SLOPE_FORCE = 0.018;
-  let SLOPE_ROLL_FRICTION = 1; // no rolling resistance on slopes — force accumulates each frame
+  let SLOPE_ROLL_FRICTION = 0.99; // no rolling resistance on slopes — force accumulates each frame
   let BALL_RESTITUTION = 0.5; // ball-to-ball CoR: 0=inelastic (merge), 1=elastic (full exchange)
   let BALL_FRICTION = 0.3; // ball-to-ball tangential friction (Coulomb μ)
-  let BOUNCY_RESTITUTION = 1.6;
-  let STICKY_RESTITUTION = 0;
+  let BOUNCY_RESTITUTION = 1.5;
+  let STICKY_RESTITUTION = 0.1;
   const SAND_SET = new Set([
     "A",
     "a",
@@ -479,15 +479,10 @@ const Physics = (function () {
           }
           const fdot = ball.vx * fnx + ball.vy * fny;
           if (fdot < 0) {
-            if (wallTile === TILE.STICKY_WALL) {
-              ball.vx -= fdot * fnx;
-              ball.vy -= fdot * fny;
-              ball.vx *= STICKY_RESTITUTION;
-              ball.vy *= STICKY_RESTITUTION;
-            } else {
-              ball.vx -= (1 + restitution) * fdot * fnx;
-              ball.vy -= (1 + restitution) * fdot * fny;
-            }
+            ball.vx -= 2 * fdot * fnx;
+            ball.vy -= 2 * fdot * fny;
+            ball.vx *= restitution;
+            ball.vy *= restitution;
           }
           continue;
         }
@@ -514,15 +509,10 @@ const Physics = (function () {
 
         const dot = ball.vx * nx + ball.vy * ny;
         if (dot < 0) {
-          if (wallTile === TILE.STICKY_WALL) {
-            ball.vx -= dot * nx;
-            ball.vy -= dot * ny;
-            ball.vx *= STICKY_RESTITUTION;
-            ball.vy *= STICKY_RESTITUTION;
-          } else {
-            ball.vx -= (1 + restitution) * dot * nx;
-            ball.vy -= (1 + restitution) * dot * ny;
-          }
+          ball.vx -= 2 * dot * nx;
+          ball.vy -= 2 * dot * ny;
+          ball.vx *= restitution;
+          ball.vy *= restitution;
         }
       }
     }
@@ -637,16 +627,15 @@ const Physics = (function () {
   });
 
   function bounceVelocity(ball, nx, ny, dot, tile) {
-    if (STICKY_TILES.has(tile)) {
-      ball.vx -= dot * nx;
-      ball.vy -= dot * ny;
-      ball.vx *= STICKY_RESTITUTION;
-      ball.vy *= STICKY_RESTITUTION;
-    } else {
-      const e = BOUNCY_TILES.has(tile) ? BOUNCY_RESTITUTION : 1.0;
-      ball.vx -= (1 + e) * dot * nx;
-      ball.vy -= (1 + e) * dot * ny;
-    }
+    const e = STICKY_TILES.has(tile)
+      ? STICKY_RESTITUTION
+      : BOUNCY_TILES.has(tile)
+        ? BOUNCY_RESTITUTION
+        : 1.0;
+    ball.vx -= 2 * dot * nx;
+    ball.vy -= 2 * dot * ny;
+    ball.vx *= e;
+    ball.vy *= e;
   }
 
   function resolveCurveCollisions(ball, tiles) {
@@ -1104,8 +1093,14 @@ const Physics = (function () {
     for (let i = 0; i < pairs.length; i++) {
       if (ball._tpUsedPairs.has(i)) continue;
       const [a, b] = pairs[i];
-      if ((ball.x - a.x) ** 2 + (ball.y - a.y) ** 2 < r2) { ball._tpUsedPairs.add(i); return b; }
-      if ((ball.x - b.x) ** 2 + (ball.y - b.y) ** 2 < r2) { ball._tpUsedPairs.add(i); return a; }
+      if ((ball.x - a.x) ** 2 + (ball.y - a.y) ** 2 < r2) {
+        ball._tpUsedPairs.add(i);
+        return b;
+      }
+      if ((ball.x - b.x) ** 2 + (ball.y - b.y) ** 2 < r2) {
+        ball._tpUsedPairs.add(i);
+        return a;
+      }
     }
     return null;
   }
@@ -1173,7 +1168,10 @@ const Physics = (function () {
 
     // Curve terrain: terrain inside the arc (dist < T from arc center)
     const curveMeta = CURVE_META[tile];
-    if (curveMeta && (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile))) {
+    if (
+      curveMeta &&
+      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile))
+    ) {
       const ax = col * T + curveMeta.ox * T;
       const ay = row * T + curveMeta.oy * T;
       const dx = worldX - ax;
@@ -1183,7 +1181,10 @@ const Physics = (function () {
 
     // Bump terrain: terrain outside the arc (dist > T from arc center)
     const bumpMeta = BUMP_META[tile];
-    if (bumpMeta && (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile))) {
+    if (
+      bumpMeta &&
+      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile))
+    ) {
       const ax = col * T + bumpMeta.ox * T;
       const ay = row * T + bumpMeta.oy * T;
       const dx = worldX - ax;
