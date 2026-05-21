@@ -1,46 +1,338 @@
 const Renderer = (function () {
-
-  const BALL_COLORS  = ['#e74c3c', '#3498db', '#f39c12', '#2ecc71', '#9b59b6', '#e67e22', '#1abc9c', '#e91e63'];
-  const FAIRWAY      = '#3a7a35';
-  const WALL_FACE    = '#5a5a5a';
-  const WALL_EDGE    = '#3a3a3a';
-  const HOLE_COLOR   = '#0a0a0a';
-  const HOLE_RIM     = '#222';
-  const SAND_COLOR   = '#c8a84b';
-  const WATER_COLOR  = '#2a7fd4';
+  const BALL_COLORS = [
+    "#e74c3c",
+    "#3498db",
+    "#f39c12",
+    "#2ecc71",
+    "#9b59b6",
+    "#e67e22",
+    "#1abc9c",
+    "#e91e63",
+  ];
+  const FAIRWAY = "#3a7a35";
+  const WALL_FACE = "#A0A0A0";
+  const WALL_EDGE = "#898989";
+  const HOLE_COLOR = "#0a0a0a";
+  const SAND_COLOR = "#c8a84b";
+  const WATER_COLOR = "#2a7fd4";
+  const LAVA_COLOR = "#b02000";
   const SLOPE_FACE = {
-    [Physics.TILE.SLOPE_U]:  '#72c45a',
-    [Physics.TILE.SLOPE_UL]: '#65bc52',
-    [Physics.TILE.SLOPE_UR]: '#509e40',
-    [Physics.TILE.SLOPE_L]:  '#50a03c',
-    [Physics.TILE.SLOPE_R]:  '#2d6228',
-    [Physics.TILE.SLOPE_DL]: '#1e5216',
-    [Physics.TILE.SLOPE_DR]: '#184510',
-    [Physics.TILE.SLOPE_D]:  '#1c4d18',
+    [Physics.TILE.SLOPE_U]: "#72c45a",
+    [Physics.TILE.SLOPE_UL]: "#65bc52",
+    [Physics.TILE.SLOPE_UR]: "#509e40",
+    [Physics.TILE.SLOPE_L]: "#50a03c",
+    [Physics.TILE.SLOPE_R]: "#2d6228",
+    [Physics.TILE.SLOPE_DL]: "#1e5216",
+    [Physics.TILE.SLOPE_DR]: "#184510",
+    [Physics.TILE.SLOPE_D]: "#1c4d18",
   };
-  const GHOST_FACE = '#848c84';
-  const GHOST_EDGE = '#5a625a';
-  const GHOST_CHEV = '#d4dcd4';
-  const BOUNCY_FACE  = '#e8940a';
-  const BOUNCY_EDGE  = '#9a5c00';
-  const DRAG_FACE    = '#3a4e7a';
-  const DRAG_EDGE    = '#1a2a4a';
+  const GHOST_FACE = "#848c84";
+  const GHOST_EDGE = "#5a625a";
+  const GHOST_CHEV = "#d4dcd4";
+  const BOUNCY_FACE = "#e8940a";
+  const BOUNCY_EDGE = "#9a5c00";
+  const DRAG_FACE = "#3a4e7a";
+  const DRAG_EDGE = "#1a2a4a";
 
   const T = Physics.TILE_SIZE;
+
+  function wallFaceColors(tile) {
+    if (Physics.BOUNCY_TILES.has(tile)) return [BOUNCY_FACE, BOUNCY_EDGE];
+    if (Physics.STICKY_TILES.has(tile)) return [DRAG_FACE, DRAG_EDGE];
+    return [WALL_FACE, WALL_EDGE];
+  }
+
+  function groundColor(tile) {
+    if (Physics.isSandTile(tile)) return SAND_COLOR;
+    if (Physics.isWaterTile(tile)) return WATER_COLOR;
+    if (Physics.isLavaTile(tile)) return LAVA_COLOR;
+    return FAIRWAY;
+  }
+
+  function metaArcs(meta) {
+    if (meta.ox === 1 && meta.oy === 1) return [Math.PI, Math.PI * 1.5];
+    if (meta.ox === 0 && meta.oy === 1) return [Math.PI * 1.5, Math.PI * 2];
+    if (meta.ox === 1 && meta.oy === 0) return [Math.PI * 0.5, Math.PI];
+    return [0, Math.PI * 0.5];
+  }
 
   // ── Map ──────────────────────────────────────────────────────────────────
 
   function renderMap(ctx, map) {
+    const ground = map.ground || map.tiles;
+    const walls = map.walls || map.tiles;
     for (let row = 0; row < map.height; row++) {
       for (let col = 0; col < map.width; col++) {
-        renderTile(ctx, col, row, map.tiles[row][col]);
+        renderGroundTile(ctx, col, row, ground[row][col]);
+        renderWallTile(ctx, col, row, walls[row][col], ground[row][col]);
       }
     }
   }
 
-  function renderTile(ctx, col, row, tile) {
-    const x = col * T;
-    const y = row * T;
+  // ── Ground tile ───────────────────────────────────────────────────────────
+
+  function renderGroundTile(ctx, col, row, tile) {
+    const x = col * T,
+      y = row * T;
+
+    ctx.fillStyle = FAIRWAY;
+    ctx.fillRect(x, y, T, T);
+
+    if (tile === Physics.TILE.SAND) {
+      ctx.fillStyle = SAND_COLOR;
+      ctx.fillRect(x, y, T, T);
+      return;
+    }
+    if (tile === Physics.TILE.WATER) {
+      ctx.fillStyle = WATER_COLOR;
+      ctx.fillRect(x, y, T, T);
+      return;
+    }
+
+    if (tile === Physics.TILE.LAVA) {
+      ctx.fillStyle = LAVA_COLOR;
+      ctx.fillRect(x, y, T, T);
+      return;
+    }
+
+    const TP_COLORS = {
+      "=": { bg: "#1a0830", ring1: "#9030d0", ring2: "#c070ff" },
+      "|": { bg: "#081828", ring1: "#1878c8", ring2: "#50c8ff" },
+      "/": { bg: "#1a1000", ring1: "#b87010", ring2: "#ffe050" },
+    };
+    if (TP_COLORS[tile]) {
+      const { bg, ring1, ring2 } = TP_COLORS[tile];
+      const hx = x + T / 2,
+        hy = y + T / 2;
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.arc(hx, hy, T / 2 - 1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = ring1;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(hx, hy, T * 0.36, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = ring2;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2);
+      ctx.stroke();
+      return;
+    }
+
+    if (tile === Physics.TILE.SWAP) {
+      const cx = x + T / 2,
+        cy = y + T / 2;
+      ctx.fillStyle = "#c08000";
+      ctx.beginPath();
+      ctx.arc(cx, cy, T / 2 - 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#805000";
+      ctx.beginPath();
+      ctx.arc(cx, cy, T / 2 - 5, 0, Math.PI * 2);
+      ctx.fill();
+      const hw = T * 0.27,
+        hs = 2.5;
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(cx - hw, cy - hs);
+      ctx.lineTo(cx + hw, cy - hs);
+      ctx.moveTo(cx + hw - 4, cy - hs - 3);
+      ctx.lineTo(cx + hw, cy - hs);
+      ctx.lineTo(cx + hw - 4, cy - hs + 3);
+      ctx.moveTo(cx + hw, cy + hs);
+      ctx.lineTo(cx - hw, cy + hs);
+      ctx.moveTo(cx - hw + 4, cy + hs - 3);
+      ctx.lineTo(cx - hw, cy + hs);
+      ctx.lineTo(cx - hw + 4, cy + hs + 3);
+      ctx.stroke();
+      return;
+    }
+
+    if (tile === Physics.TILE.HOLE) {
+      ctx.fillStyle = HOLE_COLOR;
+      ctx.beginPath();
+      ctx.arc(x + T / 2, y + T / 2, Physics.BALL_RADIUS, 0, Math.PI * 2);
+      ctx.fill();
+      return;
+    }
+
+    if (SLOPE_FACE[tile]) {
+      ctx.fillStyle = SLOPE_FACE[tile];
+      ctx.fillRect(x, y, T, T);
+      ctx.strokeStyle = FAIRWAY;
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = "round";
+      const a = T * 0.1;
+      for (let qx = 1; qx <= 3; qx += 2) {
+        for (let qy = 1; qy <= 3; qy += 2) {
+          const cx = x + (qx * T) / 4,
+            cy = y + (qy * T) / 4;
+          ctx.beginPath();
+          if (tile === Physics.TILE.SLOPE_R) {
+            ctx.moveTo(cx - a, cy - a);
+            ctx.lineTo(cx + a, cy);
+            ctx.lineTo(cx - a, cy + a);
+          }
+          if (tile === Physics.TILE.SLOPE_L) {
+            ctx.moveTo(cx + a, cy - a);
+            ctx.lineTo(cx - a, cy);
+            ctx.lineTo(cx + a, cy + a);
+          }
+          if (tile === Physics.TILE.SLOPE_U) {
+            ctx.moveTo(cx - a, cy + a);
+            ctx.lineTo(cx, cy - a);
+            ctx.lineTo(cx + a, cy + a);
+          }
+          if (tile === Physics.TILE.SLOPE_D) {
+            ctx.moveTo(cx - a, cy - a);
+            ctx.lineTo(cx, cy + a);
+            ctx.lineTo(cx + a, cy - a);
+          }
+          if (tile === Physics.TILE.SLOPE_UL) {
+            ctx.moveTo(cx + a, cy);
+            ctx.lineTo(cx - a, cy - a);
+            ctx.lineTo(cx, cy + a);
+          }
+          if (tile === Physics.TILE.SLOPE_UR) {
+            ctx.moveTo(cx - a, cy);
+            ctx.lineTo(cx + a, cy - a);
+            ctx.lineTo(cx, cy + a);
+          }
+          if (tile === Physics.TILE.SLOPE_DL) {
+            ctx.moveTo(cx + a, cy);
+            ctx.lineTo(cx - a, cy + a);
+            ctx.lineTo(cx, cy - a);
+          }
+          if (tile === Physics.TILE.SLOPE_DR) {
+            ctx.moveTo(cx - a, cy);
+            ctx.lineTo(cx + a, cy + a);
+            ctx.lineTo(cx, cy - a);
+          }
+          ctx.stroke();
+        }
+      }
+      return;
+    }
+
+    // Legacy single-layer combo tiles (diagonal sand/water/lava)
+    const DIAG = {
+      a: [SAND_COLOR, "UR"],
+      b: [SAND_COLOR, "LL"],
+      c: [SAND_COLOR, "UL"],
+      d: [SAND_COLOR, "LR"],
+      e: [WATER_COLOR, "UR"],
+      f: [WATER_COLOR, "LL"],
+      g: [WATER_COLOR, "UL"],
+      h: [WATER_COLOR, "LR"],
+      [Physics.TILE.LAVA_DIAG_UR]: [LAVA_COLOR, "LL"],
+      [Physics.TILE.LAVA_DIAG_LL]: [LAVA_COLOR, "UR"],
+      [Physics.TILE.LAVA_DIAG_UL]: [LAVA_COLOR, "LR"],
+      [Physics.TILE.LAVA_DIAG_LR]: [LAVA_COLOR, "UL"],
+    };
+    if (DIAG[tile]) {
+      const [color, tri] = DIAG[tile];
+      ctx.fillStyle = FAIRWAY;
+      ctx.fillRect(x, y, T, T);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      if (tri === "UR") {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + T, y);
+        ctx.lineTo(x + T, y + T);
+      }
+      if (tri === "LL") {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + T);
+        ctx.lineTo(x + T, y + T);
+      }
+      if (tri === "UL") {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + T, y);
+        ctx.lineTo(x, y + T);
+      }
+      if (tri === "LR") {
+        ctx.moveTo(x + T, y);
+        ctx.lineTo(x, y + T);
+        ctx.lineTo(x + T, y + T);
+      }
+      ctx.closePath();
+      ctx.fill();
+      return;
+    }
+
+    // Legacy sand/water/lava curves and bumps
+    const MAT_CURVE = {
+      m: SAND_COLOR,
+      n: SAND_COLOR,
+      o: SAND_COLOR,
+      p: SAND_COLOR,
+      u: WATER_COLOR,
+      x: WATER_COLOR,
+      y: WATER_COLOR,
+      z: WATER_COLOR,
+      [Physics.TILE.LAVA_CURVE_TL]: LAVA_COLOR,
+      [Physics.TILE.LAVA_CURVE_TR]: LAVA_COLOR,
+      [Physics.TILE.LAVA_CURVE_BL]: LAVA_COLOR,
+      [Physics.TILE.LAVA_CURVE_BR]: LAVA_COLOR,
+    };
+    const MAT_BUMP = {
+      q: SAND_COLOR,
+      r: SAND_COLOR,
+      s: SAND_COLOR,
+      t: SAND_COLOR,
+      B: WATER_COLOR,
+      C: WATER_COLOR,
+      D: WATER_COLOR,
+      E: WATER_COLOR,
+      [Physics.TILE.LAVA_BUMP_TL]: LAVA_COLOR,
+      [Physics.TILE.LAVA_BUMP_TR]: LAVA_COLOR,
+      [Physics.TILE.LAVA_BUMP_BL]: LAVA_COLOR,
+      [Physics.TILE.LAVA_BUMP_BR]: LAVA_COLOR,
+    };
+    if (MAT_CURVE[tile]) {
+      const meta = Physics.CURVE_META[tile];
+      const ax = x + meta.ox * T,
+        ay = y + meta.oy * T;
+      const [a0, a1] = metaArcs(meta);
+      ctx.fillStyle = FAIRWAY;
+      ctx.fillRect(x, y, T, T);
+      ctx.fillStyle = MAT_CURVE[tile];
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.arc(ax, ay, T, a0, a1, false);
+      ctx.closePath();
+      ctx.fill();
+      return;
+    }
+    if (MAT_BUMP[tile]) {
+      const meta = Physics.BUMP_META[tile];
+      const ax = x + meta.ox * T,
+        ay = y + meta.oy * T;
+      const [a0, a1] = metaArcs(meta);
+      ctx.fillStyle = MAT_BUMP[tile];
+      ctx.fillRect(x, y, T, T);
+      ctx.fillStyle = FAIRWAY;
+      ctx.beginPath();
+      ctx.moveTo(ax, ay);
+      ctx.arc(ax, ay, T, a0, a1, false);
+      ctx.closePath();
+      ctx.fill();
+      return;
+    }
+  }
+
+  // ── Wall tile ─────────────────────────────────────────────────────────────
+  // openColor = color of ground tile underneath (for open areas in partial walls)
+
+  function renderWallTile(ctx, col, row, tile, groundTile) {
+    if (!tile || tile === ".") return;
+    const x = col * T,
+      y = row * T;
+    const openColor = groundColor(groundTile);
 
     if (tile === Physics.TILE.WALL) {
       ctx.fillStyle = WALL_FACE;
@@ -50,236 +342,385 @@ const Renderer = (function () {
       ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
       return;
     }
+
     if (tile === Physics.TILE.BOUNCY) {
-      ctx.fillStyle = BOUNCY_FACE; ctx.fillRect(x, y, T, T);
-      ctx.strokeStyle = BOUNCY_EDGE; ctx.lineWidth = 1.5;
+      ctx.fillStyle = BOUNCY_FACE;
+      ctx.fillRect(x, y, T, T);
+      ctx.strokeStyle = BOUNCY_EDGE;
+      ctx.lineWidth = 1;
       ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
-      // Spring chevrons
-      const cx = x + T / 2, cy = y + T / 2, hw = T * 0.28, hh = T * 0.18;
-      ctx.strokeStyle = BOUNCY_EDGE; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
-      [-hh, hh].forEach(oy => {
+      ctx.strokeStyle = "rgba(255,255,255,0.7)";
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = "round";
+      const a = T * 0.1;
+      [
+        [1, 1, "UL"],
+        [3, 1, "UR"],
+        [1, 3, "DL"],
+        [3, 3, "DR"],
+      ].forEach(([qx, qy, dir]) => {
+        const cx = x + (qx * T) / 4,
+          cy = y + (qy * T) / 4;
         ctx.beginPath();
-        ctx.moveTo(cx - hw, cy + oy); ctx.lineTo(cx, cy + oy - hh); ctx.lineTo(cx + hw, cy + oy);
+        if (dir === "UL") {
+          ctx.moveTo(cx + a, cy);
+          ctx.lineTo(cx - a, cy - a);
+          ctx.lineTo(cx, cy + a);
+        }
+        if (dir === "UR") {
+          ctx.moveTo(cx - a, cy);
+          ctx.lineTo(cx + a, cy - a);
+          ctx.lineTo(cx, cy + a);
+        }
+        if (dir === "DL") {
+          ctx.moveTo(cx + a, cy);
+          ctx.lineTo(cx - a, cy + a);
+          ctx.lineTo(cx, cy - a);
+        }
+        if (dir === "DR") {
+          ctx.moveTo(cx - a, cy);
+          ctx.lineTo(cx + a, cy + a);
+          ctx.lineTo(cx, cy - a);
+        }
         ctx.stroke();
       });
       return;
     }
+
     if (tile === Physics.TILE.STICKY_WALL) {
-      ctx.fillStyle = DRAG_FACE; ctx.fillRect(x, y, T, T);
-      ctx.strokeStyle = DRAG_EDGE; ctx.lineWidth = 1.5;
+      ctx.fillStyle = DRAG_FACE;
+      ctx.fillRect(x, y, T, T);
+      ctx.strokeStyle = DRAG_EDGE;
+      ctx.lineWidth = 1;
       ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
-      // Inward dashes suggesting absorption
-      const cx = x + T / 2, cy = y + T / 2, s = T * 0.22;
-      ctx.strokeStyle = DRAG_EDGE; ctx.lineWidth = 1.5;
-      ctx.setLineDash([2, 2]);
-      ctx.beginPath(); ctx.moveTo(cx - s, cy - s); ctx.lineTo(cx + s, cy + s); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx + s, cy - s); ctx.lineTo(cx - s, cy + s); ctx.stroke();
-      ctx.setLineDash([]);
+      ctx.strokeStyle = "rgba(170,200,255,0.7)";
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = "round";
+      const a = T * 0.1;
+      [
+        [1, 1, "DR"],
+        [3, 1, "DL"],
+        [1, 3, "UR"],
+        [3, 3, "UL"],
+      ].forEach(([qx, qy, dir]) => {
+        const cx = x + (qx * T) / 4,
+          cy = y + (qy * T) / 4;
+        ctx.beginPath();
+        if (dir === "UL") {
+          ctx.moveTo(cx + a, cy);
+          ctx.lineTo(cx - a, cy - a);
+          ctx.lineTo(cx, cy + a);
+        }
+        if (dir === "UR") {
+          ctx.moveTo(cx - a, cy);
+          ctx.lineTo(cx + a, cy - a);
+          ctx.lineTo(cx, cy + a);
+        }
+        if (dir === "DL") {
+          ctx.moveTo(cx + a, cy);
+          ctx.lineTo(cx - a, cy + a);
+          ctx.lineTo(cx, cy - a);
+        }
+        if (dir === "DR") {
+          ctx.moveTo(cx - a, cy);
+          ctx.lineTo(cx + a, cy + a);
+          ctx.lineTo(cx, cy - a);
+        }
+        ctx.stroke();
+      });
       return;
     }
 
-    if (tile === Physics.TILE.SAND) {
-      ctx.fillStyle = SAND_COLOR; ctx.fillRect(x, y, T, T); return;
-    }
-    if (tile === Physics.TILE.WATER) {
-      ctx.fillStyle = WATER_COLOR; ctx.fillRect(x, y, T, T); return;
+    if (tile === Physics.TILE.CIRCLE_WALL) {
+      const [face, edge] = wallFaceColors(tile);
+      const cx = x + T / 2,
+        cy = y + T / 2;
+      ctx.fillStyle = face;
+      ctx.beginPath();
+      ctx.arc(cx, cy, T / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, T / 2, 0, Math.PI * 2);
+      ctx.stroke();
+      return;
     }
 
-    // Slope tiles — shaded green + 4 fairway-coloured chevrons in quadrant grid
-    if (SLOPE_FACE[tile]) {
-      ctx.fillStyle = SLOPE_FACE[tile]; ctx.fillRect(x, y, T, T);
-      ctx.strokeStyle = FAIRWAY; ctx.lineWidth = 1.5; ctx.lineJoin = 'round';
-      const a = T * 0.10;
+    // Ghost walls (cardinal one-way)
+    const GHOST_DIR = {
+      [Physics.TILE.GHOST_R]: "R",
+      [Physics.TILE.GHOST_L]: "L",
+      [Physics.TILE.GHOST_U]: "U",
+      [Physics.TILE.GHOST_D]: "D",
+    };
+    // Phantom walls (diagonal one-way)
+    const PHANTOM_DIR = {
+      [Physics.TILE.PHANTOM_UR]: "UR",
+      [Physics.TILE.PHANTOM_UL]: "UL",
+      [Physics.TILE.PHANTOM_DR]: "DR",
+      [Physics.TILE.PHANTOM_DL]: "DL",
+    };
+    if (GHOST_DIR[tile] || PHANTOM_DIR[tile]) {
+      const dir = GHOST_DIR[tile] || PHANTOM_DIR[tile];
+      ctx.fillStyle = WALL_FACE;
+      ctx.fillRect(x, y, T, T);
+      ctx.strokeStyle = WALL_EDGE;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
+      const a = T * 0.1;
+      ctx.strokeStyle = GHOST_CHEV;
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = "round";
       for (let qx = 1; qx <= 3; qx += 2) {
         for (let qy = 1; qy <= 3; qy += 2) {
-          const cx = x + qx * T / 4, cy = y + qy * T / 4;
+          const cx = x + (qx * T) / 4,
+            cy = y + (qy * T) / 4;
           ctx.beginPath();
-          if (tile === Physics.TILE.SLOPE_R)  { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx+a,cy);   ctx.lineTo(cx-a,cy+a); }
-          if (tile === Physics.TILE.SLOPE_L)  { ctx.moveTo(cx+a,cy-a); ctx.lineTo(cx-a,cy);   ctx.lineTo(cx+a,cy+a); }
-          if (tile === Physics.TILE.SLOPE_U)  { ctx.moveTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); ctx.lineTo(cx+a,cy+a); }
-          if (tile === Physics.TILE.SLOPE_D)  { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); ctx.lineTo(cx+a,cy-a); }
-          if (tile === Physics.TILE.SLOPE_UL) { ctx.moveTo(cx+a,cy);   ctx.lineTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); }
-          if (tile === Physics.TILE.SLOPE_UR) { ctx.moveTo(cx-a,cy);   ctx.lineTo(cx+a,cy-a); ctx.lineTo(cx,  cy+a); }
-          if (tile === Physics.TILE.SLOPE_DL) { ctx.moveTo(cx+a,cy);   ctx.lineTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); }
-          if (tile === Physics.TILE.SLOPE_DR) { ctx.moveTo(cx-a,cy);   ctx.lineTo(cx+a,cy+a); ctx.lineTo(cx,  cy-a); }
+          if (dir === "R") {
+            ctx.moveTo(cx - a, cy - a);
+            ctx.lineTo(cx + a, cy);
+            ctx.lineTo(cx - a, cy + a);
+          }
+          if (dir === "L") {
+            ctx.moveTo(cx + a, cy - a);
+            ctx.lineTo(cx - a, cy);
+            ctx.lineTo(cx + a, cy + a);
+          }
+          if (dir === "U") {
+            ctx.moveTo(cx - a, cy + a);
+            ctx.lineTo(cx, cy - a);
+            ctx.lineTo(cx + a, cy + a);
+          }
+          if (dir === "D") {
+            ctx.moveTo(cx - a, cy - a);
+            ctx.lineTo(cx, cy + a);
+            ctx.lineTo(cx + a, cy - a);
+          }
+          if (dir === "UR") {
+            ctx.moveTo(cx - a, cy);
+            ctx.lineTo(cx + a, cy - a);
+            ctx.lineTo(cx, cy + a);
+          }
+          if (dir === "UL") {
+            ctx.moveTo(cx + a, cy);
+            ctx.lineTo(cx - a, cy - a);
+            ctx.lineTo(cx, cy + a);
+          }
+          if (dir === "DR") {
+            ctx.moveTo(cx - a, cy);
+            ctx.lineTo(cx + a, cy + a);
+            ctx.lineTo(cx, cy - a);
+          }
+          if (dir === "DL") {
+            ctx.moveTo(cx + a, cy);
+            ctx.lineTo(cx - a, cy + a);
+            ctx.lineTo(cx, cy - a);
+          }
           ctx.stroke();
         }
       }
       return;
     }
 
-    // Ghost walls — one-way: ball passes in chevron direction, blocks opposite
-    const GHOST_DIR = {
-      [Physics.TILE.GHOST_R]: 'R', [Physics.TILE.GHOST_L]: 'L',
-      [Physics.TILE.GHOST_U]: 'U', [Physics.TILE.GHOST_D]: 'D',
+    // Diagonal walls — open triangle uses openColor
+    const DIAG_WALL = {
+      i: "LL",
+      j: "UR",
+      k: "LR",
+      l: "UL",
+      N: "LL",
+      P: "UR",
+      Q: "LR",
+      R: "UL",
+      "(": "LL",
+      ")": "UR",
+      "[": "LR",
+      "]": "UL",
     };
-    if (GHOST_DIR[tile]) {
-      const dir = GHOST_DIR[tile];
-      ctx.fillStyle = GHOST_FACE; ctx.fillRect(x, y, T, T);
-      ctx.strokeStyle = GHOST_EDGE; ctx.lineWidth = 1;
-      ctx.setLineDash([3, 2]);
-      ctx.strokeRect(x + 0.5, y + 0.5, T - 1, T - 1);
-      ctx.setLineDash([]);
-      const cx = x + T / 2, cy = y + T / 2, a = T * 0.26;
-      ctx.strokeStyle = GHOST_CHEV; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-      ctx.beginPath();
-      if (dir === 'R') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx+a,cy); ctx.lineTo(cx-a,cy+a); }
-      if (dir === 'L') { ctx.moveTo(cx+a,cy-a); ctx.lineTo(cx-a,cy); ctx.lineTo(cx+a,cy+a); }
-      if (dir === 'U') { ctx.moveTo(cx-a,cy+a); ctx.lineTo(cx,  cy-a); ctx.lineTo(cx+a,cy+a); }
-      if (dir === 'D') { ctx.moveTo(cx-a,cy-a); ctx.lineTo(cx,  cy+a); ctx.lineTo(cx+a,cy-a); }
-      ctx.stroke();
-      return;
-    }
-
-    // Diagonal wall tiles — wall triangle + fairway triangle + hypotenuse edge
-    const DIAG_WALL = { i: 'LL', j: 'UR', k: 'LR', l: 'UL' };
     if (DIAG_WALL[tile]) {
       const fw = DIAG_WALL[tile];
-      ctx.fillStyle = WALL_FACE; ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = FAIRWAY; ctx.beginPath();
-      if (fw === 'LL') { ctx.moveTo(x,y);   ctx.lineTo(x,y+T);   ctx.lineTo(x+T,y+T); }
-      if (fw === 'UR') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y);   ctx.lineTo(x+T,y+T); }
-      if (fw === 'LR') { ctx.moveTo(x+T,y); ctx.lineTo(x,y+T);   ctx.lineTo(x+T,y+T); }
-      if (fw === 'UL') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y);   ctx.lineTo(x,y+T);   }
-      ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = WALL_EDGE; ctx.lineWidth = 1.5; ctx.beginPath();
-      if (fw === 'LL' || fw === 'UR') { ctx.moveTo(x, y);   ctx.lineTo(x+T, y+T); }
-      else                            { ctx.moveTo(x+T, y); ctx.lineTo(x, y+T);   }
-      ctx.stroke();
-      return;
-    }
-
-    // Diagonal sand/water tiles — draw fairway base then material triangle
-    const DIAG = {
-      a: [SAND_COLOR,  'UR'], b: [SAND_COLOR,  'LL'],
-      c: [SAND_COLOR,  'UL'], d: [SAND_COLOR,  'LR'],
-      e: [WATER_COLOR, 'UR'], f: [WATER_COLOR, 'LL'],
-      g: [WATER_COLOR, 'UL'], h: [WATER_COLOR, 'LR'],
-    };
-    if (DIAG[tile]) {
-      const [color, tri] = DIAG[tile];
-      ctx.fillStyle = FAIRWAY; ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      if (tri === 'UR') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y); ctx.lineTo(x+T,y+T); }
-      if (tri === 'LL') { ctx.moveTo(x,y);   ctx.lineTo(x,y+T); ctx.lineTo(x+T,y+T); }
-      if (tri === 'UL') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y); ctx.lineTo(x,y+T);   }
-      if (tri === 'LR') { ctx.moveTo(x+T,y); ctx.lineTo(x,y+T); ctx.lineTo(x+T,y+T); }
-      ctx.closePath(); ctx.fill();
-      return;
-    }
-
-    // Material curves/bumps — same arc geometry as wall variants, different fill color
-    function metaArcs(meta) {
-      if (meta.ox === 1 && meta.oy === 1) return [Math.PI,       Math.PI * 1.5];
-      if (meta.ox === 0 && meta.oy === 1) return [Math.PI * 1.5, Math.PI * 2  ];
-      if (meta.ox === 1 && meta.oy === 0) return [Math.PI * 0.5, Math.PI      ];
-      return [0, Math.PI * 0.5];
-    }
-    const MAT_CURVE = {
-      m: SAND_COLOR, n: SAND_COLOR, o: SAND_COLOR, p: SAND_COLOR,
-      u: WATER_COLOR, x: WATER_COLOR, y: WATER_COLOR, z: WATER_COLOR,
-    };
-    const MAT_BUMP = {
-      q: SAND_COLOR, r: SAND_COLOR, s: SAND_COLOR, t: SAND_COLOR,
-      B: WATER_COLOR, C: WATER_COLOR, D: WATER_COLOR, E: WATER_COLOR,
-    };
-    if (MAT_CURVE[tile]) {
-      const meta = Physics.CURVE_META[tile];
-      const ax = x + meta.ox * T, ay = y + meta.oy * T;
-      const [a0, a1] = metaArcs(meta);
-      ctx.fillStyle = FAIRWAY; ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = MAT_CURVE[tile];
-      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false);
-      ctx.closePath(); ctx.fill();
-      return;
-    }
-    if (MAT_BUMP[tile]) {
-      const meta = Physics.BUMP_META[tile];
-      const ax = x + meta.ox * T, ay = y + meta.oy * T;
-      const [a0, a1] = metaArcs(meta);
-      ctx.fillStyle = MAT_BUMP[tile]; ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = FAIRWAY;
-      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false);
-      ctx.closePath(); ctx.fill();
-      return;
-    }
-
-    ctx.fillStyle = FAIRWAY;
-    ctx.fillRect(x, y, T, T);
-
-    if (tile === Physics.TILE.HOLE) {
-      ctx.fillStyle = HOLE_RIM;
+      const [face, edge] = wallFaceColors(tile);
+      ctx.fillStyle = face;
       ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = HOLE_COLOR;
+      ctx.fillStyle = openColor;
       ctx.beginPath();
-      ctx.arc(x + T / 2, y + T / 2, T / 2, 0, Math.PI * 2);
+      if (fw === "LL") {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x, y + T);
+        ctx.lineTo(x + T, y + T);
+      }
+      if (fw === "UR") {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + T, y);
+        ctx.lineTo(x + T, y + T);
+      }
+      if (fw === "LR") {
+        ctx.moveTo(x + T, y);
+        ctx.lineTo(x, y + T);
+        ctx.lineTo(x + T, y + T);
+      }
+      if (fw === "UL") {
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + T, y);
+        ctx.lineTo(x, y + T);
+      }
+      ctx.closePath();
       ctx.fill();
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      if (fw === "LL") {
+        ctx.moveTo(x, y);       ctx.lineTo(x + T, y);
+        ctx.moveTo(x + T, y);   ctx.lineTo(x + T, y + T);
+        ctx.moveTo(x, y);       ctx.lineTo(x + T, y + T);
+      } else if (fw === "UR") {
+        ctx.moveTo(x, y);       ctx.lineTo(x, y + T);
+        ctx.moveTo(x, y + T);   ctx.lineTo(x + T, y + T);
+        ctx.moveTo(x, y);       ctx.lineTo(x + T, y + T);
+      } else if (fw === "LR") {
+        ctx.moveTo(x, y);       ctx.lineTo(x + T, y);
+        ctx.moveTo(x, y);       ctx.lineTo(x, y + T);
+        ctx.moveTo(x + T, y);   ctx.lineTo(x, y + T);
+      } else {
+        ctx.moveTo(x + T, y);   ctx.lineTo(x + T, y + T);
+        ctx.moveTo(x, y + T);   ctx.lineTo(x + T, y + T);
+        ctx.moveTo(x + T, y);   ctx.lineTo(x, y + T);
+      }
+      ctx.stroke();
+      // 2 chevrons in solid wall area — only for bouncy/sticky variants
+      if (Physics.BOUNCY_TILES.has(tile) || Physics.STICKY_TILES.has(tile)) {
+        let p1x, p1y, p2x, p2y;
+        if (fw === "LL") {
+          p1x = x + T * 0.78;
+          p1y = y + T * 0.44;
+          p2x = x + T * 0.55;
+          p2y = y + T * 0.22;
+        }
+        if (fw === "UR") {
+          p1x = x + T * 0.22;
+          p1y = y + T * 0.56;
+          p2x = x + T * 0.45;
+          p2y = y + T * 0.78;
+        }
+        if (fw === "LR") {
+          p1x = x + T * 0.22;
+          p1y = y + T * 0.44;
+          p2x = x + T * 0.45;
+          p2y = y + T * 0.22;
+        }
+        if (fw === "UL") {
+          p1x = x + T * 0.56;
+          p1y = y + T * 0.78;
+          p2x = x + T * 0.78;
+          p2y = y + T * 0.56;
+        }
+        const a = T * 0.09;
+        ctx.strokeStyle = "rgba(255,255,255,0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = "round";
+        [
+          [p1x, p1y],
+          [p2x, p2y],
+        ].forEach(([pcx, pcy]) => {
+          ctx.beginPath();
+          if (fw === "LL") {
+            ctx.moveTo(pcx + a, pcy);
+            ctx.lineTo(pcx - a, pcy + a);
+            ctx.lineTo(pcx, pcy - a);
+          }
+          if (fw === "UR") {
+            ctx.moveTo(pcx - a, pcy);
+            ctx.lineTo(pcx + a, pcy - a);
+            ctx.lineTo(pcx, pcy + a);
+          }
+          if (fw === "LR") {
+            ctx.moveTo(pcx - a, pcy);
+            ctx.lineTo(pcx + a, pcy + a);
+            ctx.lineTo(pcx, pcy - a);
+          }
+          if (fw === "UL") {
+            ctx.moveTo(pcx + a, pcy);
+            ctx.lineTo(pcx - a, pcy - a);
+            ctx.lineTo(pcx, pcy + a);
+          }
+          ctx.stroke();
+        });
+      }
+      return;
     }
 
-    const meta = Physics.CURVE_META[tile];
-    if (meta) {
-      // Arc center is at one corner of the tile; the fairway is a quarter-circle
-      // pie-slice in the open quadrant. Draw wall first, fairway on top.
-      const ax = x + meta.ox * T;
-      const ay = y + meta.oy * T;
-
-      // Angles: increasing angle in Canvas 2D goes clockwise on screen.
-      // Each type sweeps from one axis-aligned direction to the adjacent one,
-      // covering the open quadrant.
-      //   TL: π → 3π/2   TR: 3π/2 → 2π   BL: π/2 → π   BR: 0 → π/2
-      const ARCS = {
-        [Physics.TILE.CURVE_TL]: [Math.PI,        Math.PI * 1.5],
-        [Physics.TILE.CURVE_TR]: [Math.PI * 1.5,  Math.PI * 2  ],
-        [Physics.TILE.CURVE_BL]: [Math.PI * 0.5,  Math.PI      ],
-        [Physics.TILE.CURVE_BR]: [0,               Math.PI * 0.5],
-      };
-      const [a0, a1] = ARCS[tile];
-
-      // Wall background (whole tile)
-      ctx.fillStyle = WALL_FACE;
+    // Curves — open arc uses openColor
+    const curveMeta = Physics.CURVE_META[tile];
+    if (curveMeta) {
+      const ax = x + curveMeta.ox * T,
+        ay = y + curveMeta.oy * T;
+      const [a0, a1] = metaArcs(curveMeta);
+      const [face, edge] = wallFaceColors(tile);
+      ctx.fillStyle = face;
       ctx.fillRect(x, y, T, T);
-
-      // Fairway pie-slice (open quadrant)
-      ctx.fillStyle = FAIRWAY;
+      ctx.fillStyle = openColor;
       ctx.beginPath();
       ctx.moveTo(ax, ay);
       ctx.arc(ax, ay, T, a0, a1, false);
       ctx.closePath();
       ctx.fill();
-
-      // Arc outline
-      ctx.strokeStyle = WALL_EDGE;
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(ax, ay, T, a0, a1, false);
+      const ocx = ax + T * (Math.cos(a0) + Math.cos(a1));
+      const ocy = ay + T * (Math.sin(a0) + Math.sin(a1));
+      ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a0), ay + T * Math.sin(a0));
+      ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
       ctx.stroke();
+      return;
     }
 
+    // Bumps — solid arc, open area uses openColor; 3 chevrons in solid arc area
     const bumpMeta = Physics.BUMP_META[tile];
     if (bumpMeta) {
-      const bax = x + bumpMeta.ox * T;
-      const bay = y + bumpMeta.oy * T;
-      const BUMP_ARCS = {
-        [Physics.TILE.BUMP_TL]: [Math.PI,       Math.PI * 1.5],
-        [Physics.TILE.BUMP_TR]: [Math.PI * 1.5, Math.PI * 2  ],
-        [Physics.TILE.BUMP_BL]: [Math.PI * 0.5, Math.PI      ],
-        [Physics.TILE.BUMP_BR]: [0,              Math.PI * 0.5],
-      };
-      const [ba0, ba1] = BUMP_ARCS[tile];
-      ctx.fillStyle = WALL_FACE;
+      const bax = x + bumpMeta.ox * T,
+        bay = y + bumpMeta.oy * T;
+      const [ba0, ba1] = metaArcs(bumpMeta);
+      const [face, edge] = wallFaceColors(tile);
+      ctx.fillStyle = openColor;
+      ctx.fillRect(x, y, T, T);
+      ctx.fillStyle = face;
       ctx.beginPath();
       ctx.moveTo(bax, bay);
       ctx.arc(bax, bay, T, ba0, ba1, false);
       ctx.closePath();
       ctx.fill();
-
-      // Arc outline
-      ctx.strokeStyle = WALL_EDGE;
-      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(bax, bay, T, ba0, ba1, false);
+      ctx.moveTo(bax, bay); ctx.lineTo(bax + T * Math.cos(ba0), bay + T * Math.sin(ba0));
+      ctx.moveTo(bax, bay); ctx.lineTo(bax + T * Math.cos(ba1), bay + T * Math.sin(ba1));
       ctx.stroke();
+      if (Physics.BOUNCY_TILES.has(tile) || Physics.STICKY_TILES.has(tile)) {
+        const midAngle = (ba0 + ba1) / 2;
+        const spread = Math.PI / 8;
+        const a = T * 0.09;
+        ctx.strokeStyle = "rgba(255,255,255,0.5)";
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = "round";
+        [midAngle - spread, midAngle + spread].forEach((angle) => {
+          const pcx = bax + T * 0.52 * Math.cos(angle);
+          const pcy = bay + T * 0.52 * Math.sin(angle);
+          const nx = Math.cos(angle),
+            ny = Math.sin(angle);
+          const tx = -ny,
+            ty = nx;
+          ctx.beginPath();
+          ctx.moveTo(pcx - tx * a, pcy - ty * a);
+          ctx.lineTo(pcx + nx * a, pcy + ny * a);
+          ctx.lineTo(pcx + tx * a, pcy + ty * a);
+          ctx.stroke();
+        });
+      }
+      return;
     }
   }
 
@@ -289,26 +730,22 @@ const Renderer = (function () {
     const color = BALL_COLORS[playerIndex % BALL_COLORS.length];
     const r = Physics.BALL_RADIUS;
 
-    // Drop shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath();
     ctx.ellipse(ball.x + 1, ball.y + 2, r, r * 0.6, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Ball
     ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2);
     ctx.fill();
 
-    // Specular highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillStyle = "rgba(255,255,255,0.35)";
     ctx.beginPath();
     ctx.arc(ball.x - r * 0.3, ball.y - r * 0.3, r * 0.35, 0, Math.PI * 2);
     ctx.fill();
 
-    // Outline
-    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.strokeStyle = "rgba(0,0,0,0.4)";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, r, 0, Math.PI * 2);
@@ -323,20 +760,46 @@ const Renderer = (function () {
     const dist = Math.sqrt(dx * dx + dy * dy);
     if (dist < 5) return;
 
-    const power = Math.min(dist * Physics.POWER_SCALE, Physics.MAX_POWER) / Physics.MAX_POWER;
+    const eff = dist < Physics.BALL_RADIUS ? 0 : dist - Physics.BALL_RADIUS;
+    const maxDist = Physics.MAX_POWER / Physics.POWER_SCALE;
+    const t = Math.min(eff / maxDist, 1);
+    const power = Math.pow(t, Physics.POWER_EXP);
+
+    const capDist = Physics.BALL_RADIUS + maxDist;
+    const lineEndDist = Math.min(dist, capDist);
+
+    // Cursor side: line drawn from capped cursor position toward ball surface
+    const behindEndX = ball.x + (dx / dist) * lineEndDist;
+    const behindEndY = ball.y + (dy / dist) * lineEndDist;
+
+    // nx, ny = launch direction (away from cursor)
+    const nx = -dx / dist;
+    const ny = -dy / dist;
+    const r = Physics.BALL_RADIUS;
 
     ctx.save();
-    ctx.globalAlpha = 0.3 + power * 0.5;
+    ctx.globalAlpha = 1;
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 1.5;
     ctx.setLineDash([5, 5]);
     ctx.beginPath();
-    ctx.moveTo(ball.x, ball.y);
-    ctx.lineTo(cursorX, cursorY);
+    ctx.moveTo(behindEndX, behindEndY);
+    ctx.lineTo(ball.x - nx * r, ball.y - ny * r); // stop at ball surface
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Power arc at ball
+    // Arrowhead at ball surface (cursor side), tip pointing toward ball
+    const AH = 9, AW = 5;
+    const arrowBaseX = ball.x - nx * (r + AH);
+    const arrowBaseY = ball.y - ny * (r + AH);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(arrowBaseX + nx * AH, arrowBaseY + ny * AH);
+    ctx.lineTo(arrowBaseX - ny * AW, arrowBaseY + nx * AW);
+    ctx.lineTo(arrowBaseX + ny * AW, arrowBaseY - nx * AW);
+    ctx.closePath();
+    ctx.fill();
+
     ctx.strokeStyle = power > 0.7 ? '#e74c3c' : power > 0.4 ? '#f39c12' : '#2ecc71';
     ctx.lineWidth = 2.5;
     ctx.globalAlpha = 0.7;
@@ -347,5 +810,11 @@ const Renderer = (function () {
     ctx.restore();
   }
 
-  return { renderMap, renderTile, renderBall, renderAimLine };
+  return {
+    renderMap,
+    renderGroundTile,
+    renderWallTile,
+    renderBall,
+    renderAimLine,
+  };
 })();
