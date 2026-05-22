@@ -125,6 +125,19 @@ const Physics = (function () {
     LAVA_BUMP_TR: "ą",
     LAVA_BUMP_BL: "Ć",
     LAVA_BUMP_BR: "ć",
+    // Slope partial-tile variants (diagonal, concave, convex)
+    SLOPE_DIAG_UR: "Ĉ", // slope ↗ — upper-right triangle, force UR
+    SLOPE_DIAG_DL: "ĉ", // slope ↙ — lower-left triangle, force DL
+    SLOPE_DIAG_UL: "Ċ", // slope ↖ — upper-left triangle, force UL
+    SLOPE_DIAG_DR: "ċ", // slope ↘ — lower-right triangle, force DR
+    SLOPE_CURVE_TL: "Č", // slope concave ↖ — TL corner area, force UL
+    SLOPE_CURVE_TR: "č", // slope concave ↗ — TR corner area, force UR
+    SLOPE_CURVE_BL: "Ď", // slope concave ↙ — BL corner area, force DL
+    SLOPE_CURVE_BR: "ď", // slope concave ↘ — BR corner area, force DR
+    SLOPE_BUMP_TL: "Đ", // slope convex ↖ — TL corner bump, force UL
+    SLOPE_BUMP_TR: "đ", // slope convex ↗ — TR corner bump, force UR
+    SLOPE_BUMP_BL: "Ē", // slope convex ↙ — BL corner bump, force DL
+    SLOPE_BUMP_BR: "ē", // slope convex ↘ — BR corner bump, force DR
     TELEPORTER: "=", // teleporter pair 1 (purple)
     TELEPORTER_B: "|", // teleporter pair 2 (cyan)
     TELEPORTER_C: "/", // teleporter pair 3 (gold)
@@ -174,7 +187,12 @@ const Physics = (function () {
     "D",
     "E",
   ]);
-  const SLOPE_SET = new Set(["^", "v", "<", ">", "F", "G", "H", "I"]);
+  const SLOPE_SET = new Set([
+    "^", "v", "<", ">", "F", "G", "H", "I",
+    "Ĉ", "ĉ", "Ċ", "ċ",
+    "Č", "č", "Ď", "ď",
+    "Đ", "đ", "Ē", "ē",
+  ]);
   const BOUNCY_TILES = new Set([
     "N",
     "P",
@@ -609,6 +627,10 @@ const Physics = (function () {
     [TILE.LAVA_CURVE_TR, TILE.CURVE_TR],
     [TILE.LAVA_CURVE_BL, TILE.CURVE_BL],
     [TILE.LAVA_CURVE_BR, TILE.CURVE_BR],
+    [TILE.SLOPE_CURVE_TL, TILE.CURVE_TL],
+    [TILE.SLOPE_CURVE_TR, TILE.CURVE_TR],
+    [TILE.SLOPE_CURVE_BL, TILE.CURVE_BL],
+    [TILE.SLOPE_CURVE_BR, TILE.CURVE_BR],
   ].forEach(([t, wt]) => {
     CURVE_META[t] = CURVE_META[wt];
   });
@@ -633,6 +655,10 @@ const Physics = (function () {
     [TILE.LAVA_BUMP_TR, TILE.BUMP_TR],
     [TILE.LAVA_BUMP_BL, TILE.BUMP_BL],
     [TILE.LAVA_BUMP_BR, TILE.BUMP_BR],
+    [TILE.SLOPE_BUMP_TL, TILE.BUMP_TL],
+    [TILE.SLOPE_BUMP_TR, TILE.BUMP_TR],
+    [TILE.SLOPE_BUMP_BL, TILE.BUMP_BL],
+    [TILE.SLOPE_BUMP_BR, TILE.BUMP_BR],
   ].forEach(([t, wt]) => {
     BUMP_META[t] = BUMP_META[wt];
   });
@@ -985,16 +1011,36 @@ const Physics = (function () {
     else if (curTile === TILE.SLOPE_D) ball.vy += SLOPE_FORCE;
     else if (curTile === TILE.SLOPE_L) ball.vx -= SLOPE_FORCE;
     else if (curTile === TILE.SLOPE_R) ball.vx += SLOPE_FORCE;
-    else if (curTile === TILE.SLOPE_UL) {
+    else if (
+      curTile === TILE.SLOPE_UL ||
+      curTile === TILE.SLOPE_DIAG_UL ||
+      curTile === TILE.SLOPE_CURVE_TL ||
+      curTile === TILE.SLOPE_BUMP_TL
+    ) {
       ball.vx -= F2;
       ball.vy -= F2;
-    } else if (curTile === TILE.SLOPE_UR) {
+    } else if (
+      curTile === TILE.SLOPE_UR ||
+      curTile === TILE.SLOPE_DIAG_UR ||
+      curTile === TILE.SLOPE_CURVE_TR ||
+      curTile === TILE.SLOPE_BUMP_TR
+    ) {
       ball.vx += F2;
       ball.vy -= F2;
-    } else if (curTile === TILE.SLOPE_DL) {
+    } else if (
+      curTile === TILE.SLOPE_DL ||
+      curTile === TILE.SLOPE_DIAG_DL ||
+      curTile === TILE.SLOPE_CURVE_BL ||
+      curTile === TILE.SLOPE_BUMP_BL
+    ) {
       ball.vx -= F2;
       ball.vy += F2;
-    } else if (curTile === TILE.SLOPE_DR) {
+    } else if (
+      curTile === TILE.SLOPE_DR ||
+      curTile === TILE.SLOPE_DIAG_DR ||
+      curTile === TILE.SLOPE_CURVE_BR ||
+      curTile === TILE.SLOPE_BUMP_BR
+    ) {
       ball.vx += F2;
       ball.vy += F2;
     }
@@ -1219,11 +1265,17 @@ const Physics = (function () {
     if (tile === TILE.LAVA_DIAG_UL) return bx + by > T ? tile : TILE.EMPTY;
     if (tile === TILE.LAVA_DIAG_LR) return bx + by < T ? tile : TILE.EMPTY;
 
+    // Diagonal slope variants
+    if (tile === TILE.SLOPE_DIAG_UR) return bx > by ? tile : TILE.EMPTY;
+    if (tile === TILE.SLOPE_DIAG_DL) return by > bx ? tile : TILE.EMPTY;
+    if (tile === TILE.SLOPE_DIAG_UL) return bx + by < T ? tile : TILE.EMPTY;
+    if (tile === TILE.SLOPE_DIAG_DR) return bx + by > T ? tile : TILE.EMPTY;
+
     // Curve terrain: terrain inside the arc (dist < T from arc center)
     const curveMeta = CURVE_META[tile];
     if (
       curveMeta &&
-      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile))
+      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile) || isSlopeTile(tile))
     ) {
       const ax = col * T + curveMeta.ox * T;
       const ay = row * T + curveMeta.oy * T;
@@ -1236,7 +1288,7 @@ const Physics = (function () {
     const bumpMeta = BUMP_META[tile];
     if (
       bumpMeta &&
-      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile))
+      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile) || isSlopeTile(tile))
     ) {
       const ax = col * T + bumpMeta.ox * T;
       const ay = row * T + bumpMeta.oy * T;

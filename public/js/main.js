@@ -6,6 +6,11 @@
   const sbListEl     = document.getElementById('scoreboard-list');
   const sbCloseBtn   = document.getElementById('scoreboard-close');
   const sbWaitingEl  = document.getElementById('scoreboard-waiting');
+  const resultsEl    = document.getElementById('results-screen');
+  const resultsWinnerEl = document.getElementById('results-winner');
+  const resultsTableEl  = document.getElementById('results-table');
+  const resultsCloseBtn = document.getElementById('results-close');
+  const resultsWaitingEl = document.getElementById('results-waiting');
   const gameEl       = document.getElementById('game-ui');
   const playerListEl = document.getElementById('player-list');
   const addPlayerBtn = document.getElementById('add-player');
@@ -326,11 +331,11 @@
       ), 400);
     });
 
-    socket.on('s:gameover', ({ players }) => {
+    socket.on('s:gameover', ({ players, holeScores }) => {
       if (!game) return;
       game.over = true;
       render();
-      setTimeout(() => showScoreboard(players, isLocalHost), 400);
+      setTimeout(() => showFinalResults(holeScores, isLocalHost), 400);
     });
 
     socket.on('s:close', () => {
@@ -365,6 +370,7 @@
     gameSession = {
       mapList, mapIndex: 0, playerNames,
       scores: Object.fromEntries(playerNames.map(n => [n, 0])),
+      holeScores: [],
     };
     await loadAndStartMap(mapList[0], playerNames);
   }
@@ -377,6 +383,7 @@
     gameSession = {
       mapList: camp.maps, mapIndex: 0, playerNames,
       scores: Object.fromEntries(playerNames.map(n => [n, 0])),
+      holeScores: [],
     };
     await loadAndStartMap(camp.maps[0], playerNames);
   }
@@ -694,6 +701,66 @@ document.addEventListener('mousemove', onMouseMove);
     scoreboardEl.hidden = false;
   }
 
+  function showFinalResults(holeScores, isHost) {
+    if (!holeScores || !holeScores.length) return;
+    const playerNames = holeScores[0].map(p => p.name);
+    const numHoles = holeScores.length;
+
+    // Compute totals
+    const totals = {};
+    playerNames.forEach(n => { totals[n] = 0; });
+    holeScores.forEach(hole => {
+      hole.forEach(p => { totals[p.name] = (totals[p.name] ?? 0) + p.strokes; });
+    });
+
+    // Sort by total ascending
+    const sorted = [...playerNames].sort((a, b) => totals[a] - totals[b]);
+    const minTotal = totals[sorted[0]];
+    const winners = sorted.filter(n => totals[n] === minTotal);
+
+    // Winner banner
+    resultsWinnerEl.textContent = '🏆 ' + winners.join(' & ') + (winners.length === 1 ? ' wins!' : ' win!');
+
+    // Build table
+    const minPerHole = holeScores.map(hole =>
+      Math.min(...hole.map(p => p.strokes))
+    );
+
+    // Header
+    let html = '<thead><tr><th>Player</th>';
+    for (let h = 0; h < numHoles; h++) html += `<th>H${h + 1}</th>`;
+    html += '<th>Total</th></tr></thead><tbody>';
+
+    // Rows
+    sorted.forEach(name => {
+      const isWinner = totals[name] === minTotal;
+      html += `<tr class="${isWinner ? 'results-winner-row' : ''}">`;
+      html += `<td>${name}</td>`;
+      holeScores.forEach((hole, h) => {
+        const entry = hole.find(p => p.name === name);
+        const strokes = entry ? entry.strokes : '—';
+        const isBest = typeof strokes === 'number' && strokes === minPerHole[h];
+        html += `<td class="${isBest ? 'results-best' : ''}">${strokes}</td>`;
+      });
+      html += `<td class="results-total">${totals[name]}</td>`;
+      html += '</tr>';
+    });
+    html += '</tbody>';
+
+    resultsTableEl.innerHTML = html;
+    resultsCloseBtn.hidden  = !isHost;
+    resultsWaitingEl.hidden = isHost;
+    resultsEl.hidden = false;
+  }
+
+  resultsCloseBtn.addEventListener('click', () => {
+    if (isOnlineMode) {
+      socket.emit('c:close');
+    } else {
+      location.reload();
+    }
+  });
+
   sbCloseBtn.addEventListener('click', () => {
     if (isOnlineMode) {
       if (isOnlineHoleOver) {
@@ -725,14 +792,17 @@ document.addEventListener('mousemove', onMouseMove);
     game.players.forEach(p => { if (p.eliminated) p.strokes = maxStrokes + 3; });
 
     if (gameSession) {
+      gameSession.holeScores.push(game.players.map(p => ({ name: p.name, strokes: p.strokes })));
       game.players.forEach(p => { gameSession.scores[p.name] = (gameSession.scores[p.name] ?? 0) + p.strokes; });
       const roundNum   = gameSession.mapIndex + 1;
       const totalRounds = gameSession.mapList.length;
       const isLast     = roundNum >= totalRounds;
-      const cumPlayers = gameSession.playerNames.map(n => ({ name: n, strokes: gameSession.scores[n] }));
-      const title      = isLast ? 'Game Over!' : `Hole ${roundNum} / ${totalRounds}`;
-      const closeLabel = isLast ? 'Finish ▶'   : 'Next Hole ▶';
-      showScoreboard(cumPlayers, true, title, closeLabel);
+      if (isLast) {
+        showFinalResults(gameSession.holeScores, true);
+      } else {
+        const cumPlayers = gameSession.playerNames.map(n => ({ name: n, strokes: gameSession.scores[n] }));
+        showScoreboard(cumPlayers, true, `Hole ${roundNum} / ${totalRounds}`, 'Next Hole ▶');
+      }
     } else {
       showScoreboard(game.players, true);
     }

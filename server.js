@@ -213,6 +213,7 @@ io.on("connection", (socket) => {
       mapList,
       mapIndex: 0,
       scores: Object.fromEntries(room.players.map((p) => [p.name, 0])),
+      holeScores: [],
     };
 
     emitStartMap(room, roomCode);
@@ -265,6 +266,7 @@ io.on("connection", (socket) => {
 
     if (room.players.every((p) => p.sunk)) {
       const session = room.session;
+      session.holeScores.push(room.players.map((p) => ({ name: p.name, strokes: p.strokes })));
       room.players.forEach((p) => {
         session.scores[p.name] = (session.scores[p.name] ?? 0) + p.strokes;
       });
@@ -275,7 +277,7 @@ io.on("connection", (socket) => {
       const isLast = session.mapIndex >= session.mapList.length - 1;
       if (isLast) {
         room.over = true;
-        io.to(roomCode).emit("s:gameover", { players: cumPlayers });
+        io.to(roomCode).emit("s:gameover", { players: cumPlayers, holeScores: session.holeScores });
       } else {
         io.to(roomCode).emit("s:holeover", {
           players: cumPlayers,

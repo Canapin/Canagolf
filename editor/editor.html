@@ -102,12 +102,40 @@
 
       /* ── Palette ── */
       #palette {
-        width: 300px;
+        width: 360px;
         background: #1e1e1e;
         border-right: 1px solid #333;
-        padding: 6px;
-        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
         flex-shrink: 0;
+        overflow: hidden;
+      }
+      .pal-cols {
+        display: flex;
+        flex-direction: row;
+        flex: 1;
+        overflow: hidden;
+        min-height: 0;
+      }
+      .pal-col {
+        flex: 1;
+        min-width: 0;
+        overflow-y: auto;
+        padding: 6px 4px;
+        border-right: 1px solid #2a2a2a;
+      }
+      .pal-col:last-child {
+        border-right: none;
+      }
+      .pal-col-title {
+        font-size: 9px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-align: center;
+        padding: 2px 0 4px;
+        border-bottom: 1px solid #333;
+        margin-bottom: 6px;
       }
       .pg {
         margin-bottom: 8px;
@@ -151,6 +179,58 @@
       }
       .swatch-btn.active {
         border-color: #4a9a4a;
+      }
+
+      /* ── Modifier strip ── */
+      .mod-strip {
+        flex-shrink: 0;
+        padding: 5px 6px 3px;
+        background: #181818;
+        border-bottom: 1px solid #2e2e2e;
+      }
+      .mod-strip-title {
+        font-size: 9px;
+        color: #777;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 4px;
+      }
+      .mod-row {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        margin-bottom: 2px;
+      }
+      .mod-row-label {
+        font-size: 8px;
+        color: #555;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        width: 44px;
+        flex-shrink: 0;
+        text-align: right;
+        padding-right: 4px;
+      }
+      .mod-btn {
+        width: 26px;
+        height: 26px;
+        cursor: pointer;
+        flex-shrink: 0;
+        border: 2px solid transparent;
+        border-radius: 2px;
+        padding: 0;
+        background: #252525;
+        display: block;
+      }
+      .mod-btn:hover:not(.mod-disabled) {
+        border-color: #555;
+      }
+      .mod-btn.active {
+        border-color: #4a9a4a;
+      }
+      .mod-btn.mod-disabled {
+        opacity: 0.3;
+        pointer-events: none;
       }
 
       /* ── Canvas wrap ── */
@@ -566,72 +646,161 @@
       }
 
       function slope(dir) {
-        const FACE = {
-          U: "#72c45a",
-          UL: "#65bc52",
-          UR: "#509e40",
-          L: "#50a03c",
-          R: "#2d6228",
-          DL: "#1e5216",
-          DR: "#184510",
-          D: "#1c4d18",
-        };
         return (ctx, x, y) => {
-          ctx.fillStyle = FACE[dir];
+          ctx.fillStyle = SLOPE_FACE[dir];
           ctx.fillRect(x, y, T, T);
-          const a = T * 0.1;
-          ctx.strokeStyle = FW;
-          ctx.lineWidth = 1.5;
-          ctx.lineJoin = "round";
-          for (let qx = 1; qx <= 3; qx += 2) {
-            for (let qy = 1; qy <= 3; qy += 2) {
-              const cx = x + (qx * T) / 4,
-                cy = y + (qy * T) / 4;
-              ctx.beginPath();
-              if (dir === "R") {
-                ctx.moveTo(cx - a, cy - a);
-                ctx.lineTo(cx + a, cy);
-                ctx.lineTo(cx - a, cy + a);
-              }
-              if (dir === "L") {
-                ctx.moveTo(cx + a, cy - a);
-                ctx.lineTo(cx - a, cy);
-                ctx.lineTo(cx + a, cy + a);
-              }
-              if (dir === "U") {
-                ctx.moveTo(cx - a, cy + a);
-                ctx.lineTo(cx, cy - a);
-                ctx.lineTo(cx + a, cy + a);
-              }
-              if (dir === "D") {
-                ctx.moveTo(cx - a, cy - a);
-                ctx.lineTo(cx, cy + a);
-                ctx.lineTo(cx + a, cy - a);
-              }
-              if (dir === "UL") {
-                ctx.moveTo(cx + a, cy);
-                ctx.lineTo(cx - a, cy - a);
-                ctx.lineTo(cx, cy + a);
-              }
-              if (dir === "UR") {
-                ctx.moveTo(cx - a, cy);
-                ctx.lineTo(cx + a, cy - a);
-                ctx.lineTo(cx, cy + a);
-              }
-              if (dir === "DL") {
-                ctx.moveTo(cx + a, cy);
-                ctx.lineTo(cx - a, cy + a);
-                ctx.lineTo(cx, cy - a);
-              }
-              if (dir === "DR") {
-                ctx.moveTo(cx - a, cy);
-                ctx.lineTo(cx + a, cy + a);
-                ctx.lineTo(cx, cy - a);
-              }
-              ctx.stroke();
-            }
-          }
+          drawSlopeArrows(ctx, dir, x, y);
         };
+      }
+
+      const SLOPE_FACE = {
+        U: "#72c45a", UL: "#65bc52", UR: "#509e40",
+        L: "#50a03c", R: "#2d6228",
+        DL: "#1e5216", DR: "#184510", D: "#1c4d18",
+      };
+
+      function drawSlopeArrows(ctx, dir, x, y) {
+        const a = T * 0.1;
+        ctx.strokeStyle = FW;
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = "round";
+        for (let qx = 1; qx <= 3; qx += 2) {
+          for (let qy = 1; qy <= 3; qy += 2) {
+            const cx = x + (qx * T) / 4, cy = y + (qy * T) / 4;
+            ctx.beginPath();
+            if (dir === "R") { ctx.moveTo(cx - a, cy - a); ctx.lineTo(cx + a, cy); ctx.lineTo(cx - a, cy + a); }
+            if (dir === "L") { ctx.moveTo(cx + a, cy - a); ctx.lineTo(cx - a, cy); ctx.lineTo(cx + a, cy + a); }
+            if (dir === "U") { ctx.moveTo(cx - a, cy + a); ctx.lineTo(cx, cy - a); ctx.lineTo(cx + a, cy + a); }
+            if (dir === "D") { ctx.moveTo(cx - a, cy - a); ctx.lineTo(cx, cy + a); ctx.lineTo(cx + a, cy - a); }
+            if (dir === "UL") { ctx.moveTo(cx + a, cy); ctx.lineTo(cx - a, cy - a); ctx.lineTo(cx, cy + a); }
+            if (dir === "UR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy - a); ctx.lineTo(cx, cy + a); }
+            if (dir === "DL") { ctx.moveTo(cx + a, cy); ctx.lineTo(cx - a, cy + a); ctx.lineTo(cx, cy - a); }
+            if (dir === "DR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy + a); ctx.lineTo(cx, cy - a); }
+            ctx.stroke();
+          }
+        }
+      }
+
+      function slopeDiag(dir, tri) {
+        const color = SLOPE_FACE[dir];
+        return (ctx, x, y) => {
+          ctx.fillStyle = FW;
+          ctx.fillRect(x, y, T, T);
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          if (tri === "UR") { ctx.moveTo(x, y); ctx.lineTo(x + T, y); ctx.lineTo(x + T, y + T); }
+          if (tri === "LL") { ctx.moveTo(x, y); ctx.lineTo(x, y + T); ctx.lineTo(x + T, y + T); }
+          if (tri === "UL") { ctx.moveTo(x, y); ctx.lineTo(x + T, y); ctx.lineTo(x, y + T); }
+          if (tri === "LR") { ctx.moveTo(x + T, y); ctx.lineTo(x, y + T); ctx.lineTo(x + T, y + T); }
+          ctx.closePath();
+          ctx.fill();
+          ctx.save();
+          ctx.beginPath();
+          if (tri === "UR") { ctx.moveTo(x, y); ctx.lineTo(x + T, y); ctx.lineTo(x + T, y + T); }
+          if (tri === "LL") { ctx.moveTo(x, y); ctx.lineTo(x, y + T); ctx.lineTo(x + T, y + T); }
+          if (tri === "UL") { ctx.moveTo(x, y); ctx.lineTo(x + T, y); ctx.lineTo(x, y + T); }
+          if (tri === "LR") { ctx.moveTo(x + T, y); ctx.lineTo(x, y + T); ctx.lineTo(x + T, y + T); }
+          ctx.closePath();
+          ctx.clip();
+          drawSlopeArrows(ctx, dir, x, y);
+          ctx.restore();
+        };
+      }
+
+      function slopeCurve(dir, corner) {
+        const color = SLOPE_FACE[dir];
+        return (ctx, x, y) => {
+          ctx.fillStyle = FW;
+          ctx.fillRect(x, y, T, T);
+          let ax, ay, a0, a1;
+          if (corner === "TL") { ax = x + T; ay = y + T; a0 = Math.PI; a1 = Math.PI * 1.5; }
+          if (corner === "TR") { ax = x;     ay = y + T; a0 = Math.PI * 1.5; a1 = Math.PI * 2; }
+          if (corner === "BL") { ax = x + T; ay = y;     a0 = Math.PI * 0.5; a1 = Math.PI; }
+          if (corner === "BR") { ax = x;     ay = y;     a0 = 0; a1 = Math.PI * 0.5; }
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.arc(ax, ay, T, a0, a1, false);
+          ctx.closePath();
+          ctx.fill();
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.arc(ax, ay, T, a0, a1, false);
+          ctx.closePath();
+          ctx.clip();
+          drawSlopeArrows(ctx, dir, x, y);
+          ctx.restore();
+        };
+      }
+
+      function slopeBump(dir, corner) {
+        const color = SLOPE_FACE[dir];
+        return (ctx, x, y) => {
+          let ax, ay, a0, a1;
+          if (corner === "TL") { ax = x + T; ay = y + T; a0 = Math.PI; a1 = Math.PI * 1.5; }
+          if (corner === "TR") { ax = x;     ay = y + T; a0 = Math.PI * 1.5; a1 = Math.PI * 2; }
+          if (corner === "BL") { ax = x + T; ay = y;     a0 = Math.PI * 0.5; a1 = Math.PI; }
+          if (corner === "BR") { ax = x;     ay = y;     a0 = 0; a1 = Math.PI * 0.5; }
+          // Fill tile with slope color, then cut out the concave area with fairway
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y, T, T);
+          ctx.fillStyle = FW;
+          ctx.beginPath();
+          ctx.moveTo(ax, ay);
+          ctx.arc(ax, ay, T, a0, a1, false);
+          ctx.closePath();
+          ctx.fill();
+          // Arrows over the whole tile — invisible on fairway (FW-on-FW), visible on bump
+          drawSlopeArrows(ctx, dir, x, y);
+        };
+      }
+
+      function drawModPreview(sc, key) {
+        const S = 26;
+        sc.fillStyle = FW;
+        sc.fillRect(0, 0, S, S);
+        if (key === "full") {
+          sc.fillStyle = WL;
+          sc.fillRect(0, 0, S, S);
+          return;
+        }
+        const sep = key.indexOf("-");
+        const type = key.slice(0, sep);
+        const orient = key.slice(sep + 1);
+        if (type === "diag") {
+          sc.fillStyle = WL;
+          sc.beginPath();
+          if (orient === "UR") { sc.moveTo(0,0); sc.lineTo(S,0); sc.lineTo(S,S); }
+          if (orient === "LL") { sc.moveTo(0,0); sc.lineTo(0,S); sc.lineTo(S,S); }
+          if (orient === "UL") { sc.moveTo(0,0); sc.lineTo(S,0); sc.lineTo(0,S); }
+          if (orient === "LR") { sc.moveTo(S,0); sc.lineTo(0,S); sc.lineTo(S,S); }
+          sc.closePath();
+          sc.fill();
+          return;
+        }
+        let ax, ay, a0, a1;
+        if (orient === "TL") { ax = S; ay = S; a0 = Math.PI; a1 = Math.PI * 1.5; }
+        if (orient === "TR") { ax = 0; ay = S; a0 = Math.PI * 1.5; a1 = Math.PI * 2; }
+        if (orient === "BL") { ax = S; ay = 0; a0 = Math.PI * 0.5; a1 = Math.PI; }
+        if (orient === "BR") { ax = 0; ay = 0; a0 = 0; a1 = Math.PI * 0.5; }
+        if (type === "curve") {
+          sc.fillStyle = WL;
+          sc.beginPath();
+          sc.moveTo(ax, ay);
+          sc.arc(ax, ay, S, a0, a1, false);
+          sc.closePath();
+          sc.fill();
+        } else if (type === "bump") {
+          sc.fillStyle = WL;
+          sc.fillRect(0, 0, S, S);
+          sc.fillStyle = FW;
+          sc.beginPath();
+          sc.moveTo(ax, ay);
+          sc.arc(ax, ay, S, a0, a1, false);
+          sc.closePath();
+          sc.fill();
+        }
       }
 
       function ghostWall(dir) {
@@ -1434,14 +1603,26 @@
           d: matBump("BR", WTR),
         },
         // Slope
-        { c: "^", l: "Slope ↑", g: "Slope", sg: "", d: slope("U") },
-        { c: "v", l: "Slope ↓", g: "Slope", sg: "", d: slope("D") },
-        { c: "<", l: "Slope ←", g: "Slope", sg: "", d: slope("L") },
-        { c: ">", l: "Slope →", g: "Slope", sg: "", d: slope("R") },
-        { c: "F", l: "Slope ↖", g: "Slope", sg: "", d: slope("UL") },
-        { c: "G", l: "Slope ↗", g: "Slope", sg: "", d: slope("UR") },
-        { c: "H", l: "Slope ↙", g: "Slope", sg: "", d: slope("DL") },
-        { c: "I", l: "Slope ↘", g: "Slope", sg: "", d: slope("DR") },
+        { c: "^", l: "Slope ↑", g: "Slope", sg: "full", d: slope("U") },
+        { c: "v", l: "Slope ↓", g: "Slope", sg: "full", d: slope("D") },
+        { c: "<", l: "Slope ←", g: "Slope", sg: "full", d: slope("L") },
+        { c: ">", l: "Slope →", g: "Slope", sg: "full", d: slope("R") },
+        { c: "F", l: "Slope ↖", g: "Slope", sg: "full", d: slope("UL") },
+        { c: "G", l: "Slope ↗", g: "Slope", sg: "full", d: slope("UR") },
+        { c: "H", l: "Slope ↙", g: "Slope", sg: "full", d: slope("DL") },
+        { c: "I", l: "Slope ↘", g: "Slope", sg: "full", d: slope("DR") },
+        { c: "Ĉ", l: "Slope diag ↗", g: "Slope", sg: "diag", d: slopeDiag("UR", "UR") },
+        { c: "ĉ", l: "Slope diag ↙", g: "Slope", sg: "diag", d: slopeDiag("DL", "LL") },
+        { c: "Ċ", l: "Slope diag ↖", g: "Slope", sg: "diag", d: slopeDiag("UL", "UL") },
+        { c: "ċ", l: "Slope diag ↘", g: "Slope", sg: "diag", d: slopeDiag("DR", "LR") },
+        { c: "Č", l: "Slope curve ↖", g: "Slope", sg: "curve", d: slopeCurve("UL", "TL") },
+        { c: "č", l: "Slope curve ↗", g: "Slope", sg: "curve", d: slopeCurve("UR", "TR") },
+        { c: "Ď", l: "Slope curve ↙", g: "Slope", sg: "curve", d: slopeCurve("DL", "BL") },
+        { c: "ď", l: "Slope curve ↘", g: "Slope", sg: "curve", d: slopeCurve("DR", "BR") },
+        { c: "Đ", l: "Slope bump ↖", g: "Slope", sg: "bump", d: slopeBump("UL", "TL") },
+        { c: "đ", l: "Slope bump ↗", g: "Slope", sg: "bump", d: slopeBump("UR", "TR") },
+        { c: "Ē", l: "Slope bump ↙", g: "Slope", sg: "bump", d: slopeBump("DL", "BL") },
+        { c: "ē", l: "Slope bump ↘", g: "Slope", sg: "bump", d: slopeBump("DR", "BR") },
         // Ghost walls (one-way cardinal)
         { c: "J", l: "Ghost →", g: "Ghost", sg: "", d: ghostWall("R") },
         { c: "K", l: "Ghost ←", g: "Ghost", sg: "", d: ghostWall("L") },
@@ -1540,6 +1721,83 @@
       ];
       const TILE_BY_CHAR = Object.fromEntries(TILES.map((t) => [t.c, t]));
 
+      // ── Modifier variant map ──────────────────────────────────────────────────────
+      // VARIANT_MAP[baseChar][modKey] → resolved tile char
+      // modKey: 'full' | 'diag-UR' | 'diag-LL' | 'diag-UL' | 'diag-LR'
+      //       | 'curve-TL' | 'curve-TR' | 'curve-BL' | 'curve-BR'
+      //       | 'bump-TL'  | 'bump-TR'  | 'bump-BL'  | 'bump-BR'
+      const VARIANT_MAP = {
+        "#": {
+          "full":"#",  "diag-UR":"i",  "diag-LL":"j",  "diag-UL":"k",  "diag-LR":"l",
+          "curve-TL":"1","curve-TR":"2","curve-BL":"3","curve-BR":"4",
+          "bump-TL":"5", "bump-TR":"6", "bump-BL":"7", "bump-BR":"8",
+        },
+        "+": {
+          "full":"+",  "diag-UR":"N",  "diag-LL":"P",  "diag-UL":"Q",  "diag-LR":"R",
+          "curve-TL":"T","curve-TR":"U","curve-BL":"V","curve-BR":"X",
+          "bump-TL":"Y", "bump-TR":"Z", "bump-BL":"0", "bump-BR":"9",
+        },
+        "~": {
+          "full":"~",  "diag-UR":"(",  "diag-LL":")",  "diag-UL":"[",  "diag-LR":"]",
+          "curve-TL":"{","curve-TR":"}","curve-BL":"@","curve-BR":"$",
+          "bump-TL":"%", "bump-TR":"&", "bump-BL":"*", "bump-BR":"_",
+        },
+        "A": {
+          "full":"A",  "diag-UR":"a",  "diag-LL":"b",  "diag-UL":"c",  "diag-LR":"d",
+          "curve-TL":"m","curve-TR":"n","curve-BL":"o","curve-BR":"p",
+          "bump-TL":"q", "bump-TR":"r", "bump-BL":"s", "bump-BR":"t",
+        },
+        "W": {
+          "full":"W",  "diag-UR":"e",  "diag-LL":"f",  "diag-UL":"g",  "diag-LR":"h",
+          "curve-TL":"u","curve-TR":"x","curve-BL":"y","curve-BR":"z",
+          "bump-TL":"B", "bump-TR":"C", "bump-BL":"D", "bump-BR":"E",
+        },
+        "w": {
+          // lava: "diag-UR" means lava fills the UR area visually (char ':' / lavaDiag "UR")
+          "full":"w",  "diag-UR":":",  "diag-LL":"'",  "diag-UL":'"',  "diag-LR":"`",
+          "curve-TL":"Ā","curve-TR":"ā","curve-BL":"Ă","curve-BR":"ă",
+          "bump-TL":"Ą", "bump-TR":"ą", "bump-BL":"Ć", "bump-BR":"ć",
+        },
+        // Cardinal slopes — no shape variants, all modifiers return full tile
+        "^": { "full":"^","diag-UR":"^","diag-LL":"^","diag-UL":"^","diag-LR":"^","curve-TL":"^","curve-TR":"^","curve-BL":"^","curve-BR":"^","bump-TL":"^","bump-TR":"^","bump-BL":"^","bump-BR":"^" },
+        "v": { "full":"v","diag-UR":"v","diag-LL":"v","diag-UL":"v","diag-LR":"v","curve-TL":"v","curve-TR":"v","curve-BL":"v","curve-BR":"v","bump-TL":"v","bump-TR":"v","bump-BL":"v","bump-BR":"v" },
+        "<": { "full":"<","diag-UR":"<","diag-LL":"<","diag-UL":"<","diag-LR":"<","curve-TL":"<","curve-TR":"<","curve-BL":"<","curve-BR":"<","bump-TL":"<","bump-TR":"<","bump-BL":"<","bump-BR":"<" },
+        ">": { "full":">","diag-UR":">","diag-LL":">","diag-UL":">","diag-LR":">","curve-TL":">","curve-TR":">","curve-BL":">","curve-BR":">","bump-TL":">","bump-TR":">","bump-BL":">","bump-BR":">" },
+        // Diagonal slopes — orientation ignored, type determines shape variant
+        "F": { // Slope UL ↖
+          "full":"F",
+          "diag-UR":"Ċ","diag-LL":"Ċ","diag-UL":"Ċ","diag-LR":"Ċ",
+          "curve-TL":"Č","curve-TR":"Č","curve-BL":"Č","curve-BR":"Č",
+          "bump-TL":"Đ","bump-TR":"Đ","bump-BL":"Đ","bump-BR":"Đ",
+        },
+        "G": { // Slope UR ↗
+          "full":"G",
+          "diag-UR":"Ĉ","diag-LL":"Ĉ","diag-UL":"Ĉ","diag-LR":"Ĉ",
+          "curve-TL":"č","curve-TR":"č","curve-BL":"č","curve-BR":"č",
+          "bump-TL":"đ","bump-TR":"đ","bump-BL":"đ","bump-BR":"đ",
+        },
+        "H": { // Slope DL ↙
+          "full":"H",
+          "diag-UR":"ĉ","diag-LL":"ĉ","diag-UL":"ĉ","diag-LR":"ĉ",
+          "curve-TL":"Ď","curve-TR":"Ď","curve-BL":"Ď","curve-BR":"Ď",
+          "bump-TL":"Ē","bump-TR":"Ē","bump-BL":"Ē","bump-BR":"Ē",
+        },
+        "I": { // Slope DR ↘
+          "full":"I",
+          "diag-UR":"ċ","diag-LL":"ċ","diag-UL":"ċ","diag-LR":"ċ",
+          "curve-TL":"ď","curve-TR":"ď","curve-BL":"ď","curve-BR":"ď",
+          "bump-TL":"ē","bump-TR":"ē","bump-BL":"ē","bump-BR":"ē",
+        },
+      };
+
+      // Reverse map: variant char → { base, mod } for tile picker
+      const CHAR_TO_BASE = {};
+      Object.entries(VARIANT_MAP).forEach(([base, mods]) => {
+        Object.entries(mods).forEach(([mod, ch]) => {
+          if (ch !== base && !CHAR_TO_BASE[ch]) CHAR_TO_BASE[ch] = { base, mod };
+        });
+      });
+
       // ── State ─────────────────────────────────────────────────────────────────────
 
       let mapW = 30,
@@ -1547,6 +1805,7 @@
       let groundGrid = []; // surface tiles
       let wallGrid = []; // wall/geometry tiles (.'  = empty)
       let selected = "#";
+      let modifier = "full"; // current shape modifier key
       let painting = false;
       let paintChar = "#";
 
@@ -1816,14 +2075,16 @@
 
       function setCell(col, row) {
         if (row < 0 || row >= mapH || col < 0 || col >= mapW) return;
-        if (paintChar === ".") {
+        const resolved = paintChar === "."
+          ? "."
+          : (VARIANT_MAP[paintChar]?.[modifier] ?? paintChar);
+        if (resolved === ".") {
           wallGrid[row][col] = ".";
           groundGrid[row][col] = ".";
-          return;
-        } else if (isWallChar(paintChar)) {
-          wallGrid[row][col] = paintChar;
+        } else if (isWallChar(resolved)) {
+          wallGrid[row][col] = resolved;
         } else {
-          groundGrid[row][col] = paintChar;
+          groundGrid[row][col] = resolved;
         }
       }
 
@@ -1867,6 +2128,29 @@
           return;
         }
         e.preventDefault();
+        // Tile picker: middle-click or Shift+left-click
+        if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+          const cell = cellAt(e);
+          if (cell.row >= 0 && cell.row < mapH && cell.col >= 0 && cell.col < mapW) {
+            const wch = wallGrid[cell.row][cell.col];
+            const gch = groundGrid[cell.row][cell.col];
+            const ch = wch !== "." ? wch : gch;
+            if (ch !== ".") {
+              const lookup = CHAR_TO_BASE[ch];
+              if (lookup) {
+                selected = lookup.base;
+                modifier = lookup.mod;
+              } else {
+                selected = ch;
+                modifier = "full";
+              }
+              document.querySelectorAll(".swatch-btn").forEach(b =>
+                b.classList.toggle("active", b.dataset.char === selected));
+              updateModifierStrip();
+            }
+          }
+          return;
+        }
         painting = true;
         paintChar = e.button === 2 ? "." : selected;
         lastPaintCell = null;
@@ -1909,67 +2193,140 @@
       };
       const SW = 26; // swatch px
 
-      function buildPalette() {
-        // Group by g, then by sg
-        const groups = {};
-        TILES.forEach((t) => {
-          (groups[t.g] = groups[t.g] || {})[t.sg] = groups[t.g][t.sg] || [];
-          groups[t.g][t.sg].push(t);
-        });
+      // Column assignment: which material groups go in each column
+      const COL_WALL   = ["Wall", "Bouncy", "Sticky", "Ghost"];
+      const COL_GROUND = ["Basic", "Sand", "Water", "Slope", "Lava"];
+      const COL_OBJECT = ["Special"];
 
-        Object.entries(groups).forEach(([gname, subs]) => {
+      function buildPalette() {
+        paletteEl.innerHTML = "";
+
+        // ── Modifier strip ──
+        const strip = document.createElement("div");
+        strip.className = "mod-strip";
+        const stripTitle = document.createElement("div");
+        stripTitle.className = "mod-strip-title";
+        stripTitle.textContent = "Shape modifier";
+        strip.appendChild(stripTitle);
+
+        const MOD_ROWS = [
+          { label: "",        items: [{ key: "full",     tip: "Full (square)" }] },
+          { label: "Diag",    items: [
+            { key: "diag-UR", tip: "Diagonal ↗" }, { key: "diag-LL", tip: "Diagonal ↙" },
+            { key: "diag-UL", tip: "Diagonal ↖" }, { key: "diag-LR", tip: "Diagonal ↘" },
+          ]},
+          { label: "Concave", items: [
+            { key: "curve-TL", tip: "Concave ↖" }, { key: "curve-TR", tip: "Concave ↗" },
+            { key: "curve-BL", tip: "Concave ↙" }, { key: "curve-BR", tip: "Concave ↘" },
+          ]},
+          { label: "Convex",  items: [
+            { key: "bump-TL", tip: "Convex ↖" }, { key: "bump-TR", tip: "Convex ↗" },
+            { key: "bump-BL", tip: "Convex ↙" }, { key: "bump-BR", tip: "Convex ↘" },
+          ]},
+        ];
+
+        const hasVariants = !!VARIANT_MAP[selected];
+        MOD_ROWS.forEach(({ label, items }) => {
+          const rowEl = document.createElement("div");
+          rowEl.className = "mod-row";
+          const lbl = document.createElement("span");
+          lbl.className = "mod-row-label";
+          lbl.textContent = label;
+          rowEl.appendChild(lbl);
+          items.forEach(({ key, tip }) => {
+            const btn = document.createElement("div");
+            btn.className = "mod-btn"
+              + (key === modifier ? " active" : "")
+              + (!hasVariants ? " mod-disabled" : "");
+            btn.dataset.mod = key;
+            btn.title = tip;
+            const sw = document.createElement("canvas");
+            sw.width = sw.height = 26;
+            drawModPreview(sw.getContext("2d"), key);
+            btn.appendChild(sw);
+            btn.addEventListener("click", () => {
+              if (btn.classList.contains("mod-disabled")) return;
+              modifier = key;
+              document.querySelectorAll(".mod-btn").forEach(b => b.classList.remove("active"));
+              btn.classList.add("active");
+            });
+            rowEl.appendChild(btn);
+          });
+          strip.appendChild(rowEl);
+        });
+        paletteEl.appendChild(strip);
+
+        // ── Columns (base tiles only) ──
+        const colsEl = document.createElement("div");
+        colsEl.className = "pal-cols";
+
+        const baseTiles = TILES.filter(t => t.sg === "" || t.sg === "full");
+        const byGroup = {};
+        baseTiles.forEach(t => (byGroup[t.g] = byGroup[t.g] || []).push(t));
+
+        function makeGroup(gname) {
+          const tiles = byGroup[gname];
+          if (!tiles || !tiles.length) return null;
           const grp = document.createElement("div");
           grp.className = "pg";
           const title = document.createElement("div");
           title.className = "pg-title";
           title.textContent = gname;
           grp.appendChild(title);
-
-          SG_ORDER.forEach((sgKey) => {
-            const tiles = subs[sgKey];
-            if (!tiles || !tiles.length) return;
-
-            if (SG_LABEL[sgKey]) {
-              const sgLbl = document.createElement("div");
-              sgLbl.className = "sg-title";
-              sgLbl.textContent = SG_LABEL[sgKey];
-              grp.appendChild(sgLbl);
-            }
-
-            const row = document.createElement("div");
-            row.className = "tile-row";
-            tiles.forEach((t) => {
-              const btn = document.createElement("div");
-              btn.className =
-                "swatch-btn" + (t.c === selected ? " active" : "");
-              btn.dataset.char = t.c;
-              btn.title = t.l;
-
-              const sw = document.createElement("canvas");
-              sw.width = sw.height = SW;
-              const sc = sw.getContext("2d");
-              sc.save();
-              sc.scale(SW / T, SW / T);
-              t.d(sc, 0, 0);
-              sc.restore();
-
-              btn.appendChild(sw);
-              btn.addEventListener("click", () => {
-                selected = t.c;
-                document
-                  .querySelectorAll(".swatch-btn")
-                  .forEach((b) => b.classList.remove("active"));
-                btn.classList.add("active");
-                if (selMode) {
-                  selMode = false;
-                  btnSelect.classList.remove("active-tool");
-                }
-              });
-              row.appendChild(btn);
+          const row = document.createElement("div");
+          row.className = "tile-row";
+          tiles.forEach(t => {
+            const btn = document.createElement("div");
+            btn.className = "swatch-btn" + (t.c === selected ? " active" : "");
+            btn.dataset.char = t.c;
+            btn.title = t.l;
+            const sw = document.createElement("canvas");
+            sw.width = sw.height = SW;
+            const sc = sw.getContext("2d");
+            sc.save();
+            sc.scale(SW / T, SW / T);
+            t.d(sc, 0, 0);
+            sc.restore();
+            btn.appendChild(sw);
+            btn.addEventListener("click", () => {
+              selected = t.c;
+              document.querySelectorAll(".swatch-btn").forEach(b => b.classList.remove("active"));
+              btn.classList.add("active");
+              updateModifierStrip();
+              if (selMode) { selMode = false; btnSelect.classList.remove("active-tool"); }
             });
-            grp.appendChild(row);
+            row.appendChild(btn);
           });
-          paletteEl.appendChild(grp);
+          grp.appendChild(row);
+          return grp;
+        }
+
+        [
+          { label: "Walls",   groups: COL_WALL },
+          { label: "Ground",  groups: COL_GROUND },
+          { label: "Objects", groups: COL_OBJECT },
+        ].forEach(({ label, groups: colGroups }) => {
+          const col = document.createElement("div");
+          col.className = "pal-col";
+          const colTitle = document.createElement("div");
+          colTitle.className = "pal-col-title";
+          colTitle.textContent = label;
+          col.appendChild(colTitle);
+          colGroups.forEach(gname => {
+            const grp = makeGroup(gname);
+            if (grp) col.appendChild(grp);
+          });
+          colsEl.appendChild(col);
+        });
+
+        paletteEl.appendChild(colsEl);
+      }
+
+      function updateModifierStrip() {
+        const hasVariants = !!VARIANT_MAP[selected];
+        document.querySelectorAll(".mod-btn").forEach(btn => {
+          btn.classList.toggle("mod-disabled", !hasVariants);
+          btn.classList.toggle("active", btn.dataset.mod === modifier);
         });
       }
 
@@ -2123,6 +2480,7 @@
           .forEach((b) =>
             b.classList.toggle("active", b.dataset.char === e.key),
           );
+        updateModifierStrip();
       });
 
       // ── Map browser helpers ───────────────────────────────────────────────────────
