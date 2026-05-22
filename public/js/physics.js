@@ -138,6 +138,32 @@ const Physics = (function () {
     SLOPE_BUMP_TR: "đ", // slope convex ↗ — TR corner bump, force UR
     SLOPE_BUMP_BL: "Ē", // slope convex ↙ — BL corner bump, force DL
     SLOPE_BUMP_BR: "ē", // slope convex ↘ — BR corner bump, force DR
+    // Cardinal slope partial-tile variants (diagonal, concave, convex) — force matches base cardinal direction
+    SLOPE_U_DIAG_UR: "Ĕ", SLOPE_U_DIAG_LL: "ĕ", SLOPE_U_DIAG_UL: "Ė", SLOPE_U_DIAG_LR: "ė",
+    SLOPE_U_CURVE_TL: "Ę", SLOPE_U_CURVE_TR: "ę", SLOPE_U_CURVE_BL: "Ě", SLOPE_U_CURVE_BR: "ě",
+    SLOPE_U_BUMP_TL: "Ĝ", SLOPE_U_BUMP_TR: "ĝ", SLOPE_U_BUMP_BL: "Ğ", SLOPE_U_BUMP_BR: "ğ",
+    SLOPE_D_DIAG_UR: "Ġ", SLOPE_D_DIAG_LL: "ġ", SLOPE_D_DIAG_UL: "Ģ", SLOPE_D_DIAG_LR: "ģ",
+    SLOPE_D_CURVE_TL: "Ĥ", SLOPE_D_CURVE_TR: "ĥ", SLOPE_D_CURVE_BL: "Ħ", SLOPE_D_CURVE_BR: "ħ",
+    SLOPE_D_BUMP_TL: "Ĩ", SLOPE_D_BUMP_TR: "ĩ", SLOPE_D_BUMP_BL: "Ī", SLOPE_D_BUMP_BR: "ī",
+    SLOPE_L_DIAG_UR: "Ĭ", SLOPE_L_DIAG_LL: "ĭ", SLOPE_L_DIAG_UL: "Į", SLOPE_L_DIAG_LR: "į",
+    SLOPE_L_CURVE_TL: "İ", SLOPE_L_CURVE_TR: "ı", SLOPE_L_CURVE_BL: "Ũ", SLOPE_L_CURVE_BR: "ũ",
+    SLOPE_L_BUMP_TL: "Ĵ", SLOPE_L_BUMP_TR: "ĵ", SLOPE_L_BUMP_BL: "Ķ", SLOPE_L_BUMP_BR: "ķ",
+    SLOPE_R_DIAG_UR: "ĸ", SLOPE_R_DIAG_LL: "Ĺ", SLOPE_R_DIAG_UL: "ĺ", SLOPE_R_DIAG_LR: "Ļ",
+    SLOPE_R_CURVE_TL: "ļ", SLOPE_R_CURVE_TR: "Ľ", SLOPE_R_CURVE_BL: "ľ", SLOPE_R_CURVE_BR: "Ŀ",
+    SLOPE_R_BUMP_TL: "ŀ", SLOPE_R_BUMP_TR: "Ł", SLOPE_R_BUMP_BL: "ł", SLOPE_R_BUMP_BR: "Ń",
+    // Diagonal slope additional per-orientation variants (non-natural shape+direction combos)
+    SLOPE_UL_DIAG_UR: "ń", SLOPE_UL_DIAG_LL: "Ņ", SLOPE_UL_DIAG_LR: "ņ",
+    SLOPE_UL_CURVE_TR: "Ň", SLOPE_UL_CURVE_BL: "ň", SLOPE_UL_CURVE_BR: "ŉ",
+    SLOPE_UL_BUMP_TR: "Ŋ", SLOPE_UL_BUMP_BL: "ŋ", SLOPE_UL_BUMP_BR: "Ō",
+    SLOPE_UR_DIAG_LL: "ō", SLOPE_UR_DIAG_UL: "Ŏ", SLOPE_UR_DIAG_LR: "ŏ",
+    SLOPE_UR_CURVE_TL: "Ő", SLOPE_UR_CURVE_BL: "ő", SLOPE_UR_CURVE_BR: "Œ",
+    SLOPE_UR_BUMP_TL: "œ", SLOPE_UR_BUMP_BL: "Ŕ", SLOPE_UR_BUMP_BR: "ŕ",
+    SLOPE_DL_DIAG_UR: "Ŗ", SLOPE_DL_DIAG_UL: "ŗ", SLOPE_DL_DIAG_LR: "Ř",
+    SLOPE_DL_CURVE_TL: "ř", SLOPE_DL_CURVE_TR: "Ś", SLOPE_DL_CURVE_BR: "ś",
+    SLOPE_DL_BUMP_TL: "Ŝ", SLOPE_DL_BUMP_TR: "ŝ", SLOPE_DL_BUMP_BR: "Ş",
+    SLOPE_DR_DIAG_UR: "ş", SLOPE_DR_DIAG_LL: "Š", SLOPE_DR_DIAG_UL: "š",
+    SLOPE_DR_CURVE_TL: "Ţ", SLOPE_DR_CURVE_TR: "ţ", SLOPE_DR_CURVE_BL: "Ť",
+    SLOPE_DR_BUMP_TL: "ť", SLOPE_DR_BUMP_TR: "Ŧ", SLOPE_DR_BUMP_BL: "ŧ",
     TELEPORTER: "=", // teleporter pair 1 (purple)
     TELEPORTER_B: "|", // teleporter pair 2 (cyan)
     TELEPORTER_C: "/", // teleporter pair 3 (gold)
@@ -192,6 +218,16 @@ const Physics = (function () {
     "Ĉ", "ĉ", "Ċ", "ċ",
     "Č", "č", "Ď", "ď",
     "Đ", "đ", "Ē", "ē",
+    // Cardinal slope partial tiles
+    "Ĕ","ĕ","Ė","ė","Ę","ę","Ě","ě","Ĝ","ĝ","Ğ","ğ",
+    "Ġ","ġ","Ģ","ģ","Ĥ","ĥ","Ħ","ħ","Ĩ","ĩ","Ī","ī",
+    "Ĭ","ĭ","Į","į","İ","ı","Ũ","ũ","Ĵ","ĵ","Ķ","ķ",
+    "ĸ","Ĺ","ĺ","Ļ","ļ","Ľ","ľ","Ŀ","ŀ","Ł","ł","Ń",
+    // Diagonal slope additional per-orientation variants
+    "ń","Ņ","ņ","Ň","ň","ŉ","Ŋ","ŋ","Ō",
+    "ō","Ŏ","ŏ","Ő","ő","Œ","œ","Ŕ","ŕ",
+    "Ŗ","ŗ","Ř","ř","Ś","ś","Ŝ","ŝ","Ş",
+    "ş","Š","š","Ţ","ţ","Ť","ť","Ŧ","ŧ",
   ]);
   const BOUNCY_TILES = new Set([
     "N",
@@ -635,6 +671,24 @@ const Physics = (function () {
     [TILE.SLOPE_CURVE_TR, TILE.CURVE_TR],
     [TILE.SLOPE_CURVE_BL, TILE.CURVE_BL],
     [TILE.SLOPE_CURVE_BR, TILE.CURVE_BR],
+    // Cardinal slope curves
+    [TILE.SLOPE_U_CURVE_TL, TILE.CURVE_TL], [TILE.SLOPE_U_CURVE_TR, TILE.CURVE_TR],
+    [TILE.SLOPE_U_CURVE_BL, TILE.CURVE_BL], [TILE.SLOPE_U_CURVE_BR, TILE.CURVE_BR],
+    [TILE.SLOPE_D_CURVE_TL, TILE.CURVE_TL], [TILE.SLOPE_D_CURVE_TR, TILE.CURVE_TR],
+    [TILE.SLOPE_D_CURVE_BL, TILE.CURVE_BL], [TILE.SLOPE_D_CURVE_BR, TILE.CURVE_BR],
+    [TILE.SLOPE_L_CURVE_TL, TILE.CURVE_TL], [TILE.SLOPE_L_CURVE_TR, TILE.CURVE_TR],
+    [TILE.SLOPE_L_CURVE_BL, TILE.CURVE_BL], [TILE.SLOPE_L_CURVE_BR, TILE.CURVE_BR],
+    [TILE.SLOPE_R_CURVE_TL, TILE.CURVE_TL], [TILE.SLOPE_R_CURVE_TR, TILE.CURVE_TR],
+    [TILE.SLOPE_R_CURVE_BL, TILE.CURVE_BL], [TILE.SLOPE_R_CURVE_BR, TILE.CURVE_BR],
+    // Diagonal slope additional curves
+    [TILE.SLOPE_UL_CURVE_TR, TILE.CURVE_TR], [TILE.SLOPE_UL_CURVE_BL, TILE.CURVE_BL],
+    [TILE.SLOPE_UL_CURVE_BR, TILE.CURVE_BR],
+    [TILE.SLOPE_UR_CURVE_TL, TILE.CURVE_TL], [TILE.SLOPE_UR_CURVE_BL, TILE.CURVE_BL],
+    [TILE.SLOPE_UR_CURVE_BR, TILE.CURVE_BR],
+    [TILE.SLOPE_DL_CURVE_TL, TILE.CURVE_TL], [TILE.SLOPE_DL_CURVE_TR, TILE.CURVE_TR],
+    [TILE.SLOPE_DL_CURVE_BR, TILE.CURVE_BR],
+    [TILE.SLOPE_DR_CURVE_TL, TILE.CURVE_TL], [TILE.SLOPE_DR_CURVE_TR, TILE.CURVE_TR],
+    [TILE.SLOPE_DR_CURVE_BL, TILE.CURVE_BL],
   ].forEach(([t, wt]) => {
     CURVE_META[t] = CURVE_META[wt];
   });
@@ -663,9 +717,41 @@ const Physics = (function () {
     [TILE.SLOPE_BUMP_TR, TILE.BUMP_TR],
     [TILE.SLOPE_BUMP_BL, TILE.BUMP_BL],
     [TILE.SLOPE_BUMP_BR, TILE.BUMP_BR],
+    // Cardinal slope bumps
+    [TILE.SLOPE_U_BUMP_TL, TILE.BUMP_TL], [TILE.SLOPE_U_BUMP_TR, TILE.BUMP_TR],
+    [TILE.SLOPE_U_BUMP_BL, TILE.BUMP_BL], [TILE.SLOPE_U_BUMP_BR, TILE.BUMP_BR],
+    [TILE.SLOPE_D_BUMP_TL, TILE.BUMP_TL], [TILE.SLOPE_D_BUMP_TR, TILE.BUMP_TR],
+    [TILE.SLOPE_D_BUMP_BL, TILE.BUMP_BL], [TILE.SLOPE_D_BUMP_BR, TILE.BUMP_BR],
+    [TILE.SLOPE_L_BUMP_TL, TILE.BUMP_TL], [TILE.SLOPE_L_BUMP_TR, TILE.BUMP_TR],
+    [TILE.SLOPE_L_BUMP_BL, TILE.BUMP_BL], [TILE.SLOPE_L_BUMP_BR, TILE.BUMP_BR],
+    [TILE.SLOPE_R_BUMP_TL, TILE.BUMP_TL], [TILE.SLOPE_R_BUMP_TR, TILE.BUMP_TR],
+    [TILE.SLOPE_R_BUMP_BL, TILE.BUMP_BL], [TILE.SLOPE_R_BUMP_BR, TILE.BUMP_BR],
+    // Diagonal slope additional bumps
+    [TILE.SLOPE_UL_BUMP_TR, TILE.BUMP_TR], [TILE.SLOPE_UL_BUMP_BL, TILE.BUMP_BL],
+    [TILE.SLOPE_UL_BUMP_BR, TILE.BUMP_BR],
+    [TILE.SLOPE_UR_BUMP_TL, TILE.BUMP_TL], [TILE.SLOPE_UR_BUMP_BL, TILE.BUMP_BL],
+    [TILE.SLOPE_UR_BUMP_BR, TILE.BUMP_BR],
+    [TILE.SLOPE_DL_BUMP_TL, TILE.BUMP_TL], [TILE.SLOPE_DL_BUMP_TR, TILE.BUMP_TR],
+    [TILE.SLOPE_DL_BUMP_BR, TILE.BUMP_BR],
+    [TILE.SLOPE_DR_BUMP_TL, TILE.BUMP_TL], [TILE.SLOPE_DR_BUMP_TR, TILE.BUMP_TR],
+    [TILE.SLOPE_DR_BUMP_BL, TILE.BUMP_BL],
   ].forEach(([t, wt]) => {
     BUMP_META[t] = BUMP_META[wt];
   });
+
+  // Shape codes for diagonal slope tiles: 0=UR(bx>by), 1=LL(by>bx), 2=UL(bx+by<T), 3=LR(bx+by>T)
+  const DIAG_SLOPE_META = {};
+  [
+    [TILE.SLOPE_DIAG_UR, 0], [TILE.SLOPE_DIAG_DL, 1], [TILE.SLOPE_DIAG_UL, 2], [TILE.SLOPE_DIAG_DR, 3],
+    [TILE.SLOPE_U_DIAG_UR, 0], [TILE.SLOPE_U_DIAG_LL, 1], [TILE.SLOPE_U_DIAG_UL, 2], [TILE.SLOPE_U_DIAG_LR, 3],
+    [TILE.SLOPE_D_DIAG_UR, 0], [TILE.SLOPE_D_DIAG_LL, 1], [TILE.SLOPE_D_DIAG_UL, 2], [TILE.SLOPE_D_DIAG_LR, 3],
+    [TILE.SLOPE_L_DIAG_UR, 0], [TILE.SLOPE_L_DIAG_LL, 1], [TILE.SLOPE_L_DIAG_UL, 2], [TILE.SLOPE_L_DIAG_LR, 3],
+    [TILE.SLOPE_R_DIAG_UR, 0], [TILE.SLOPE_R_DIAG_LL, 1], [TILE.SLOPE_R_DIAG_UL, 2], [TILE.SLOPE_R_DIAG_LR, 3],
+    [TILE.SLOPE_UL_DIAG_UR, 0], [TILE.SLOPE_UL_DIAG_LL, 1], [TILE.SLOPE_UL_DIAG_LR, 3],
+    [TILE.SLOPE_UR_DIAG_LL, 1], [TILE.SLOPE_UR_DIAG_UL, 2], [TILE.SLOPE_UR_DIAG_LR, 3],
+    [TILE.SLOPE_DL_DIAG_UR, 0], [TILE.SLOPE_DL_DIAG_UL, 2], [TILE.SLOPE_DL_DIAG_LR, 3],
+    [TILE.SLOPE_DR_DIAG_UR, 0], [TILE.SLOPE_DR_DIAG_LL, 1], [TILE.SLOPE_DR_DIAG_UL, 2],
+  ].forEach(([t, s]) => { DIAG_SLOPE_META[t] = s; });
 
   function bounceVelocity(ball, nx, ny, dot, tile) {
     const e = STICKY_TILES.has(tile)
@@ -1011,39 +1097,71 @@ const Physics = (function () {
     ball.vy *= f;
 
     const F2 = SLOPE_FORCE / Math.SQRT2;
-    if (curTile === TILE.SLOPE_U) ball.vy -= SLOPE_FORCE;
-    else if (curTile === TILE.SLOPE_D) ball.vy += SLOPE_FORCE;
-    else if (curTile === TILE.SLOPE_L) ball.vx -= SLOPE_FORCE;
-    else if (curTile === TILE.SLOPE_R) ball.vx += SLOPE_FORCE;
-    else if (
+    if (curTile === TILE.SLOPE_U ||
+        curTile === TILE.SLOPE_U_DIAG_UR || curTile === TILE.SLOPE_U_DIAG_LL ||
+        curTile === TILE.SLOPE_U_DIAG_UL || curTile === TILE.SLOPE_U_DIAG_LR ||
+        curTile === TILE.SLOPE_U_CURVE_TL || curTile === TILE.SLOPE_U_CURVE_TR ||
+        curTile === TILE.SLOPE_U_CURVE_BL || curTile === TILE.SLOPE_U_CURVE_BR ||
+        curTile === TILE.SLOPE_U_BUMP_TL || curTile === TILE.SLOPE_U_BUMP_TR ||
+        curTile === TILE.SLOPE_U_BUMP_BL || curTile === TILE.SLOPE_U_BUMP_BR) {
+      ball.vy -= SLOPE_FORCE;
+    } else if (curTile === TILE.SLOPE_D ||
+        curTile === TILE.SLOPE_D_DIAG_UR || curTile === TILE.SLOPE_D_DIAG_LL ||
+        curTile === TILE.SLOPE_D_DIAG_UL || curTile === TILE.SLOPE_D_DIAG_LR ||
+        curTile === TILE.SLOPE_D_CURVE_TL || curTile === TILE.SLOPE_D_CURVE_TR ||
+        curTile === TILE.SLOPE_D_CURVE_BL || curTile === TILE.SLOPE_D_CURVE_BR ||
+        curTile === TILE.SLOPE_D_BUMP_TL || curTile === TILE.SLOPE_D_BUMP_TR ||
+        curTile === TILE.SLOPE_D_BUMP_BL || curTile === TILE.SLOPE_D_BUMP_BR) {
+      ball.vy += SLOPE_FORCE;
+    } else if (curTile === TILE.SLOPE_L ||
+        curTile === TILE.SLOPE_L_DIAG_UR || curTile === TILE.SLOPE_L_DIAG_LL ||
+        curTile === TILE.SLOPE_L_DIAG_UL || curTile === TILE.SLOPE_L_DIAG_LR ||
+        curTile === TILE.SLOPE_L_CURVE_TL || curTile === TILE.SLOPE_L_CURVE_TR ||
+        curTile === TILE.SLOPE_L_CURVE_BL || curTile === TILE.SLOPE_L_CURVE_BR ||
+        curTile === TILE.SLOPE_L_BUMP_TL || curTile === TILE.SLOPE_L_BUMP_TR ||
+        curTile === TILE.SLOPE_L_BUMP_BL || curTile === TILE.SLOPE_L_BUMP_BR) {
+      ball.vx -= SLOPE_FORCE;
+    } else if (curTile === TILE.SLOPE_R ||
+        curTile === TILE.SLOPE_R_DIAG_UR || curTile === TILE.SLOPE_R_DIAG_LL ||
+        curTile === TILE.SLOPE_R_DIAG_UL || curTile === TILE.SLOPE_R_DIAG_LR ||
+        curTile === TILE.SLOPE_R_CURVE_TL || curTile === TILE.SLOPE_R_CURVE_TR ||
+        curTile === TILE.SLOPE_R_CURVE_BL || curTile === TILE.SLOPE_R_CURVE_BR ||
+        curTile === TILE.SLOPE_R_BUMP_TL || curTile === TILE.SLOPE_R_BUMP_TR ||
+        curTile === TILE.SLOPE_R_BUMP_BL || curTile === TILE.SLOPE_R_BUMP_BR) {
+      ball.vx += SLOPE_FORCE;
+    } else if (
       curTile === TILE.SLOPE_UL ||
-      curTile === TILE.SLOPE_DIAG_UL ||
-      curTile === TILE.SLOPE_CURVE_TL ||
-      curTile === TILE.SLOPE_BUMP_TL
+      curTile === TILE.SLOPE_DIAG_UL || curTile === TILE.SLOPE_CURVE_TL || curTile === TILE.SLOPE_BUMP_TL ||
+      curTile === TILE.SLOPE_UL_DIAG_UR || curTile === TILE.SLOPE_UL_DIAG_LL || curTile === TILE.SLOPE_UL_DIAG_LR ||
+      curTile === TILE.SLOPE_UL_CURVE_TR || curTile === TILE.SLOPE_UL_CURVE_BL || curTile === TILE.SLOPE_UL_CURVE_BR ||
+      curTile === TILE.SLOPE_UL_BUMP_TR || curTile === TILE.SLOPE_UL_BUMP_BL || curTile === TILE.SLOPE_UL_BUMP_BR
     ) {
       ball.vx -= F2;
       ball.vy -= F2;
     } else if (
       curTile === TILE.SLOPE_UR ||
-      curTile === TILE.SLOPE_DIAG_UR ||
-      curTile === TILE.SLOPE_CURVE_TR ||
-      curTile === TILE.SLOPE_BUMP_TR
+      curTile === TILE.SLOPE_DIAG_UR || curTile === TILE.SLOPE_CURVE_TR || curTile === TILE.SLOPE_BUMP_TR ||
+      curTile === TILE.SLOPE_UR_DIAG_LL || curTile === TILE.SLOPE_UR_DIAG_UL || curTile === TILE.SLOPE_UR_DIAG_LR ||
+      curTile === TILE.SLOPE_UR_CURVE_TL || curTile === TILE.SLOPE_UR_CURVE_BL || curTile === TILE.SLOPE_UR_CURVE_BR ||
+      curTile === TILE.SLOPE_UR_BUMP_TL || curTile === TILE.SLOPE_UR_BUMP_BL || curTile === TILE.SLOPE_UR_BUMP_BR
     ) {
       ball.vx += F2;
       ball.vy -= F2;
     } else if (
       curTile === TILE.SLOPE_DL ||
-      curTile === TILE.SLOPE_DIAG_DL ||
-      curTile === TILE.SLOPE_CURVE_BL ||
-      curTile === TILE.SLOPE_BUMP_BL
+      curTile === TILE.SLOPE_DIAG_DL || curTile === TILE.SLOPE_CURVE_BL || curTile === TILE.SLOPE_BUMP_BL ||
+      curTile === TILE.SLOPE_DL_DIAG_UR || curTile === TILE.SLOPE_DL_DIAG_UL || curTile === TILE.SLOPE_DL_DIAG_LR ||
+      curTile === TILE.SLOPE_DL_CURVE_TL || curTile === TILE.SLOPE_DL_CURVE_TR || curTile === TILE.SLOPE_DL_CURVE_BR ||
+      curTile === TILE.SLOPE_DL_BUMP_TL || curTile === TILE.SLOPE_DL_BUMP_TR || curTile === TILE.SLOPE_DL_BUMP_BR
     ) {
       ball.vx -= F2;
       ball.vy += F2;
     } else if (
       curTile === TILE.SLOPE_DR ||
-      curTile === TILE.SLOPE_DIAG_DR ||
-      curTile === TILE.SLOPE_CURVE_BR ||
-      curTile === TILE.SLOPE_BUMP_BR
+      curTile === TILE.SLOPE_DIAG_DR || curTile === TILE.SLOPE_CURVE_BR || curTile === TILE.SLOPE_BUMP_BR ||
+      curTile === TILE.SLOPE_DR_DIAG_UR || curTile === TILE.SLOPE_DR_DIAG_LL || curTile === TILE.SLOPE_DR_DIAG_UL ||
+      curTile === TILE.SLOPE_DR_CURVE_TL || curTile === TILE.SLOPE_DR_CURVE_TR || curTile === TILE.SLOPE_DR_CURVE_BL ||
+      curTile === TILE.SLOPE_DR_BUMP_TL || curTile === TILE.SLOPE_DR_BUMP_TR || curTile === TILE.SLOPE_DR_BUMP_BL
     ) {
       ball.vx += F2;
       ball.vy += F2;
@@ -1269,11 +1387,14 @@ const Physics = (function () {
     if (tile === TILE.LAVA_DIAG_UL) return bx + by > T ? tile : TILE.EMPTY;
     if (tile === TILE.LAVA_DIAG_LR) return bx + by < T ? tile : TILE.EMPTY;
 
-    // Diagonal slope variants
-    if (tile === TILE.SLOPE_DIAG_UR) return bx > by ? tile : TILE.EMPTY;
-    if (tile === TILE.SLOPE_DIAG_DL) return by > bx ? tile : TILE.EMPTY;
-    if (tile === TILE.SLOPE_DIAG_UL) return bx + by < T ? tile : TILE.EMPTY;
-    if (tile === TILE.SLOPE_DIAG_DR) return bx + by > T ? tile : TILE.EMPTY;
+    // Diagonal slope variants (all shapes, all force directions)
+    const diagSlopeShape = DIAG_SLOPE_META[tile];
+    if (diagSlopeShape !== undefined) {
+      if (diagSlopeShape === 0) return bx > by ? tile : TILE.EMPTY;
+      if (diagSlopeShape === 1) return by > bx ? tile : TILE.EMPTY;
+      if (diagSlopeShape === 2) return bx + by < T ? tile : TILE.EMPTY;
+      return bx + by > T ? tile : TILE.EMPTY;
+    }
 
     // Curve terrain: terrain inside the arc (dist < T from arc center)
     const curveMeta = CURVE_META[tile];
