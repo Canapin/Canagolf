@@ -309,12 +309,15 @@ const Physics = (function () {
   // ── Map parsing ───────────────────────────────────────────────────────────
 
   function parseMap(input) {
-    let ground, walls;
+    let ground, walls, groundLayers = [];
 
     if (input.trim().startsWith("{")) {
       const data = JSON.parse(input);
       ground = data.ground.map((r) => r.split(""));
       walls = data.walls.map((r) => r.split(""));
+      if (data.groundLayers) {
+        groundLayers = data.groundLayers.map(layer => layer.map(r => r.split("")));
+      }
     } else {
       const rows = input
         .trim()
@@ -371,6 +374,7 @@ const Physics = (function () {
       ground,
       walls,
       tiles: walls,
+      groundLayers,
       width: (ground[0] || []).length,
       height: ground.length,
       startX,
@@ -984,7 +988,7 @@ const Physics = (function () {
   // ── Physics step ──────────────────────────────────────────────────────────
 
   // wallTiles for collision; groundTiles for surface effects (falls back to wallTiles).
-  function updateBall(ball, wallTiles, groundTiles) {
+  function updateBall(ball, wallTiles, groundTiles, groundLayers) {
     const gt = groundTiles || wallTiles;
     ball.x += ball.vx;
     ball.y += ball.vy;
@@ -997,7 +1001,7 @@ const Physics = (function () {
       resolveCircleWallCollisions(ball, wallTiles);
     }
 
-    const curTile = gt ? getSurfaceAt(gt, ball.x, ball.y) : null;
+    const curTile = gt ? getSurfaceAt(gt, ball.x, ball.y, groundLayers) : null;
     const f = isSandTile(curTile)
       ? FRICTION * SAND_FRICTION
       : isSlopeTile(curTile)
@@ -1239,7 +1243,7 @@ const Physics = (function () {
     );
   }
 
-  function getSurfaceAt(groundTiles, worldX, worldY) {
+  function _surfaceAt(groundTiles, worldX, worldY) {
     const T = TILE_SIZE;
     const col = Math.floor(worldX / T);
     const row = Math.floor(worldY / T);
@@ -1298,6 +1302,16 @@ const Physics = (function () {
     }
 
     return tile;
+  }
+
+  function getSurfaceAt(groundTiles, worldX, worldY, groundLayers) {
+    if (groundLayers) {
+      for (let i = groundLayers.length - 1; i >= 0; i--) {
+        const result = _surfaceAt(groundLayers[i], worldX, worldY);
+        if (result !== TILE.EMPTY) return result;
+      }
+    }
+    return _surfaceAt(groundTiles, worldX, worldY);
   }
 
   return {
