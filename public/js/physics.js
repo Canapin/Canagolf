@@ -183,147 +183,84 @@ const Physics = (function () {
   let BALL_FRICTION = 0.3; // ball-to-ball tangential friction (Coulomb μ)
   let BOUNCY_RESTITUTION = 1.5;
   let STICKY_RESTITUTION = 0.1;
+
   const SAND_SET = new Set([
-    "A",
-    "a",
-    "b",
-    "c",
-    "d",
-    "m",
-    "n",
-    "o",
-    "p",
-    "q",
-    "r",
-    "s",
-    "t",
+    TILE.SAND, TILE.SAND_UR, TILE.SAND_LL, TILE.SAND_UL, TILE.SAND_LR,
+    TILE.SAND_CURVE_TL, TILE.SAND_CURVE_TR, TILE.SAND_CURVE_BL, TILE.SAND_CURVE_BR,
+    TILE.SAND_BUMP_TL, TILE.SAND_BUMP_TR, TILE.SAND_BUMP_BL, TILE.SAND_BUMP_BR,
   ]);
   const WATER_SET = new Set([
-    "W",
-    "e",
-    "f",
-    "g",
-    "h",
-    "u",
-    "x",
-    "y",
-    "z",
-    "B",
-    "C",
-    "D",
-    "E",
+    TILE.WATER, TILE.WATER_UR, TILE.WATER_LL, TILE.WATER_UL, TILE.WATER_LR,
+    TILE.WATER_CURVE_TL, TILE.WATER_CURVE_TR, TILE.WATER_CURVE_BL, TILE.WATER_CURVE_BR,
+    TILE.WATER_BUMP_TL, TILE.WATER_BUMP_TR, TILE.WATER_BUMP_BL, TILE.WATER_BUMP_BR,
+  ]);
+  const LAVA_SET = new Set([
+    TILE.LAVA,
+    TILE.LAVA_DIAG_UR, TILE.LAVA_DIAG_LL, TILE.LAVA_DIAG_UL, TILE.LAVA_DIAG_LR,
+    TILE.LAVA_CURVE_TL, TILE.LAVA_CURVE_TR, TILE.LAVA_CURVE_BL, TILE.LAVA_CURVE_BR,
+    TILE.LAVA_BUMP_TL, TILE.LAVA_BUMP_TR, TILE.LAVA_BUMP_BL, TILE.LAVA_BUMP_BR,
   ]);
   const SLOPE_SET = new Set([
-    "^", "v", "<", ">", "F", "G", "H", "I",
-    "Ĉ", "ĉ", "Ċ", "ċ",
-    "Č", "č", "Ď", "ď",
-    "Đ", "đ", "Ē", "ē",
+    TILE.SLOPE_U, TILE.SLOPE_D, TILE.SLOPE_L, TILE.SLOPE_R,
+    TILE.SLOPE_UL, TILE.SLOPE_UR, TILE.SLOPE_DL, TILE.SLOPE_DR,
+    TILE.SLOPE_DIAG_UR, TILE.SLOPE_DIAG_DL, TILE.SLOPE_DIAG_UL, TILE.SLOPE_DIAG_DR,
+    TILE.SLOPE_CURVE_TL, TILE.SLOPE_CURVE_TR, TILE.SLOPE_CURVE_BL, TILE.SLOPE_CURVE_BR,
+    TILE.SLOPE_BUMP_TL, TILE.SLOPE_BUMP_TR, TILE.SLOPE_BUMP_BL, TILE.SLOPE_BUMP_BR,
     // Cardinal slope partial tiles
-    "Ĕ","ĕ","Ė","ė","Ę","ę","Ě","ě","Ĝ","ĝ","Ğ","ğ",
-    "Ġ","ġ","Ģ","ģ","Ĥ","ĥ","Ħ","ħ","Ĩ","ĩ","Ī","ī",
-    "Ĭ","ĭ","Į","į","İ","ı","Ũ","ũ","Ĵ","ĵ","Ķ","ķ",
-    "ĸ","Ĺ","ĺ","Ļ","ļ","Ľ","ľ","Ŀ","ŀ","Ł","ł","Ń",
+    TILE.SLOPE_U_DIAG_UR, TILE.SLOPE_U_DIAG_LL, TILE.SLOPE_U_DIAG_UL, TILE.SLOPE_U_DIAG_LR,
+    TILE.SLOPE_U_CURVE_TL, TILE.SLOPE_U_CURVE_TR, TILE.SLOPE_U_CURVE_BL, TILE.SLOPE_U_CURVE_BR,
+    TILE.SLOPE_U_BUMP_TL, TILE.SLOPE_U_BUMP_TR, TILE.SLOPE_U_BUMP_BL, TILE.SLOPE_U_BUMP_BR,
+    TILE.SLOPE_D_DIAG_UR, TILE.SLOPE_D_DIAG_LL, TILE.SLOPE_D_DIAG_UL, TILE.SLOPE_D_DIAG_LR,
+    TILE.SLOPE_D_CURVE_TL, TILE.SLOPE_D_CURVE_TR, TILE.SLOPE_D_CURVE_BL, TILE.SLOPE_D_CURVE_BR,
+    TILE.SLOPE_D_BUMP_TL, TILE.SLOPE_D_BUMP_TR, TILE.SLOPE_D_BUMP_BL, TILE.SLOPE_D_BUMP_BR,
+    TILE.SLOPE_L_DIAG_UR, TILE.SLOPE_L_DIAG_LL, TILE.SLOPE_L_DIAG_UL, TILE.SLOPE_L_DIAG_LR,
+    TILE.SLOPE_L_CURVE_TL, TILE.SLOPE_L_CURVE_TR, TILE.SLOPE_L_CURVE_BL, TILE.SLOPE_L_CURVE_BR,
+    TILE.SLOPE_L_BUMP_TL, TILE.SLOPE_L_BUMP_TR, TILE.SLOPE_L_BUMP_BL, TILE.SLOPE_L_BUMP_BR,
+    TILE.SLOPE_R_DIAG_UR, TILE.SLOPE_R_DIAG_LL, TILE.SLOPE_R_DIAG_UL, TILE.SLOPE_R_DIAG_LR,
+    TILE.SLOPE_R_CURVE_TL, TILE.SLOPE_R_CURVE_TR, TILE.SLOPE_R_CURVE_BL, TILE.SLOPE_R_CURVE_BR,
+    TILE.SLOPE_R_BUMP_TL, TILE.SLOPE_R_BUMP_TR, TILE.SLOPE_R_BUMP_BL, TILE.SLOPE_R_BUMP_BR,
     // Diagonal slope additional per-orientation variants
-    "ń","Ņ","ņ","Ň","ň","ŉ","Ŋ","ŋ","Ō",
-    "ō","Ŏ","ŏ","Ő","ő","Œ","œ","Ŕ","ŕ",
-    "Ŗ","ŗ","Ř","ř","Ś","ś","Ŝ","ŝ","Ş",
-    "ş","Š","š","Ţ","ţ","Ť","ť","Ŧ","ŧ",
+    TILE.SLOPE_UL_DIAG_UR, TILE.SLOPE_UL_DIAG_LL, TILE.SLOPE_UL_DIAG_LR,
+    TILE.SLOPE_UL_CURVE_TR, TILE.SLOPE_UL_CURVE_BL, TILE.SLOPE_UL_CURVE_BR,
+    TILE.SLOPE_UL_BUMP_TR, TILE.SLOPE_UL_BUMP_BL, TILE.SLOPE_UL_BUMP_BR,
+    TILE.SLOPE_UR_DIAG_LL, TILE.SLOPE_UR_DIAG_UL, TILE.SLOPE_UR_DIAG_LR,
+    TILE.SLOPE_UR_CURVE_TL, TILE.SLOPE_UR_CURVE_BL, TILE.SLOPE_UR_CURVE_BR,
+    TILE.SLOPE_UR_BUMP_TL, TILE.SLOPE_UR_BUMP_BL, TILE.SLOPE_UR_BUMP_BR,
+    TILE.SLOPE_DL_DIAG_UR, TILE.SLOPE_DL_DIAG_UL, TILE.SLOPE_DL_DIAG_LR,
+    TILE.SLOPE_DL_CURVE_TL, TILE.SLOPE_DL_CURVE_TR, TILE.SLOPE_DL_CURVE_BR,
+    TILE.SLOPE_DL_BUMP_TL, TILE.SLOPE_DL_BUMP_TR, TILE.SLOPE_DL_BUMP_BR,
+    TILE.SLOPE_DR_DIAG_UR, TILE.SLOPE_DR_DIAG_LL, TILE.SLOPE_DR_DIAG_UL,
+    TILE.SLOPE_DR_CURVE_TL, TILE.SLOPE_DR_CURVE_TR, TILE.SLOPE_DR_CURVE_BL,
+    TILE.SLOPE_DR_BUMP_TL, TILE.SLOPE_DR_BUMP_TR, TILE.SLOPE_DR_BUMP_BL,
   ]);
   const BOUNCY_TILES = new Set([
-    "N",
-    "P",
-    "Q",
-    "R",
-    "T",
-    "U",
-    "V",
-    "X",
-    "Y",
-    "Z",
-    "0",
-    "9",
-    "+",
+    TILE.BOUNCY,
+    TILE.BOUNCY_WALL_UR, TILE.BOUNCY_WALL_LL, TILE.BOUNCY_WALL_UL, TILE.BOUNCY_WALL_LR,
+    TILE.BOUNCY_CURVE_TL, TILE.BOUNCY_CURVE_TR, TILE.BOUNCY_CURVE_BL, TILE.BOUNCY_CURVE_BR,
+    TILE.BOUNCY_BUMP_TL, TILE.BOUNCY_BUMP_TR, TILE.BOUNCY_BUMP_BL, TILE.BOUNCY_BUMP_BR,
   ]);
   const STICKY_TILES = new Set([
-    "(",
-    ")",
-    "[",
-    "]",
-    "{",
-    "}",
-    "@",
-    "$",
-    "%",
-    "&",
-    "*",
-    "_",
-    "~",
+    TILE.STICKY_WALL,
+    TILE.STICKY_WALL_UR, TILE.STICKY_WALL_LL, TILE.STICKY_WALL_UL, TILE.STICKY_WALL_LR,
+    TILE.STICKY_CURVE_TL, TILE.STICKY_CURVE_TR, TILE.STICKY_CURVE_BL, TILE.STICKY_CURVE_BR,
+    TILE.STICKY_BUMP_TL, TILE.STICKY_BUMP_TR, TILE.STICKY_BUMP_BL, TILE.STICKY_BUMP_BR,
   ]);
-  const PHANTOM_TILES = new Set(["-", "!", ",", ";"]);
-  const LAVA_SET = new Set([
-    "w",
-    "'",
-    ":",
-    "`",
-    '"',
-    "Ā",
-    "ā",
-    "Ă",
-    "ă",
-    "Ą",
-    "ą",
-    "Ć",
-    "ć",
+  const PHANTOM_TILES = new Set([
+    TILE.PHANTOM_UR, TILE.PHANTOM_UL, TILE.PHANTOM_DR, TILE.PHANTOM_DL,
   ]);
   const WALL_CHARS_SET = new Set([
-    "#",
-    "+",
-    "~",
-    "i",
-    "j",
-    "k",
-    "l",
-    "N",
-    "P",
-    "Q",
-    "R",
-    "(",
-    ")",
-    "[",
-    "]",
-    "1",
-    "2",
-    "3",
-    "4",
-    "T",
-    "U",
-    "V",
-    "X",
-    "{",
-    "}",
-    "@",
-    "$",
-    "5",
-    "6",
-    "7",
-    "8",
-    "Y",
-    "Z",
-    "0",
-    "9",
-    "%",
-    "&",
-    "*",
-    "_",
-    "J",
-    "K",
-    "L",
-    "M",
-    "-",
-    "!",
-    ",",
-    ";",
-    "\\",
+    TILE.WALL, TILE.BOUNCY, TILE.STICKY_WALL, TILE.CIRCLE_WALL,
+    TILE.WALL_UR, TILE.WALL_LL, TILE.WALL_UL, TILE.WALL_LR,
+    TILE.BOUNCY_WALL_UR, TILE.BOUNCY_WALL_LL, TILE.BOUNCY_WALL_UL, TILE.BOUNCY_WALL_LR,
+    TILE.STICKY_WALL_UR, TILE.STICKY_WALL_LL, TILE.STICKY_WALL_UL, TILE.STICKY_WALL_LR,
+    TILE.CURVE_TL, TILE.CURVE_TR, TILE.CURVE_BL, TILE.CURVE_BR,
+    TILE.BOUNCY_CURVE_TL, TILE.BOUNCY_CURVE_TR, TILE.BOUNCY_CURVE_BL, TILE.BOUNCY_CURVE_BR,
+    TILE.STICKY_CURVE_TL, TILE.STICKY_CURVE_TR, TILE.STICKY_CURVE_BL, TILE.STICKY_CURVE_BR,
+    TILE.BUMP_TL, TILE.BUMP_TR, TILE.BUMP_BL, TILE.BUMP_BR,
+    TILE.BOUNCY_BUMP_TL, TILE.BOUNCY_BUMP_TR, TILE.BOUNCY_BUMP_BL, TILE.BOUNCY_BUMP_BR,
+    TILE.STICKY_BUMP_TL, TILE.STICKY_BUMP_TR, TILE.STICKY_BUMP_BL, TILE.STICKY_BUMP_BR,
+    TILE.GHOST_R, TILE.GHOST_L, TILE.GHOST_U, TILE.GHOST_D,
+    TILE.PHANTOM_UR, TILE.PHANTOM_UL, TILE.PHANTOM_DR, TILE.PHANTOM_DL,
   ]);
 
   function isSandTile(t) {
@@ -603,162 +540,115 @@ const Physics = (function () {
   //   3 CURVE_BL: center at (tileX+T, tileY  ), open toward (-x, +y)
   //   4 CURVE_BR: center at (tileX,   tileY  ), open toward (+x, +y)
 
-  // Wall curve tiles (chars 1-4) are now convex (arc filled) to match ground curve visual.
-  // Wall bump tiles (chars 5-8) are now concave (arc open) to match ground bump visual.
-  // Base keys are swapped vs. the tile names: BUMP_TL/TR/BL/BR are the concave wall tiles.
-  const CURVE_META = {
-    [TILE.BUMP_TL]: { ox: 1, oy: 1, sx: -1, sy: -1 },
-    [TILE.BUMP_TR]: { ox: 0, oy: 1, sx: +1, sy: -1 },
-    [TILE.BUMP_BL]: { ox: 1, oy: 0, sx: -1, sy: +1 },
-    [TILE.BUMP_BR]: { ox: 0, oy: 0, sx: +1, sy: +1 },
+  // ── Arc geometry ──────────────────────────────────────────────────────────
+  // ox,oy: arc center as multiples of TILE_SIZE from tile origin.
+  // sx,sy: sign of the open quadrant direction from center.
+  // Shared by both CURVE_META (concave) and BUMP_META (convex) — same geometry, opposite collision logic.
+  const CORNER_GEO = {
+    TL: { ox: 1, oy: 1, sx: -1, sy: -1 },
+    TR: { ox: 0, oy: 1, sx: +1, sy: -1 },
+    BL: { ox: 1, oy: 0, sx: -1, sy: +1 },
+    BR: { ox: 0, oy: 0, sx: +1, sy: +1 },
   };
 
-  // Sand and water curve/bump tiles share collision geometry with wall curves/bumps.
-  // Populate after the const definitions below via mutation.
+  // CURVE_META: concave arc tiles — ball is in the open area, pushed inward when too far from center.
+  // Wall convention (post-inversion fix): BUMP_* chars are the concave wall tiles.
+  // Ground tiles: all CURVE_* surface tiles use concave collision.
+  const CURVE_META = {};
+  [
+    [TILE.BUMP_TL,
+     TILE.SAND_CURVE_TL, TILE.WATER_CURVE_TL, TILE.LAVA_CURVE_TL,
+     TILE.BOUNCY_BUMP_TL, TILE.STICKY_BUMP_TL,
+     TILE.SLOPE_CURVE_TL,
+     TILE.SLOPE_U_CURVE_TL, TILE.SLOPE_D_CURVE_TL, TILE.SLOPE_L_CURVE_TL, TILE.SLOPE_R_CURVE_TL,
+     TILE.SLOPE_UR_CURVE_TL, TILE.SLOPE_DL_CURVE_TL, TILE.SLOPE_DR_CURVE_TL],
+    [TILE.BUMP_TR,
+     TILE.SAND_CURVE_TR, TILE.WATER_CURVE_TR, TILE.LAVA_CURVE_TR,
+     TILE.BOUNCY_BUMP_TR, TILE.STICKY_BUMP_TR,
+     TILE.SLOPE_CURVE_TR,
+     TILE.SLOPE_U_CURVE_TR, TILE.SLOPE_D_CURVE_TR, TILE.SLOPE_L_CURVE_TR, TILE.SLOPE_R_CURVE_TR,
+     TILE.SLOPE_UL_CURVE_TR, TILE.SLOPE_DL_CURVE_TR, TILE.SLOPE_DR_CURVE_TR],
+    [TILE.BUMP_BL,
+     TILE.SAND_CURVE_BL, TILE.WATER_CURVE_BL, TILE.LAVA_CURVE_BL,
+     TILE.BOUNCY_BUMP_BL, TILE.STICKY_BUMP_BL,
+     TILE.SLOPE_CURVE_BL,
+     TILE.SLOPE_U_CURVE_BL, TILE.SLOPE_D_CURVE_BL, TILE.SLOPE_L_CURVE_BL, TILE.SLOPE_R_CURVE_BL,
+     TILE.SLOPE_UL_CURVE_BL, TILE.SLOPE_UR_CURVE_BL, TILE.SLOPE_DR_CURVE_BL],
+    [TILE.BUMP_BR,
+     TILE.SAND_CURVE_BR, TILE.WATER_CURVE_BR, TILE.LAVA_CURVE_BR,
+     TILE.BOUNCY_BUMP_BR, TILE.STICKY_BUMP_BR,
+     TILE.SLOPE_CURVE_BR,
+     TILE.SLOPE_U_CURVE_BR, TILE.SLOPE_D_CURVE_BR, TILE.SLOPE_L_CURVE_BR, TILE.SLOPE_R_CURVE_BR,
+     TILE.SLOPE_UL_CURVE_BR, TILE.SLOPE_UR_CURVE_BR, TILE.SLOPE_DL_CURVE_BR],
+  ].forEach((group, i) => {
+    const geo = CORNER_GEO[["TL", "TR", "BL", "BR"][i]];
+    group.forEach(t => { CURVE_META[t] = geo; });
+  });
 
   // ── Diagonal wall metadata ────────────────────────────────────────────────
   // Each entry: outward normal (nx,ny) pointing from wall into fairway.
-  // Signed distance from ball to hypotenuse (positive = fairway side) is
-  // computed inline in resolveDiagWallCollisions below.
-  const DIAG_WALL_META = {
-    [TILE.WALL_UR]: { nx: -1 / Math.SQRT2, ny: 1 / Math.SQRT2, shape: "UR" },
-    [TILE.WALL_LL]: { nx: 1 / Math.SQRT2, ny: -1 / Math.SQRT2, shape: "LL" },
-    [TILE.WALL_UL]: { nx: 1 / Math.SQRT2, ny: 1 / Math.SQRT2, shape: "UL" },
-    [TILE.WALL_LR]: { nx: -1 / Math.SQRT2, ny: -1 / Math.SQRT2, shape: "LR" },
-  };
+  const DIAG_WALL_META = {};
   [
-    [TILE.BOUNCY_WALL_UR, TILE.WALL_UR],
-    [TILE.BOUNCY_WALL_LL, TILE.WALL_LL],
-    [TILE.BOUNCY_WALL_UL, TILE.WALL_UL],
-    [TILE.BOUNCY_WALL_LR, TILE.WALL_LR],
-    [TILE.STICKY_WALL_UR, TILE.WALL_UR],
-    [TILE.STICKY_WALL_LL, TILE.WALL_LL],
-    [TILE.STICKY_WALL_UL, TILE.WALL_UL],
-    [TILE.STICKY_WALL_LR, TILE.WALL_LR],
-  ].forEach(([t, wt]) => {
-    DIAG_WALL_META[t] = DIAG_WALL_META[wt];
+    ["UR", -1 / Math.SQRT2, +1 / Math.SQRT2, [TILE.WALL_UR, TILE.BOUNCY_WALL_UR, TILE.STICKY_WALL_UR]],
+    ["LL", +1 / Math.SQRT2, -1 / Math.SQRT2, [TILE.WALL_LL, TILE.BOUNCY_WALL_LL, TILE.STICKY_WALL_LL]],
+    ["UL", +1 / Math.SQRT2, +1 / Math.SQRT2, [TILE.WALL_UL, TILE.BOUNCY_WALL_UL, TILE.STICKY_WALL_UL]],
+    ["LR", -1 / Math.SQRT2, -1 / Math.SQRT2, [TILE.WALL_LR, TILE.BOUNCY_WALL_LR, TILE.STICKY_WALL_LR]],
+  ].forEach(([shape, nx, ny, tiles]) => {
+    tiles.forEach(t => { DIAG_WALL_META[t] = { nx, ny, shape }; });
   });
 
-  // BUMP_META: convex wall tiles (arc filled). Base keys are CURVE_TL/TR/BL/BR.
-  const BUMP_META = {
-    [TILE.CURVE_TL]: { ox: 1, oy: 1, sx: -1, sy: -1 },
-    [TILE.CURVE_TR]: { ox: 0, oy: 1, sx: +1, sy: -1 },
-    [TILE.CURVE_BL]: { ox: 1, oy: 0, sx: -1, sy: +1 },
-    [TILE.CURVE_BR]: { ox: 0, oy: 0, sx: +1, sy: +1 },
-  };
-
-  // Extend curve/bump meta for sand, water, bouncy and sticky variants.
-  // Ground tile (sand/water/lava/slope) curve/bump entries keep their existing
-  // concave/convex semantics. Wall bouncy/sticky entries are swapped so that
-  // wall "curve" tiles (BOUNCY_CURVE, STICKY_CURVE) become convex (BUMP_META)
-  // and wall "bump" tiles (BOUNCY_BUMP, STICKY_BUMP) become concave (CURVE_META).
-  // References use the new base keys: BUMP_TL/TR/BL/BR for CURVE_META, CURVE_TL/TR/BL/BR for BUMP_META.
+  // BUMP_META: convex arc tiles — ball is pushed outward when too close to center.
+  // Wall convention: CURVE_* chars are the convex wall tiles.
+  // Ground tiles: all BUMP_* surface tiles use convex collision.
+  const BUMP_META = {};
   [
-    [TILE.SAND_CURVE_TL, TILE.BUMP_TL],
-    [TILE.SAND_CURVE_TR, TILE.BUMP_TR],
-    [TILE.SAND_CURVE_BL, TILE.BUMP_BL],
-    [TILE.SAND_CURVE_BR, TILE.BUMP_BR],
-    [TILE.WATER_CURVE_TL, TILE.BUMP_TL],
-    [TILE.WATER_CURVE_TR, TILE.BUMP_TR],
-    [TILE.WATER_CURVE_BL, TILE.BUMP_BL],
-    [TILE.WATER_CURVE_BR, TILE.BUMP_BR],
-    [TILE.BOUNCY_BUMP_TL, TILE.BUMP_TL],
-    [TILE.BOUNCY_BUMP_TR, TILE.BUMP_TR],
-    [TILE.BOUNCY_BUMP_BL, TILE.BUMP_BL],
-    [TILE.BOUNCY_BUMP_BR, TILE.BUMP_BR],
-    [TILE.STICKY_BUMP_TL, TILE.BUMP_TL],
-    [TILE.STICKY_BUMP_TR, TILE.BUMP_TR],
-    [TILE.STICKY_BUMP_BL, TILE.BUMP_BL],
-    [TILE.STICKY_BUMP_BR, TILE.BUMP_BR],
-    [TILE.LAVA_CURVE_TL, TILE.BUMP_TL],
-    [TILE.LAVA_CURVE_TR, TILE.BUMP_TR],
-    [TILE.LAVA_CURVE_BL, TILE.BUMP_BL],
-    [TILE.LAVA_CURVE_BR, TILE.BUMP_BR],
-    [TILE.SLOPE_CURVE_TL, TILE.BUMP_TL],
-    [TILE.SLOPE_CURVE_TR, TILE.BUMP_TR],
-    [TILE.SLOPE_CURVE_BL, TILE.BUMP_BL],
-    [TILE.SLOPE_CURVE_BR, TILE.BUMP_BR],
-    // Cardinal slope curves
-    [TILE.SLOPE_U_CURVE_TL, TILE.BUMP_TL], [TILE.SLOPE_U_CURVE_TR, TILE.BUMP_TR],
-    [TILE.SLOPE_U_CURVE_BL, TILE.BUMP_BL], [TILE.SLOPE_U_CURVE_BR, TILE.BUMP_BR],
-    [TILE.SLOPE_D_CURVE_TL, TILE.BUMP_TL], [TILE.SLOPE_D_CURVE_TR, TILE.BUMP_TR],
-    [TILE.SLOPE_D_CURVE_BL, TILE.BUMP_BL], [TILE.SLOPE_D_CURVE_BR, TILE.BUMP_BR],
-    [TILE.SLOPE_L_CURVE_TL, TILE.BUMP_TL], [TILE.SLOPE_L_CURVE_TR, TILE.BUMP_TR],
-    [TILE.SLOPE_L_CURVE_BL, TILE.BUMP_BL], [TILE.SLOPE_L_CURVE_BR, TILE.BUMP_BR],
-    [TILE.SLOPE_R_CURVE_TL, TILE.BUMP_TL], [TILE.SLOPE_R_CURVE_TR, TILE.BUMP_TR],
-    [TILE.SLOPE_R_CURVE_BL, TILE.BUMP_BL], [TILE.SLOPE_R_CURVE_BR, TILE.BUMP_BR],
-    // Diagonal slope additional curves
-    [TILE.SLOPE_UL_CURVE_TR, TILE.BUMP_TR], [TILE.SLOPE_UL_CURVE_BL, TILE.BUMP_BL],
-    [TILE.SLOPE_UL_CURVE_BR, TILE.BUMP_BR],
-    [TILE.SLOPE_UR_CURVE_TL, TILE.BUMP_TL], [TILE.SLOPE_UR_CURVE_BL, TILE.BUMP_BL],
-    [TILE.SLOPE_UR_CURVE_BR, TILE.BUMP_BR],
-    [TILE.SLOPE_DL_CURVE_TL, TILE.BUMP_TL], [TILE.SLOPE_DL_CURVE_TR, TILE.BUMP_TR],
-    [TILE.SLOPE_DL_CURVE_BR, TILE.BUMP_BR],
-    [TILE.SLOPE_DR_CURVE_TL, TILE.BUMP_TL], [TILE.SLOPE_DR_CURVE_TR, TILE.BUMP_TR],
-    [TILE.SLOPE_DR_CURVE_BL, TILE.BUMP_BL],
-  ].forEach(([t, wt]) => {
-    CURVE_META[t] = CURVE_META[wt];
-  });
-  [
-    [TILE.SAND_BUMP_TL, TILE.CURVE_TL],
-    [TILE.SAND_BUMP_TR, TILE.CURVE_TR],
-    [TILE.SAND_BUMP_BL, TILE.CURVE_BL],
-    [TILE.SAND_BUMP_BR, TILE.CURVE_BR],
-    [TILE.WATER_BUMP_TL, TILE.CURVE_TL],
-    [TILE.WATER_BUMP_TR, TILE.CURVE_TR],
-    [TILE.WATER_BUMP_BL, TILE.CURVE_BL],
-    [TILE.WATER_BUMP_BR, TILE.CURVE_BR],
-    [TILE.BOUNCY_CURVE_TL, TILE.CURVE_TL],
-    [TILE.BOUNCY_CURVE_TR, TILE.CURVE_TR],
-    [TILE.BOUNCY_CURVE_BL, TILE.CURVE_BL],
-    [TILE.BOUNCY_CURVE_BR, TILE.CURVE_BR],
-    [TILE.STICKY_CURVE_TL, TILE.CURVE_TL],
-    [TILE.STICKY_CURVE_TR, TILE.CURVE_TR],
-    [TILE.STICKY_CURVE_BL, TILE.CURVE_BL],
-    [TILE.STICKY_CURVE_BR, TILE.CURVE_BR],
-    [TILE.LAVA_BUMP_TL, TILE.CURVE_TL],
-    [TILE.LAVA_BUMP_TR, TILE.CURVE_TR],
-    [TILE.LAVA_BUMP_BL, TILE.CURVE_BL],
-    [TILE.LAVA_BUMP_BR, TILE.CURVE_BR],
-    [TILE.SLOPE_BUMP_TL, TILE.CURVE_TL],
-    [TILE.SLOPE_BUMP_TR, TILE.CURVE_TR],
-    [TILE.SLOPE_BUMP_BL, TILE.CURVE_BL],
-    [TILE.SLOPE_BUMP_BR, TILE.CURVE_BR],
-    // Cardinal slope bumps
-    [TILE.SLOPE_U_BUMP_TL, TILE.CURVE_TL], [TILE.SLOPE_U_BUMP_TR, TILE.CURVE_TR],
-    [TILE.SLOPE_U_BUMP_BL, TILE.CURVE_BL], [TILE.SLOPE_U_BUMP_BR, TILE.CURVE_BR],
-    [TILE.SLOPE_D_BUMP_TL, TILE.CURVE_TL], [TILE.SLOPE_D_BUMP_TR, TILE.CURVE_TR],
-    [TILE.SLOPE_D_BUMP_BL, TILE.CURVE_BL], [TILE.SLOPE_D_BUMP_BR, TILE.CURVE_BR],
-    [TILE.SLOPE_L_BUMP_TL, TILE.CURVE_TL], [TILE.SLOPE_L_BUMP_TR, TILE.CURVE_TR],
-    [TILE.SLOPE_L_BUMP_BL, TILE.CURVE_BL], [TILE.SLOPE_L_BUMP_BR, TILE.CURVE_BR],
-    [TILE.SLOPE_R_BUMP_TL, TILE.CURVE_TL], [TILE.SLOPE_R_BUMP_TR, TILE.CURVE_TR],
-    [TILE.SLOPE_R_BUMP_BL, TILE.CURVE_BL], [TILE.SLOPE_R_BUMP_BR, TILE.CURVE_BR],
-    // Diagonal slope additional bumps
-    [TILE.SLOPE_UL_BUMP_TR, TILE.CURVE_TR], [TILE.SLOPE_UL_BUMP_BL, TILE.CURVE_BL],
-    [TILE.SLOPE_UL_BUMP_BR, TILE.CURVE_BR],
-    [TILE.SLOPE_UR_BUMP_TL, TILE.CURVE_TL], [TILE.SLOPE_UR_BUMP_BL, TILE.CURVE_BL],
-    [TILE.SLOPE_UR_BUMP_BR, TILE.CURVE_BR],
-    [TILE.SLOPE_DL_BUMP_TL, TILE.CURVE_TL], [TILE.SLOPE_DL_BUMP_TR, TILE.CURVE_TR],
-    [TILE.SLOPE_DL_BUMP_BR, TILE.CURVE_BR],
-    [TILE.SLOPE_DR_BUMP_TL, TILE.CURVE_TL], [TILE.SLOPE_DR_BUMP_TR, TILE.CURVE_TR],
-    [TILE.SLOPE_DR_BUMP_BL, TILE.CURVE_BL],
-  ].forEach(([t, wt]) => {
-    BUMP_META[t] = BUMP_META[wt];
+    [TILE.CURVE_TL,
+     TILE.SAND_BUMP_TL, TILE.WATER_BUMP_TL, TILE.LAVA_BUMP_TL,
+     TILE.BOUNCY_CURVE_TL, TILE.STICKY_CURVE_TL,
+     TILE.SLOPE_BUMP_TL,
+     TILE.SLOPE_U_BUMP_TL, TILE.SLOPE_D_BUMP_TL, TILE.SLOPE_L_BUMP_TL, TILE.SLOPE_R_BUMP_TL,
+     TILE.SLOPE_UR_BUMP_TL, TILE.SLOPE_DL_BUMP_TL, TILE.SLOPE_DR_BUMP_TL],
+    [TILE.CURVE_TR,
+     TILE.SAND_BUMP_TR, TILE.WATER_BUMP_TR, TILE.LAVA_BUMP_TR,
+     TILE.BOUNCY_CURVE_TR, TILE.STICKY_CURVE_TR,
+     TILE.SLOPE_BUMP_TR,
+     TILE.SLOPE_U_BUMP_TR, TILE.SLOPE_D_BUMP_TR, TILE.SLOPE_L_BUMP_TR, TILE.SLOPE_R_BUMP_TR,
+     TILE.SLOPE_UL_BUMP_TR, TILE.SLOPE_DL_BUMP_TR, TILE.SLOPE_DR_BUMP_TR],
+    [TILE.CURVE_BL,
+     TILE.SAND_BUMP_BL, TILE.WATER_BUMP_BL, TILE.LAVA_BUMP_BL,
+     TILE.BOUNCY_CURVE_BL, TILE.STICKY_CURVE_BL,
+     TILE.SLOPE_BUMP_BL,
+     TILE.SLOPE_U_BUMP_BL, TILE.SLOPE_D_BUMP_BL, TILE.SLOPE_L_BUMP_BL, TILE.SLOPE_R_BUMP_BL,
+     TILE.SLOPE_UL_BUMP_BL, TILE.SLOPE_UR_BUMP_BL, TILE.SLOPE_DR_BUMP_BL],
+    [TILE.CURVE_BR,
+     TILE.SAND_BUMP_BR, TILE.WATER_BUMP_BR, TILE.LAVA_BUMP_BR,
+     TILE.BOUNCY_CURVE_BR, TILE.STICKY_CURVE_BR,
+     TILE.SLOPE_BUMP_BR,
+     TILE.SLOPE_U_BUMP_BR, TILE.SLOPE_D_BUMP_BR, TILE.SLOPE_L_BUMP_BR, TILE.SLOPE_R_BUMP_BR,
+     TILE.SLOPE_UL_BUMP_BR, TILE.SLOPE_UR_BUMP_BR, TILE.SLOPE_DL_BUMP_BR],
+  ].forEach((group, i) => {
+    const geo = CORNER_GEO[["TL", "TR", "BL", "BR"][i]];
+    group.forEach(t => { BUMP_META[t] = geo; });
   });
 
   // Shape codes for diagonal slope tiles: 0=UR(bx>by), 1=LL(by>bx), 2=UL(bx+by<T), 3=LR(bx+by>T)
   const DIAG_SLOPE_META = {};
   [
-    [TILE.SLOPE_DIAG_UR, 0], [TILE.SLOPE_DIAG_DL, 1], [TILE.SLOPE_DIAG_UL, 2], [TILE.SLOPE_DIAG_DR, 3],
-    [TILE.SLOPE_U_DIAG_UR, 0], [TILE.SLOPE_U_DIAG_LL, 1], [TILE.SLOPE_U_DIAG_UL, 2], [TILE.SLOPE_U_DIAG_LR, 3],
-    [TILE.SLOPE_D_DIAG_UR, 0], [TILE.SLOPE_D_DIAG_LL, 1], [TILE.SLOPE_D_DIAG_UL, 2], [TILE.SLOPE_D_DIAG_LR, 3],
-    [TILE.SLOPE_L_DIAG_UR, 0], [TILE.SLOPE_L_DIAG_LL, 1], [TILE.SLOPE_L_DIAG_UL, 2], [TILE.SLOPE_L_DIAG_LR, 3],
-    [TILE.SLOPE_R_DIAG_UR, 0], [TILE.SLOPE_R_DIAG_LL, 1], [TILE.SLOPE_R_DIAG_UL, 2], [TILE.SLOPE_R_DIAG_LR, 3],
-    [TILE.SLOPE_UL_DIAG_UR, 0], [TILE.SLOPE_UL_DIAG_LL, 1], [TILE.SLOPE_UL_DIAG_LR, 3],
-    [TILE.SLOPE_UR_DIAG_LL, 1], [TILE.SLOPE_UR_DIAG_UL, 2], [TILE.SLOPE_UR_DIAG_LR, 3],
-    [TILE.SLOPE_DL_DIAG_UR, 0], [TILE.SLOPE_DL_DIAG_UL, 2], [TILE.SLOPE_DL_DIAG_LR, 3],
-    [TILE.SLOPE_DR_DIAG_UR, 0], [TILE.SLOPE_DR_DIAG_LL, 1], [TILE.SLOPE_DR_DIAG_UL, 2],
-  ].forEach(([t, s]) => { DIAG_SLOPE_META[t] = s; });
+    [0, [TILE.SLOPE_DIAG_UR,
+         TILE.SLOPE_U_DIAG_UR, TILE.SLOPE_D_DIAG_UR, TILE.SLOPE_L_DIAG_UR, TILE.SLOPE_R_DIAG_UR,
+         TILE.SLOPE_UL_DIAG_UR, TILE.SLOPE_DL_DIAG_UR, TILE.SLOPE_DR_DIAG_UR]],
+    [1, [TILE.SLOPE_DIAG_DL,
+         TILE.SLOPE_U_DIAG_LL, TILE.SLOPE_D_DIAG_LL, TILE.SLOPE_L_DIAG_LL, TILE.SLOPE_R_DIAG_LL,
+         TILE.SLOPE_UL_DIAG_LL, TILE.SLOPE_UR_DIAG_LL, TILE.SLOPE_DR_DIAG_LL]],
+    [2, [TILE.SLOPE_DIAG_UL,
+         TILE.SLOPE_U_DIAG_UL, TILE.SLOPE_D_DIAG_UL, TILE.SLOPE_L_DIAG_UL, TILE.SLOPE_R_DIAG_UL,
+         TILE.SLOPE_UR_DIAG_UL, TILE.SLOPE_DL_DIAG_UL, TILE.SLOPE_DR_DIAG_UL]],
+    [3, [TILE.SLOPE_DIAG_DR,
+         TILE.SLOPE_U_DIAG_LR, TILE.SLOPE_D_DIAG_LR, TILE.SLOPE_L_DIAG_LR, TILE.SLOPE_R_DIAG_LR,
+         TILE.SLOPE_UL_DIAG_LR, TILE.SLOPE_UR_DIAG_LR, TILE.SLOPE_DL_DIAG_LR]],
+  ].forEach(([code, tiles]) => {
+    tiles.forEach(t => { DIAG_SLOPE_META[t] = code; });
+  });
 
   function bounceVelocity(ball, nx, ny, dot, tile) {
     const e = STICKY_TILES.has(tile)

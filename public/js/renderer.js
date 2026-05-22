@@ -21,90 +21,92 @@ const Renderer = (function () {
     L: "#50a03c", R: "#2d6228",
     DL: "#1e5216", DR: "#184510", D: "#1c4d18",
   };
-  const SLOPE_FACE = {
-    [Physics.TILE.SLOPE_U]:  SLOPE_COLORS.U,
-    [Physics.TILE.SLOPE_UL]: SLOPE_COLORS.UL,
-    [Physics.TILE.SLOPE_UR]: SLOPE_COLORS.UR,
-    [Physics.TILE.SLOPE_L]:  SLOPE_COLORS.L,
-    [Physics.TILE.SLOPE_R]:  SLOPE_COLORS.R,
-    [Physics.TILE.SLOPE_DL]: SLOPE_COLORS.DL,
-    [Physics.TILE.SLOPE_DR]: SLOPE_COLORS.DR,
-    [Physics.TILE.SLOPE_D]:  SLOPE_COLORS.D,
-  };
-  // Partial slope tiles: [direction, tri-shape] for diagonals
-  const SLOPE_DIAG_INFO = {
-    [Physics.TILE.SLOPE_DIAG_UR]: ["UR", "UR"],
-    [Physics.TILE.SLOPE_DIAG_DL]: ["DL", "LL"],
-    [Physics.TILE.SLOPE_DIAG_UL]: ["UL", "UL"],
-    [Physics.TILE.SLOPE_DIAG_DR]: ["DR", "LR"],
-    // Cardinal slope diagonals
-    [Physics.TILE.SLOPE_U_DIAG_UR]: ["U", "UR"], [Physics.TILE.SLOPE_U_DIAG_LL]: ["U", "LL"],
-    [Physics.TILE.SLOPE_U_DIAG_UL]: ["U", "UL"], [Physics.TILE.SLOPE_U_DIAG_LR]: ["U", "LR"],
-    [Physics.TILE.SLOPE_D_DIAG_UR]: ["D", "UR"], [Physics.TILE.SLOPE_D_DIAG_LL]: ["D", "LL"],
-    [Physics.TILE.SLOPE_D_DIAG_UL]: ["D", "UL"], [Physics.TILE.SLOPE_D_DIAG_LR]: ["D", "LR"],
-    [Physics.TILE.SLOPE_L_DIAG_UR]: ["L", "UR"], [Physics.TILE.SLOPE_L_DIAG_LL]: ["L", "LL"],
-    [Physics.TILE.SLOPE_L_DIAG_UL]: ["L", "UL"], [Physics.TILE.SLOPE_L_DIAG_LR]: ["L", "LR"],
-    [Physics.TILE.SLOPE_R_DIAG_UR]: ["R", "UR"], [Physics.TILE.SLOPE_R_DIAG_LL]: ["R", "LL"],
-    [Physics.TILE.SLOPE_R_DIAG_UL]: ["R", "UL"], [Physics.TILE.SLOPE_R_DIAG_LR]: ["R", "LR"],
-    // Diagonal slope additional per-orientation diagonals
-    [Physics.TILE.SLOPE_UL_DIAG_UR]: ["UL", "UR"], [Physics.TILE.SLOPE_UL_DIAG_LL]: ["UL", "LL"],
-    [Physics.TILE.SLOPE_UL_DIAG_LR]: ["UL", "LR"],
-    [Physics.TILE.SLOPE_UR_DIAG_LL]: ["UR", "LL"], [Physics.TILE.SLOPE_UR_DIAG_UL]: ["UR", "UL"],
-    [Physics.TILE.SLOPE_UR_DIAG_LR]: ["UR", "LR"],
-    [Physics.TILE.SLOPE_DL_DIAG_UR]: ["DL", "UR"], [Physics.TILE.SLOPE_DL_DIAG_UL]: ["DL", "UL"],
-    [Physics.TILE.SLOPE_DL_DIAG_LR]: ["DL", "LR"],
-    [Physics.TILE.SLOPE_DR_DIAG_UR]: ["DR", "UR"], [Physics.TILE.SLOPE_DR_DIAG_LL]: ["DR", "LL"],
-    [Physics.TILE.SLOPE_DR_DIAG_UL]: ["DR", "UL"],
-  };
-  // Partial slope tiles: [direction, corner] for curves and bumps
-  const SLOPE_CURVE_INFO = {
-    [Physics.TILE.SLOPE_CURVE_TL]: ["UL", "TL"],
-    [Physics.TILE.SLOPE_CURVE_TR]: ["UR", "TR"],
-    [Physics.TILE.SLOPE_CURVE_BL]: ["DL", "BL"],
-    [Physics.TILE.SLOPE_CURVE_BR]: ["DR", "BR"],
-    // Cardinal slope curves
-    [Physics.TILE.SLOPE_U_CURVE_TL]: ["U", "TL"], [Physics.TILE.SLOPE_U_CURVE_TR]: ["U", "TR"],
-    [Physics.TILE.SLOPE_U_CURVE_BL]: ["U", "BL"], [Physics.TILE.SLOPE_U_CURVE_BR]: ["U", "BR"],
-    [Physics.TILE.SLOPE_D_CURVE_TL]: ["D", "TL"], [Physics.TILE.SLOPE_D_CURVE_TR]: ["D", "TR"],
-    [Physics.TILE.SLOPE_D_CURVE_BL]: ["D", "BL"], [Physics.TILE.SLOPE_D_CURVE_BR]: ["D", "BR"],
-    [Physics.TILE.SLOPE_L_CURVE_TL]: ["L", "TL"], [Physics.TILE.SLOPE_L_CURVE_TR]: ["L", "TR"],
-    [Physics.TILE.SLOPE_L_CURVE_BL]: ["L", "BL"], [Physics.TILE.SLOPE_L_CURVE_BR]: ["L", "BR"],
-    [Physics.TILE.SLOPE_R_CURVE_TL]: ["R", "TL"], [Physics.TILE.SLOPE_R_CURVE_TR]: ["R", "TR"],
-    [Physics.TILE.SLOPE_R_CURVE_BL]: ["R", "BL"], [Physics.TILE.SLOPE_R_CURVE_BR]: ["R", "BR"],
-    // Diagonal slope additional per-orientation curves
-    [Physics.TILE.SLOPE_UL_CURVE_TR]: ["UL", "TR"], [Physics.TILE.SLOPE_UL_CURVE_BL]: ["UL", "BL"],
-    [Physics.TILE.SLOPE_UL_CURVE_BR]: ["UL", "BR"],
-    [Physics.TILE.SLOPE_UR_CURVE_TL]: ["UR", "TL"], [Physics.TILE.SLOPE_UR_CURVE_BL]: ["UR", "BL"],
-    [Physics.TILE.SLOPE_UR_CURVE_BR]: ["UR", "BR"],
-    [Physics.TILE.SLOPE_DL_CURVE_TL]: ["DL", "TL"], [Physics.TILE.SLOPE_DL_CURVE_TR]: ["DL", "TR"],
-    [Physics.TILE.SLOPE_DL_CURVE_BR]: ["DL", "BR"],
-    [Physics.TILE.SLOPE_DR_CURVE_TL]: ["DR", "TL"], [Physics.TILE.SLOPE_DR_CURVE_TR]: ["DR", "TR"],
-    [Physics.TILE.SLOPE_DR_CURVE_BL]: ["DR", "BL"],
-  };
-  const SLOPE_BUMP_INFO = {
-    [Physics.TILE.SLOPE_BUMP_TL]: ["UL", "TL"],
-    [Physics.TILE.SLOPE_BUMP_TR]: ["UR", "TR"],
-    [Physics.TILE.SLOPE_BUMP_BL]: ["DL", "BL"],
-    [Physics.TILE.SLOPE_BUMP_BR]: ["DR", "BR"],
-    // Cardinal slope bumps
-    [Physics.TILE.SLOPE_U_BUMP_TL]: ["U", "TL"], [Physics.TILE.SLOPE_U_BUMP_TR]: ["U", "TR"],
-    [Physics.TILE.SLOPE_U_BUMP_BL]: ["U", "BL"], [Physics.TILE.SLOPE_U_BUMP_BR]: ["U", "BR"],
-    [Physics.TILE.SLOPE_D_BUMP_TL]: ["D", "TL"], [Physics.TILE.SLOPE_D_BUMP_TR]: ["D", "TR"],
-    [Physics.TILE.SLOPE_D_BUMP_BL]: ["D", "BL"], [Physics.TILE.SLOPE_D_BUMP_BR]: ["D", "BR"],
-    [Physics.TILE.SLOPE_L_BUMP_TL]: ["L", "TL"], [Physics.TILE.SLOPE_L_BUMP_TR]: ["L", "TR"],
-    [Physics.TILE.SLOPE_L_BUMP_BL]: ["L", "BL"], [Physics.TILE.SLOPE_L_BUMP_BR]: ["L", "BR"],
-    [Physics.TILE.SLOPE_R_BUMP_TL]: ["R", "TL"], [Physics.TILE.SLOPE_R_BUMP_TR]: ["R", "TR"],
-    [Physics.TILE.SLOPE_R_BUMP_BL]: ["R", "BL"], [Physics.TILE.SLOPE_R_BUMP_BR]: ["R", "BR"],
-    // Diagonal slope additional per-orientation bumps
-    [Physics.TILE.SLOPE_UL_BUMP_TR]: ["UL", "TR"], [Physics.TILE.SLOPE_UL_BUMP_BL]: ["UL", "BL"],
-    [Physics.TILE.SLOPE_UL_BUMP_BR]: ["UL", "BR"],
-    [Physics.TILE.SLOPE_UR_BUMP_TL]: ["UR", "TL"], [Physics.TILE.SLOPE_UR_BUMP_BL]: ["UR", "BL"],
-    [Physics.TILE.SLOPE_UR_BUMP_BR]: ["UR", "BR"],
-    [Physics.TILE.SLOPE_DL_BUMP_TL]: ["DL", "TL"], [Physics.TILE.SLOPE_DL_BUMP_TR]: ["DL", "TR"],
-    [Physics.TILE.SLOPE_DL_BUMP_BR]: ["DL", "BR"],
-    [Physics.TILE.SLOPE_DR_BUMP_TL]: ["DR", "TL"], [Physics.TILE.SLOPE_DR_BUMP_TR]: ["DR", "TR"],
-    [Physics.TILE.SLOPE_DR_BUMP_BL]: ["DR", "BL"],
-  };
+
+  // Single source of truth for all slope tile rendering metadata.
+  // Each entry: [tile, direction, shapeSpec]
+  // shapeSpec: 'full' | 'diag:UR/LL/UL/LR' | 'curve:TL/TR/BL/BR' | 'bump:TL/TR/BL/BR'
+  const _T = Physics.TILE;
+  const SLOPE_CATALOG = [
+    // Full slopes
+    [_T.SLOPE_U,'U','full'],   [_T.SLOPE_D,'D','full'],
+    [_T.SLOPE_L,'L','full'],   [_T.SLOPE_R,'R','full'],
+    [_T.SLOPE_UL,'UL','full'], [_T.SLOPE_UR,'UR','full'],
+    [_T.SLOPE_DL,'DL','full'], [_T.SLOPE_DR,'DR','full'],
+    // Natural diagonals (direction matches tile shape)
+    [_T.SLOPE_DIAG_UR,'UR','diag:UR'], [_T.SLOPE_DIAG_DL,'DL','diag:LL'],
+    [_T.SLOPE_DIAG_UL,'UL','diag:UL'], [_T.SLOPE_DIAG_DR,'DR','diag:LR'],
+    // Natural curves & bumps
+    [_T.SLOPE_CURVE_TL,'UL','curve:TL'], [_T.SLOPE_CURVE_TR,'UR','curve:TR'],
+    [_T.SLOPE_CURVE_BL,'DL','curve:BL'], [_T.SLOPE_CURVE_BR,'DR','curve:BR'],
+    [_T.SLOPE_BUMP_TL,'UL','bump:TL'],   [_T.SLOPE_BUMP_TR,'UR','bump:TR'],
+    [_T.SLOPE_BUMP_BL,'DL','bump:BL'],   [_T.SLOPE_BUMP_BR,'DR','bump:BR'],
+    // Cardinal slope ↑ partial tiles
+    [_T.SLOPE_U_DIAG_UR,'U','diag:UR'],   [_T.SLOPE_U_DIAG_LL,'U','diag:LL'],
+    [_T.SLOPE_U_DIAG_UL,'U','diag:UL'],   [_T.SLOPE_U_DIAG_LR,'U','diag:LR'],
+    [_T.SLOPE_U_CURVE_TL,'U','curve:TL'], [_T.SLOPE_U_CURVE_TR,'U','curve:TR'],
+    [_T.SLOPE_U_CURVE_BL,'U','curve:BL'], [_T.SLOPE_U_CURVE_BR,'U','curve:BR'],
+    [_T.SLOPE_U_BUMP_TL,'U','bump:TL'],   [_T.SLOPE_U_BUMP_TR,'U','bump:TR'],
+    [_T.SLOPE_U_BUMP_BL,'U','bump:BL'],   [_T.SLOPE_U_BUMP_BR,'U','bump:BR'],
+    // Cardinal slope ↓ partial tiles
+    [_T.SLOPE_D_DIAG_UR,'D','diag:UR'],   [_T.SLOPE_D_DIAG_LL,'D','diag:LL'],
+    [_T.SLOPE_D_DIAG_UL,'D','diag:UL'],   [_T.SLOPE_D_DIAG_LR,'D','diag:LR'],
+    [_T.SLOPE_D_CURVE_TL,'D','curve:TL'], [_T.SLOPE_D_CURVE_TR,'D','curve:TR'],
+    [_T.SLOPE_D_CURVE_BL,'D','curve:BL'], [_T.SLOPE_D_CURVE_BR,'D','curve:BR'],
+    [_T.SLOPE_D_BUMP_TL,'D','bump:TL'],   [_T.SLOPE_D_BUMP_TR,'D','bump:TR'],
+    [_T.SLOPE_D_BUMP_BL,'D','bump:BL'],   [_T.SLOPE_D_BUMP_BR,'D','bump:BR'],
+    // Cardinal slope ← partial tiles
+    [_T.SLOPE_L_DIAG_UR,'L','diag:UR'],   [_T.SLOPE_L_DIAG_LL,'L','diag:LL'],
+    [_T.SLOPE_L_DIAG_UL,'L','diag:UL'],   [_T.SLOPE_L_DIAG_LR,'L','diag:LR'],
+    [_T.SLOPE_L_CURVE_TL,'L','curve:TL'], [_T.SLOPE_L_CURVE_TR,'L','curve:TR'],
+    [_T.SLOPE_L_CURVE_BL,'L','curve:BL'], [_T.SLOPE_L_CURVE_BR,'L','curve:BR'],
+    [_T.SLOPE_L_BUMP_TL,'L','bump:TL'],   [_T.SLOPE_L_BUMP_TR,'L','bump:TR'],
+    [_T.SLOPE_L_BUMP_BL,'L','bump:BL'],   [_T.SLOPE_L_BUMP_BR,'L','bump:BR'],
+    // Cardinal slope → partial tiles
+    [_T.SLOPE_R_DIAG_UR,'R','diag:UR'],   [_T.SLOPE_R_DIAG_LL,'R','diag:LL'],
+    [_T.SLOPE_R_DIAG_UL,'R','diag:UL'],   [_T.SLOPE_R_DIAG_LR,'R','diag:LR'],
+    [_T.SLOPE_R_CURVE_TL,'R','curve:TL'], [_T.SLOPE_R_CURVE_TR,'R','curve:TR'],
+    [_T.SLOPE_R_CURVE_BL,'R','curve:BL'], [_T.SLOPE_R_CURVE_BR,'R','curve:BR'],
+    [_T.SLOPE_R_BUMP_TL,'R','bump:TL'],   [_T.SLOPE_R_BUMP_TR,'R','bump:TR'],
+    [_T.SLOPE_R_BUMP_BL,'R','bump:BL'],   [_T.SLOPE_R_BUMP_BR,'R','bump:BR'],
+    // Diagonal slope ↖ additional per-orientation variants
+    [_T.SLOPE_UL_DIAG_UR,'UL','diag:UR'],  [_T.SLOPE_UL_DIAG_LL,'UL','diag:LL'],
+    [_T.SLOPE_UL_DIAG_LR,'UL','diag:LR'],
+    [_T.SLOPE_UL_CURVE_TR,'UL','curve:TR'],[_T.SLOPE_UL_CURVE_BL,'UL','curve:BL'],
+    [_T.SLOPE_UL_CURVE_BR,'UL','curve:BR'],
+    [_T.SLOPE_UL_BUMP_TR,'UL','bump:TR'],  [_T.SLOPE_UL_BUMP_BL,'UL','bump:BL'],
+    [_T.SLOPE_UL_BUMP_BR,'UL','bump:BR'],
+    // Diagonal slope ↗ additional per-orientation variants
+    [_T.SLOPE_UR_DIAG_LL,'UR','diag:LL'],  [_T.SLOPE_UR_DIAG_UL,'UR','diag:UL'],
+    [_T.SLOPE_UR_DIAG_LR,'UR','diag:LR'],
+    [_T.SLOPE_UR_CURVE_TL,'UR','curve:TL'],[_T.SLOPE_UR_CURVE_BL,'UR','curve:BL'],
+    [_T.SLOPE_UR_CURVE_BR,'UR','curve:BR'],
+    [_T.SLOPE_UR_BUMP_TL,'UR','bump:TL'],  [_T.SLOPE_UR_BUMP_BL,'UR','bump:BL'],
+    [_T.SLOPE_UR_BUMP_BR,'UR','bump:BR'],
+    // Diagonal slope ↙ additional per-orientation variants
+    [_T.SLOPE_DL_DIAG_UR,'DL','diag:UR'],  [_T.SLOPE_DL_DIAG_UL,'DL','diag:UL'],
+    [_T.SLOPE_DL_DIAG_LR,'DL','diag:LR'],
+    [_T.SLOPE_DL_CURVE_TL,'DL','curve:TL'],[_T.SLOPE_DL_CURVE_TR,'DL','curve:TR'],
+    [_T.SLOPE_DL_CURVE_BR,'DL','curve:BR'],
+    [_T.SLOPE_DL_BUMP_TL,'DL','bump:TL'],  [_T.SLOPE_DL_BUMP_TR,'DL','bump:TR'],
+    [_T.SLOPE_DL_BUMP_BR,'DL','bump:BR'],
+    // Diagonal slope ↘ additional per-orientation variants
+    [_T.SLOPE_DR_DIAG_UR,'DR','diag:UR'],  [_T.SLOPE_DR_DIAG_LL,'DR','diag:LL'],
+    [_T.SLOPE_DR_DIAG_UL,'DR','diag:UL'],
+    [_T.SLOPE_DR_CURVE_TL,'DR','curve:TL'],[_T.SLOPE_DR_CURVE_TR,'DR','curve:TR'],
+    [_T.SLOPE_DR_CURVE_BL,'DR','curve:BL'],
+    [_T.SLOPE_DR_BUMP_TL,'DR','bump:TL'],  [_T.SLOPE_DR_BUMP_TR,'DR','bump:TR'],
+    [_T.SLOPE_DR_BUMP_BL,'DR','bump:BL'],
+  ];
+  const SLOPE_FACE = {}, SLOPE_DIAG_INFO = {}, SLOPE_CURVE_INFO = {}, SLOPE_BUMP_INFO = {}, TILE_TO_SLOPE_DIR = {};
+  SLOPE_CATALOG.forEach(([tile, dir, spec]) => {
+    TILE_TO_SLOPE_DIR[tile] = dir;
+    if (spec === "full") { SLOPE_FACE[tile] = SLOPE_COLORS[dir]; return; }
+    const colon = spec.indexOf(":");
+    const kind = spec.slice(0, colon), sub = spec.slice(colon + 1);
+    if (kind === "diag") SLOPE_DIAG_INFO[tile] = [dir, sub];
+    else if (kind === "curve") SLOPE_CURVE_INFO[tile] = [dir, sub];
+    else SLOPE_BUMP_INFO[tile] = [dir, sub];
+  });
   const GHOST_FACE = "#848c84";
   const GHOST_EDGE = "#5a625a";
   const GHOST_CHEV = "#d4dcd4";
@@ -134,46 +136,6 @@ const Renderer = (function () {
     if (meta.ox === 1 && meta.oy === 0) return [Math.PI * 0.5, Math.PI];
     return [0, Math.PI * 0.5];
   }
-
-  // Maps a slope tile char to its direction string for arrow drawing
-  const TILE_TO_SLOPE_DIR = {
-    [Physics.TILE.SLOPE_U]:  "U",  [Physics.TILE.SLOPE_D]:  "D",
-    [Physics.TILE.SLOPE_L]:  "L",  [Physics.TILE.SLOPE_R]:  "R",
-    [Physics.TILE.SLOPE_UL]: "UL", [Physics.TILE.SLOPE_UR]: "UR",
-    [Physics.TILE.SLOPE_DL]: "DL", [Physics.TILE.SLOPE_DR]: "DR",
-    [Physics.TILE.SLOPE_DIAG_UR]: "UR", [Physics.TILE.SLOPE_DIAG_DL]: "DL",
-    [Physics.TILE.SLOPE_DIAG_UL]: "UL", [Physics.TILE.SLOPE_DIAG_DR]: "DR",
-    [Physics.TILE.SLOPE_CURVE_TL]: "UL", [Physics.TILE.SLOPE_CURVE_TR]: "UR",
-    [Physics.TILE.SLOPE_CURVE_BL]: "DL", [Physics.TILE.SLOPE_CURVE_BR]: "DR",
-    [Physics.TILE.SLOPE_BUMP_TL]:  "UL", [Physics.TILE.SLOPE_BUMP_TR]:  "UR",
-    [Physics.TILE.SLOPE_BUMP_BL]:  "DL", [Physics.TILE.SLOPE_BUMP_BR]:  "DR",
-    // Cardinal slope partial tiles
-    [Physics.TILE.SLOPE_U_DIAG_UR]:"U",[Physics.TILE.SLOPE_U_DIAG_LL]:"U",[Physics.TILE.SLOPE_U_DIAG_UL]:"U",[Physics.TILE.SLOPE_U_DIAG_LR]:"U",
-    [Physics.TILE.SLOPE_U_CURVE_TL]:"U",[Physics.TILE.SLOPE_U_CURVE_TR]:"U",[Physics.TILE.SLOPE_U_CURVE_BL]:"U",[Physics.TILE.SLOPE_U_CURVE_BR]:"U",
-    [Physics.TILE.SLOPE_U_BUMP_TL]:"U",[Physics.TILE.SLOPE_U_BUMP_TR]:"U",[Physics.TILE.SLOPE_U_BUMP_BL]:"U",[Physics.TILE.SLOPE_U_BUMP_BR]:"U",
-    [Physics.TILE.SLOPE_D_DIAG_UR]:"D",[Physics.TILE.SLOPE_D_DIAG_LL]:"D",[Physics.TILE.SLOPE_D_DIAG_UL]:"D",[Physics.TILE.SLOPE_D_DIAG_LR]:"D",
-    [Physics.TILE.SLOPE_D_CURVE_TL]:"D",[Physics.TILE.SLOPE_D_CURVE_TR]:"D",[Physics.TILE.SLOPE_D_CURVE_BL]:"D",[Physics.TILE.SLOPE_D_CURVE_BR]:"D",
-    [Physics.TILE.SLOPE_D_BUMP_TL]:"D",[Physics.TILE.SLOPE_D_BUMP_TR]:"D",[Physics.TILE.SLOPE_D_BUMP_BL]:"D",[Physics.TILE.SLOPE_D_BUMP_BR]:"D",
-    [Physics.TILE.SLOPE_L_DIAG_UR]:"L",[Physics.TILE.SLOPE_L_DIAG_LL]:"L",[Physics.TILE.SLOPE_L_DIAG_UL]:"L",[Physics.TILE.SLOPE_L_DIAG_LR]:"L",
-    [Physics.TILE.SLOPE_L_CURVE_TL]:"L",[Physics.TILE.SLOPE_L_CURVE_TR]:"L",[Physics.TILE.SLOPE_L_CURVE_BL]:"L",[Physics.TILE.SLOPE_L_CURVE_BR]:"L",
-    [Physics.TILE.SLOPE_L_BUMP_TL]:"L",[Physics.TILE.SLOPE_L_BUMP_TR]:"L",[Physics.TILE.SLOPE_L_BUMP_BL]:"L",[Physics.TILE.SLOPE_L_BUMP_BR]:"L",
-    [Physics.TILE.SLOPE_R_DIAG_UR]:"R",[Physics.TILE.SLOPE_R_DIAG_LL]:"R",[Physics.TILE.SLOPE_R_DIAG_UL]:"R",[Physics.TILE.SLOPE_R_DIAG_LR]:"R",
-    [Physics.TILE.SLOPE_R_CURVE_TL]:"R",[Physics.TILE.SLOPE_R_CURVE_TR]:"R",[Physics.TILE.SLOPE_R_CURVE_BL]:"R",[Physics.TILE.SLOPE_R_CURVE_BR]:"R",
-    [Physics.TILE.SLOPE_R_BUMP_TL]:"R",[Physics.TILE.SLOPE_R_BUMP_TR]:"R",[Physics.TILE.SLOPE_R_BUMP_BL]:"R",[Physics.TILE.SLOPE_R_BUMP_BR]:"R",
-    // Diagonal slope additional per-orientation tiles
-    [Physics.TILE.SLOPE_UL_DIAG_UR]:"UL",[Physics.TILE.SLOPE_UL_DIAG_LL]:"UL",[Physics.TILE.SLOPE_UL_DIAG_LR]:"UL",
-    [Physics.TILE.SLOPE_UL_CURVE_TR]:"UL",[Physics.TILE.SLOPE_UL_CURVE_BL]:"UL",[Physics.TILE.SLOPE_UL_CURVE_BR]:"UL",
-    [Physics.TILE.SLOPE_UL_BUMP_TR]:"UL",[Physics.TILE.SLOPE_UL_BUMP_BL]:"UL",[Physics.TILE.SLOPE_UL_BUMP_BR]:"UL",
-    [Physics.TILE.SLOPE_UR_DIAG_LL]:"UR",[Physics.TILE.SLOPE_UR_DIAG_UL]:"UR",[Physics.TILE.SLOPE_UR_DIAG_LR]:"UR",
-    [Physics.TILE.SLOPE_UR_CURVE_TL]:"UR",[Physics.TILE.SLOPE_UR_CURVE_BL]:"UR",[Physics.TILE.SLOPE_UR_CURVE_BR]:"UR",
-    [Physics.TILE.SLOPE_UR_BUMP_TL]:"UR",[Physics.TILE.SLOPE_UR_BUMP_BL]:"UR",[Physics.TILE.SLOPE_UR_BUMP_BR]:"UR",
-    [Physics.TILE.SLOPE_DL_DIAG_UR]:"DL",[Physics.TILE.SLOPE_DL_DIAG_UL]:"DL",[Physics.TILE.SLOPE_DL_DIAG_LR]:"DL",
-    [Physics.TILE.SLOPE_DL_CURVE_TL]:"DL",[Physics.TILE.SLOPE_DL_CURVE_TR]:"DL",[Physics.TILE.SLOPE_DL_CURVE_BR]:"DL",
-    [Physics.TILE.SLOPE_DL_BUMP_TL]:"DL",[Physics.TILE.SLOPE_DL_BUMP_TR]:"DL",[Physics.TILE.SLOPE_DL_BUMP_BR]:"DL",
-    [Physics.TILE.SLOPE_DR_DIAG_UR]:"DR",[Physics.TILE.SLOPE_DR_DIAG_LL]:"DR",[Physics.TILE.SLOPE_DR_DIAG_UL]:"DR",
-    [Physics.TILE.SLOPE_DR_CURVE_TL]:"DR",[Physics.TILE.SLOPE_DR_CURVE_TR]:"DR",[Physics.TILE.SLOPE_DR_CURVE_BL]:"DR",
-    [Physics.TILE.SLOPE_DR_BUMP_TL]:"DR",[Physics.TILE.SLOPE_DR_BUMP_TR]:"DR",[Physics.TILE.SLOPE_DR_BUMP_BL]:"DR",
-  };
 
   function drawSlopeArrows(ctx, tile, x, y) {
     const dir = TILE_TO_SLOPE_DIR[tile];
