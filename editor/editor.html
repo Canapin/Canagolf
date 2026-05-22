@@ -708,13 +708,46 @@
          ['Ą','TL',LVA],['ą','TR',LVA],['Ć','BL',LVA],['ć','BR',LVA]].forEach(([c,corner,col]) =>
           LAYER_SHAPE_INFO[c] = { type:'bump', color:col, corner });
         // Slope diagonals
-        [['Ĉ','UR','UR'],['ĉ','DL','LL'],['Ċ','UL','UL'],['ċ','DR','LR']].forEach(([c,dir,tri]) =>
+        [['Ĉ','UR','UR'],['ĉ','DL','LL'],['Ċ','UL','UL'],['ċ','DR','LR'],
+         // Cardinal slope diagonals
+         ['Ĕ','U','UR'],['ĕ','U','LL'],['Ė','U','UL'],['ė','U','LR'],
+         ['Ġ','D','UR'],['ġ','D','LL'],['Ģ','D','UL'],['ģ','D','LR'],
+         ['Ĭ','L','UR'],['ĭ','L','LL'],['Į','L','UL'],['į','L','LR'],
+         ['ĸ','R','UR'],['Ĺ','R','LL'],['ĺ','R','UL'],['Ļ','R','LR'],
+         // Diagonal slope additional diagonals
+         ['ń','UL','UR'],['Ņ','UL','LL'],['ņ','UL','LR'],
+         ['ō','UR','LL'],['Ŏ','UR','UL'],['ŏ','UR','LR'],
+         ['Ŗ','DL','UR'],['ŗ','DL','UL'],['Ř','DL','LR'],
+         ['ş','DR','UR'],['Š','DR','LL'],['š','DR','UL'],
+        ].forEach(([c,dir,tri]) =>
           LAYER_SHAPE_INFO[c] = { type:'slope-tri', color:SLOPE_FACE[dir], dir, tri });
         // Slope curves
-        [['Č','UL','TL'],['č','UR','TR'],['Ď','DL','BL'],['ď','DR','BR']].forEach(([c,dir,corner]) =>
+        [['Č','UL','TL'],['č','UR','TR'],['Ď','DL','BL'],['ď','DR','BR'],
+         // Cardinal slope curves
+         ['Ę','U','TL'],['ę','U','TR'],['Ě','U','BL'],['ě','U','BR'],
+         ['Ĥ','D','TL'],['ĥ','D','TR'],['Ħ','D','BL'],['ħ','D','BR'],
+         ['İ','L','TL'],['ı','L','TR'],['Ũ','L','BL'],['ũ','L','BR'],
+         ['ļ','R','TL'],['Ľ','R','TR'],['ľ','R','BL'],['Ŀ','R','BR'],
+         // Diagonal slope additional curves
+         ['Ň','UL','TR'],['ň','UL','BL'],['ŉ','UL','BR'],
+         ['Ő','UR','TL'],['ő','UR','BL'],['Œ','UR','BR'],
+         ['ř','DL','TL'],['Ś','DL','TR'],['ś','DL','BR'],
+         ['Ţ','DR','TL'],['ţ','DR','TR'],['Ť','DR','BL'],
+        ].forEach(([c,dir,corner]) =>
           LAYER_SHAPE_INFO[c] = { type:'slope-curve', color:SLOPE_FACE[dir], dir, corner });
         // Slope bumps
-        [['Đ','UL','TL'],['đ','UR','TR'],['Ē','DL','BL'],['ē','DR','BR']].forEach(([c,dir,corner]) =>
+        [['Đ','UL','TL'],['đ','UR','TR'],['Ē','DL','BL'],['ē','DR','BR'],
+         // Cardinal slope bumps
+         ['Ĝ','U','TL'],['ĝ','U','TR'],['Ğ','U','BL'],['ğ','U','BR'],
+         ['Ĩ','D','TL'],['ĩ','D','TR'],['Ī','D','BL'],['ī','D','BR'],
+         ['Ĵ','L','TL'],['ĵ','L','TR'],['Ķ','L','BL'],['ķ','L','BR'],
+         ['ŀ','R','TL'],['Ł','R','TR'],['ł','R','BL'],['Ń','R','BR'],
+         // Diagonal slope additional bumps
+         ['Ŋ','UL','TR'],['ŋ','UL','BL'],['Ō','UL','BR'],
+         ['œ','UR','TL'],['Ŕ','UR','BL'],['ŕ','UR','BR'],
+         ['Ŝ','DL','TL'],['ŝ','DL','TR'],['Ş','DL','BR'],
+         ['ť','DR','TL'],['Ŧ','DR','TR'],['ŧ','DR','BL'],
+        ].forEach(([c,dir,corner]) =>
           LAYER_SHAPE_INFO[c] = { type:'slope-bump', color:SLOPE_FACE[dir], dir, corner });
         return LAYER_SHAPE_INFO;
       }
@@ -852,12 +885,29 @@
         };
       }
 
-      function drawModPreview(sc, key) {
+      function getModColor() {
+        if (selected === "#") return WL;
+        if (selected === "+") return BNCY;
+        if (selected === "~") return STKY;
+        if (selected === "A") return SND;
+        if (selected === "W") return WTR;
+        if (selected === "w") return LVA;
+        if (selected === "^") return SLOPE_FACE["U"];
+        if (selected === "v") return SLOPE_FACE["D"];
+        if (selected === "<") return SLOPE_FACE["L"];
+        if (selected === ">") return SLOPE_FACE["R"];
+        if (selected === "F") return SLOPE_FACE["UL"];
+        if (selected === "G") return SLOPE_FACE["UR"];
+        if (selected === "H") return SLOPE_FACE["DL"];
+        if (selected === "I") return SLOPE_FACE["DR"];
+        return WL;
+      }
+
+      function drawModPreview(sc, key, color) {
         const S = 26;
-        sc.fillStyle = FW;
-        sc.fillRect(0, 0, S, S);
+        sc.clearRect(0, 0, S, S);
         if (key === "full") {
-          sc.fillStyle = WL;
+          sc.fillStyle = color;
           sc.fillRect(0, 0, S, S);
           return;
         }
@@ -865,7 +915,7 @@
         const type = key.slice(0, sep);
         const orient = key.slice(sep + 1);
         if (type === "diag") {
-          sc.fillStyle = WL;
+          sc.fillStyle = color;
           sc.beginPath();
           if (orient === "UR") { sc.moveTo(0,0); sc.lineTo(S,0); sc.lineTo(S,S); }
           if (orient === "LL") { sc.moveTo(0,0); sc.lineTo(0,S); sc.lineTo(S,S); }
@@ -881,21 +931,23 @@
         if (orient === "BL") { ax = S; ay = 0; a0 = Math.PI * 0.5; a1 = Math.PI; }
         if (orient === "BR") { ax = 0; ay = 0; a0 = 0; a1 = Math.PI * 0.5; }
         if (type === "curve") {
-          sc.fillStyle = WL;
+          sc.fillStyle = color;
           sc.beginPath();
           sc.moveTo(ax, ay);
           sc.arc(ax, ay, S, a0, a1, false);
           sc.closePath();
           sc.fill();
         } else if (type === "bump") {
-          sc.fillStyle = WL;
-          sc.fillRect(0, 0, S, S);
-          sc.fillStyle = FW;
+          sc.save();
           sc.beginPath();
+          sc.rect(0, 0, S, S);
           sc.moveTo(ax, ay);
           sc.arc(ax, ay, S, a0, a1, false);
           sc.closePath();
-          sc.fill();
+          sc.clip("evenodd");
+          sc.fillStyle = color;
+          sc.fillRect(0, 0, S, S);
+          sc.restore();
         }
       }
 
@@ -1300,14 +1352,14 @@
         { c: "j", l: "Wall ↙", g: "Wall", sg: "diag", d: diagWall("UR") },
         { c: "k", l: "Wall ↖", g: "Wall", sg: "diag", d: diagWall("LR") },
         { c: "l", l: "Wall ↘", g: "Wall", sg: "diag", d: diagWall("UL") },
-        { c: "1", l: "Wall curve ↖", g: "Wall", sg: "curve", d: curve("TL") },
-        { c: "2", l: "Wall curve ↗", g: "Wall", sg: "curve", d: curve("TR") },
-        { c: "3", l: "Wall curve ↙", g: "Wall", sg: "curve", d: curve("BL") },
-        { c: "4", l: "Wall curve ↘", g: "Wall", sg: "curve", d: curve("BR") },
-        { c: "5", l: "Wall bump ↖", g: "Wall", sg: "bump", d: bump("TL") },
-        { c: "6", l: "Wall bump ↗", g: "Wall", sg: "bump", d: bump("TR") },
-        { c: "7", l: "Wall bump ↙", g: "Wall", sg: "bump", d: bump("BL") },
-        { c: "8", l: "Wall bump ↘", g: "Wall", sg: "bump", d: bump("BR") },
+        { c: "1", l: "Wall curve ↖", g: "Wall", sg: "curve", d: bump("TL") },
+        { c: "2", l: "Wall curve ↗", g: "Wall", sg: "curve", d: bump("TR") },
+        { c: "3", l: "Wall curve ↙", g: "Wall", sg: "curve", d: bump("BL") },
+        { c: "4", l: "Wall curve ↘", g: "Wall", sg: "curve", d: bump("BR") },
+        { c: "5", l: "Wall bump ↖", g: "Wall", sg: "bump", d: curve("TL") },
+        { c: "6", l: "Wall bump ↗", g: "Wall", sg: "bump", d: curve("TR") },
+        { c: "7", l: "Wall bump ↙", g: "Wall", sg: "bump", d: curve("BL") },
+        { c: "8", l: "Wall bump ↘", g: "Wall", sg: "bump", d: curve("BR") },
         // Bouncy wall
         {
           c: "+",
@@ -1390,56 +1442,56 @@
           l: "Bouncy curve ↖",
           g: "Bouncy",
           sg: "curve",
-          d: curve("TL", BNCY, BNCY_E),
+          d: bump("TL", BNCY, BNCY_E),
         },
         {
           c: "U",
           l: "Bouncy curve ↗",
           g: "Bouncy",
           sg: "curve",
-          d: curve("TR", BNCY, BNCY_E),
+          d: bump("TR", BNCY, BNCY_E),
         },
         {
           c: "V",
           l: "Bouncy curve ↙",
           g: "Bouncy",
           sg: "curve",
-          d: curve("BL", BNCY, BNCY_E),
+          d: bump("BL", BNCY, BNCY_E),
         },
         {
           c: "X",
           l: "Bouncy curve ↘",
           g: "Bouncy",
           sg: "curve",
-          d: curve("BR", BNCY, BNCY_E),
+          d: bump("BR", BNCY, BNCY_E),
         },
         {
           c: "Y",
           l: "Bouncy bump ↖",
           g: "Bouncy",
           sg: "bump",
-          d: bump("TL", BNCY, BNCY_E),
+          d: curve("TL", BNCY, BNCY_E),
         },
         {
           c: "Z",
           l: "Bouncy bump ↗",
           g: "Bouncy",
           sg: "bump",
-          d: bump("TR", BNCY, BNCY_E),
+          d: curve("TR", BNCY, BNCY_E),
         },
         {
           c: "0",
           l: "Bouncy bump ↙",
           g: "Bouncy",
           sg: "bump",
-          d: bump("BL", BNCY, BNCY_E),
+          d: curve("BL", BNCY, BNCY_E),
         },
         {
           c: "9",
           l: "Bouncy bump ↘",
           g: "Bouncy",
           sg: "bump",
-          d: bump("BR", BNCY, BNCY_E),
+          d: curve("BR", BNCY, BNCY_E),
         },
         // Sticky wall
         {
@@ -1523,56 +1575,56 @@
           l: "Sticky curve ↖",
           g: "Sticky",
           sg: "curve",
-          d: curve("TL", STKY, STKY_E),
+          d: bump("TL", STKY, STKY_E),
         },
         {
           c: "}",
           l: "Sticky curve ↗",
           g: "Sticky",
           sg: "curve",
-          d: curve("TR", STKY, STKY_E),
+          d: bump("TR", STKY, STKY_E),
         },
         {
           c: "@",
           l: "Sticky curve ↙",
           g: "Sticky",
           sg: "curve",
-          d: curve("BL", STKY, STKY_E),
+          d: bump("BL", STKY, STKY_E),
         },
         {
           c: "$",
           l: "Sticky curve ↘",
           g: "Sticky",
           sg: "curve",
-          d: curve("BR", STKY, STKY_E),
+          d: bump("BR", STKY, STKY_E),
         },
         {
           c: "%",
           l: "Sticky bump ↖",
           g: "Sticky",
           sg: "bump",
-          d: bump("TL", STKY, STKY_E),
+          d: curve("TL", STKY, STKY_E),
         },
         {
           c: "&",
           l: "Sticky bump ↗",
           g: "Sticky",
           sg: "bump",
-          d: bump("TR", STKY, STKY_E),
+          d: curve("TR", STKY, STKY_E),
         },
         {
           c: "*",
           l: "Sticky bump ↙",
           g: "Sticky",
           sg: "bump",
-          d: bump("BL", STKY, STKY_E),
+          d: curve("BL", STKY, STKY_E),
         },
         {
           c: "_",
           l: "Sticky bump ↘",
           g: "Sticky",
           sg: "bump",
-          d: bump("BR", STKY, STKY_E),
+          d: curve("BR", STKY, STKY_E),
         },
         // Sand
         { c: "A", l: "Sand", g: "Sand", sg: "full", d: fill(SND) },
@@ -1719,6 +1771,98 @@
         { c: "đ", l: "Slope bump ↗", g: "Slope", sg: "bump", d: slopeBump("UR", "TR") },
         { c: "Ē", l: "Slope bump ↙", g: "Slope", sg: "bump", d: slopeBump("DL", "BL") },
         { c: "ē", l: "Slope bump ↘", g: "Slope", sg: "bump", d: slopeBump("DR", "BR") },
+        // Cardinal slope ↑ partial tiles
+        { c: "Ĕ", l: "Slope ↑ diag ↗", g: "Slope", sg: "diag", d: slopeDiag("U", "UR") },
+        { c: "ĕ", l: "Slope ↑ diag ↙", g: "Slope", sg: "diag", d: slopeDiag("U", "LL") },
+        { c: "Ė", l: "Slope ↑ diag ↖", g: "Slope", sg: "diag", d: slopeDiag("U", "UL") },
+        { c: "ė", l: "Slope ↑ diag ↘", g: "Slope", sg: "diag", d: slopeDiag("U", "LR") },
+        { c: "Ę", l: "Slope ↑ curve TL", g: "Slope", sg: "curve", d: slopeCurve("U", "TL") },
+        { c: "ę", l: "Slope ↑ curve TR", g: "Slope", sg: "curve", d: slopeCurve("U", "TR") },
+        { c: "Ě", l: "Slope ↑ curve BL", g: "Slope", sg: "curve", d: slopeCurve("U", "BL") },
+        { c: "ě", l: "Slope ↑ curve BR", g: "Slope", sg: "curve", d: slopeCurve("U", "BR") },
+        { c: "Ĝ", l: "Slope ↑ bump TL", g: "Slope", sg: "bump", d: slopeBump("U", "TL") },
+        { c: "ĝ", l: "Slope ↑ bump TR", g: "Slope", sg: "bump", d: slopeBump("U", "TR") },
+        { c: "Ğ", l: "Slope ↑ bump BL", g: "Slope", sg: "bump", d: slopeBump("U", "BL") },
+        { c: "ğ", l: "Slope ↑ bump BR", g: "Slope", sg: "bump", d: slopeBump("U", "BR") },
+        // Cardinal slope ↓ partial tiles
+        { c: "Ġ", l: "Slope ↓ diag ↗", g: "Slope", sg: "diag", d: slopeDiag("D", "UR") },
+        { c: "ġ", l: "Slope ↓ diag ↙", g: "Slope", sg: "diag", d: slopeDiag("D", "LL") },
+        { c: "Ģ", l: "Slope ↓ diag ↖", g: "Slope", sg: "diag", d: slopeDiag("D", "UL") },
+        { c: "ģ", l: "Slope ↓ diag ↘", g: "Slope", sg: "diag", d: slopeDiag("D", "LR") },
+        { c: "Ĥ", l: "Slope ↓ curve TL", g: "Slope", sg: "curve", d: slopeCurve("D", "TL") },
+        { c: "ĥ", l: "Slope ↓ curve TR", g: "Slope", sg: "curve", d: slopeCurve("D", "TR") },
+        { c: "Ħ", l: "Slope ↓ curve BL", g: "Slope", sg: "curve", d: slopeCurve("D", "BL") },
+        { c: "ħ", l: "Slope ↓ curve BR", g: "Slope", sg: "curve", d: slopeCurve("D", "BR") },
+        { c: "Ĩ", l: "Slope ↓ bump TL", g: "Slope", sg: "bump", d: slopeBump("D", "TL") },
+        { c: "ĩ", l: "Slope ↓ bump TR", g: "Slope", sg: "bump", d: slopeBump("D", "TR") },
+        { c: "Ī", l: "Slope ↓ bump BL", g: "Slope", sg: "bump", d: slopeBump("D", "BL") },
+        { c: "ī", l: "Slope ↓ bump BR", g: "Slope", sg: "bump", d: slopeBump("D", "BR") },
+        // Cardinal slope ← partial tiles
+        { c: "Ĭ", l: "Slope ← diag ↗", g: "Slope", sg: "diag", d: slopeDiag("L", "UR") },
+        { c: "ĭ", l: "Slope ← diag ↙", g: "Slope", sg: "diag", d: slopeDiag("L", "LL") },
+        { c: "Į", l: "Slope ← diag ↖", g: "Slope", sg: "diag", d: slopeDiag("L", "UL") },
+        { c: "į", l: "Slope ← diag ↘", g: "Slope", sg: "diag", d: slopeDiag("L", "LR") },
+        { c: "İ", l: "Slope ← curve TL", g: "Slope", sg: "curve", d: slopeCurve("L", "TL") },
+        { c: "ı", l: "Slope ← curve TR", g: "Slope", sg: "curve", d: slopeCurve("L", "TR") },
+        { c: "Ũ", l: "Slope ← curve BL", g: "Slope", sg: "curve", d: slopeCurve("L", "BL") },
+        { c: "ũ", l: "Slope ← curve BR", g: "Slope", sg: "curve", d: slopeCurve("L", "BR") },
+        { c: "Ĵ", l: "Slope ← bump TL", g: "Slope", sg: "bump", d: slopeBump("L", "TL") },
+        { c: "ĵ", l: "Slope ← bump TR", g: "Slope", sg: "bump", d: slopeBump("L", "TR") },
+        { c: "Ķ", l: "Slope ← bump BL", g: "Slope", sg: "bump", d: slopeBump("L", "BL") },
+        { c: "ķ", l: "Slope ← bump BR", g: "Slope", sg: "bump", d: slopeBump("L", "BR") },
+        // Cardinal slope → partial tiles
+        { c: "ĸ", l: "Slope → diag ↗", g: "Slope", sg: "diag", d: slopeDiag("R", "UR") },
+        { c: "Ĺ", l: "Slope → diag ↙", g: "Slope", sg: "diag", d: slopeDiag("R", "LL") },
+        { c: "ĺ", l: "Slope → diag ↖", g: "Slope", sg: "diag", d: slopeDiag("R", "UL") },
+        { c: "Ļ", l: "Slope → diag ↘", g: "Slope", sg: "diag", d: slopeDiag("R", "LR") },
+        { c: "ļ", l: "Slope → curve TL", g: "Slope", sg: "curve", d: slopeCurve("R", "TL") },
+        { c: "Ľ", l: "Slope → curve TR", g: "Slope", sg: "curve", d: slopeCurve("R", "TR") },
+        { c: "ľ", l: "Slope → curve BL", g: "Slope", sg: "curve", d: slopeCurve("R", "BL") },
+        { c: "Ŀ", l: "Slope → curve BR", g: "Slope", sg: "curve", d: slopeCurve("R", "BR") },
+        { c: "ŀ", l: "Slope → bump TL", g: "Slope", sg: "bump", d: slopeBump("R", "TL") },
+        { c: "Ł", l: "Slope → bump TR", g: "Slope", sg: "bump", d: slopeBump("R", "TR") },
+        { c: "ł", l: "Slope → bump BL", g: "Slope", sg: "bump", d: slopeBump("R", "BL") },
+        { c: "Ń", l: "Slope → bump BR", g: "Slope", sg: "bump", d: slopeBump("R", "BR") },
+        // Diagonal slope ↖ additional per-orientation variants
+        { c: "ń", l: "Slope ↖ diag ↗", g: "Slope", sg: "diag", d: slopeDiag("UL", "UR") },
+        { c: "Ņ", l: "Slope ↖ diag ↙", g: "Slope", sg: "diag", d: slopeDiag("UL", "LL") },
+        { c: "ņ", l: "Slope ↖ diag ↘", g: "Slope", sg: "diag", d: slopeDiag("UL", "LR") },
+        { c: "Ň", l: "Slope ↖ curve TR", g: "Slope", sg: "curve", d: slopeCurve("UL", "TR") },
+        { c: "ň", l: "Slope ↖ curve BL", g: "Slope", sg: "curve", d: slopeCurve("UL", "BL") },
+        { c: "ŉ", l: "Slope ↖ curve BR", g: "Slope", sg: "curve", d: slopeCurve("UL", "BR") },
+        { c: "Ŋ", l: "Slope ↖ bump TR", g: "Slope", sg: "bump", d: slopeBump("UL", "TR") },
+        { c: "ŋ", l: "Slope ↖ bump BL", g: "Slope", sg: "bump", d: slopeBump("UL", "BL") },
+        { c: "Ō", l: "Slope ↖ bump BR", g: "Slope", sg: "bump", d: slopeBump("UL", "BR") },
+        // Diagonal slope ↗ additional per-orientation variants
+        { c: "ō", l: "Slope ↗ diag ↙", g: "Slope", sg: "diag", d: slopeDiag("UR", "LL") },
+        { c: "Ŏ", l: "Slope ↗ diag ↖", g: "Slope", sg: "diag", d: slopeDiag("UR", "UL") },
+        { c: "ŏ", l: "Slope ↗ diag ↘", g: "Slope", sg: "diag", d: slopeDiag("UR", "LR") },
+        { c: "Ő", l: "Slope ↗ curve TL", g: "Slope", sg: "curve", d: slopeCurve("UR", "TL") },
+        { c: "ő", l: "Slope ↗ curve BL", g: "Slope", sg: "curve", d: slopeCurve("UR", "BL") },
+        { c: "Œ", l: "Slope ↗ curve BR", g: "Slope", sg: "curve", d: slopeCurve("UR", "BR") },
+        { c: "œ", l: "Slope ↗ bump TL", g: "Slope", sg: "bump", d: slopeBump("UR", "TL") },
+        { c: "Ŕ", l: "Slope ↗ bump BL", g: "Slope", sg: "bump", d: slopeBump("UR", "BL") },
+        { c: "ŕ", l: "Slope ↗ bump BR", g: "Slope", sg: "bump", d: slopeBump("UR", "BR") },
+        // Diagonal slope ↙ additional per-orientation variants
+        { c: "Ŗ", l: "Slope ↙ diag ↗", g: "Slope", sg: "diag", d: slopeDiag("DL", "UR") },
+        { c: "ŗ", l: "Slope ↙ diag ↖", g: "Slope", sg: "diag", d: slopeDiag("DL", "UL") },
+        { c: "Ř", l: "Slope ↙ diag ↘", g: "Slope", sg: "diag", d: slopeDiag("DL", "LR") },
+        { c: "ř", l: "Slope ↙ curve TL", g: "Slope", sg: "curve", d: slopeCurve("DL", "TL") },
+        { c: "Ś", l: "Slope ↙ curve TR", g: "Slope", sg: "curve", d: slopeCurve("DL", "TR") },
+        { c: "ś", l: "Slope ↙ curve BR", g: "Slope", sg: "curve", d: slopeCurve("DL", "BR") },
+        { c: "Ŝ", l: "Slope ↙ bump TL", g: "Slope", sg: "bump", d: slopeBump("DL", "TL") },
+        { c: "ŝ", l: "Slope ↙ bump TR", g: "Slope", sg: "bump", d: slopeBump("DL", "TR") },
+        { c: "Ş", l: "Slope ↙ bump BR", g: "Slope", sg: "bump", d: slopeBump("DL", "BR") },
+        // Diagonal slope ↘ additional per-orientation variants
+        { c: "ş", l: "Slope ↘ diag ↗", g: "Slope", sg: "diag", d: slopeDiag("DR", "UR") },
+        { c: "Š", l: "Slope ↘ diag ↙", g: "Slope", sg: "diag", d: slopeDiag("DR", "LL") },
+        { c: "š", l: "Slope ↘ diag ↖", g: "Slope", sg: "diag", d: slopeDiag("DR", "UL") },
+        { c: "Ţ", l: "Slope ↘ curve TL", g: "Slope", sg: "curve", d: slopeCurve("DR", "TL") },
+        { c: "ţ", l: "Slope ↘ curve TR", g: "Slope", sg: "curve", d: slopeCurve("DR", "TR") },
+        { c: "Ť", l: "Slope ↘ curve BL", g: "Slope", sg: "curve", d: slopeCurve("DR", "BL") },
+        { c: "ť", l: "Slope ↘ bump TL", g: "Slope", sg: "bump", d: slopeBump("DR", "TL") },
+        { c: "Ŧ", l: "Slope ↘ bump TR", g: "Slope", sg: "bump", d: slopeBump("DR", "TR") },
+        { c: "ŧ", l: "Slope ↘ bump BL", g: "Slope", sg: "bump", d: slopeBump("DR", "BL") },
         // Ghost walls (one-way cardinal)
         { c: "J", l: "Ghost →", g: "Ghost", sg: "", d: ghostWall("R") },
         { c: "K", l: "Ghost ←", g: "Ghost", sg: "", d: ghostWall("L") },
@@ -1854,35 +1998,35 @@
           "curve-TL":"Ā","curve-TR":"ā","curve-BL":"Ă","curve-BR":"ă",
           "bump-TL":"Ą", "bump-TR":"ą", "bump-BL":"Ć", "bump-BR":"ć",
         },
-        // Cardinal slopes — no shape variants, all modifiers return full tile
-        "^": { "full":"^","diag-UR":"^","diag-LL":"^","diag-UL":"^","diag-LR":"^","curve-TL":"^","curve-TR":"^","curve-BL":"^","curve-BR":"^","bump-TL":"^","bump-TR":"^","bump-BL":"^","bump-BR":"^" },
-        "v": { "full":"v","diag-UR":"v","diag-LL":"v","diag-UL":"v","diag-LR":"v","curve-TL":"v","curve-TR":"v","curve-BL":"v","curve-BR":"v","bump-TL":"v","bump-TR":"v","bump-BL":"v","bump-BR":"v" },
-        "<": { "full":"<","diag-UR":"<","diag-LL":"<","diag-UL":"<","diag-LR":"<","curve-TL":"<","curve-TR":"<","curve-BL":"<","curve-BR":"<","bump-TL":"<","bump-TR":"<","bump-BL":"<","bump-BR":"<" },
-        ">": { "full":">","diag-UR":">","diag-LL":">","diag-UL":">","diag-LR":">","curve-TL":">","curve-TR":">","curve-BL":">","curve-BR":">","bump-TL":">","bump-TR":">","bump-BL":">","bump-BR":">" },
-        // Diagonal slopes — orientation ignored, type determines shape variant
-        "F": { // Slope UL ↖
+        // Cardinal slopes — shape variants for all orientations
+        "^": { "full":"^","diag-UR":"Ĕ","diag-LL":"ĕ","diag-UL":"Ė","diag-LR":"ė","curve-TL":"Ę","curve-TR":"ę","curve-BL":"Ě","curve-BR":"ě","bump-TL":"Ĝ","bump-TR":"ĝ","bump-BL":"Ğ","bump-BR":"ğ" },
+        "v": { "full":"v","diag-UR":"Ġ","diag-LL":"ġ","diag-UL":"Ģ","diag-LR":"ģ","curve-TL":"Ĥ","curve-TR":"ĥ","curve-BL":"Ħ","curve-BR":"ħ","bump-TL":"Ĩ","bump-TR":"ĩ","bump-BL":"Ī","bump-BR":"ī" },
+        "<": { "full":"<","diag-UR":"Ĭ","diag-LL":"ĭ","diag-UL":"Į","diag-LR":"į","curve-TL":"İ","curve-TR":"ı","curve-BL":"Ũ","curve-BR":"ũ","bump-TL":"Ĵ","bump-TR":"ĵ","bump-BL":"Ķ","bump-BR":"ķ" },
+        ">": { "full":">","diag-UR":"ĸ","diag-LL":"Ĺ","diag-UL":"ĺ","diag-LR":"Ļ","curve-TL":"ļ","curve-TR":"Ľ","curve-BL":"ľ","curve-BR":"Ŀ","bump-TL":"ŀ","bump-TR":"Ł","bump-BL":"ł","bump-BR":"Ń" },
+        // Diagonal slopes — each orientation now produces a distinct tile
+        "F": { // Slope UL ↖ — natural: diag-UL→Ċ, curve-TL→Č, bump-TL→Đ
           "full":"F",
-          "diag-UR":"Ċ","diag-LL":"Ċ","diag-UL":"Ċ","diag-LR":"Ċ",
-          "curve-TL":"Č","curve-TR":"Č","curve-BL":"Č","curve-BR":"Č",
-          "bump-TL":"Đ","bump-TR":"Đ","bump-BL":"Đ","bump-BR":"Đ",
+          "diag-UR":"ń","diag-LL":"Ņ","diag-UL":"Ċ","diag-LR":"ņ",
+          "curve-TL":"Č","curve-TR":"Ň","curve-BL":"ň","curve-BR":"ŉ",
+          "bump-TL":"Đ","bump-TR":"Ŋ","bump-BL":"ŋ","bump-BR":"Ō",
         },
-        "G": { // Slope UR ↗
+        "G": { // Slope UR ↗ — natural: diag-UR→Ĉ, curve-TR→č, bump-TR→đ
           "full":"G",
-          "diag-UR":"Ĉ","diag-LL":"Ĉ","diag-UL":"Ĉ","diag-LR":"Ĉ",
-          "curve-TL":"č","curve-TR":"č","curve-BL":"č","curve-BR":"č",
-          "bump-TL":"đ","bump-TR":"đ","bump-BL":"đ","bump-BR":"đ",
+          "diag-UR":"Ĉ","diag-LL":"ō","diag-UL":"Ŏ","diag-LR":"ŏ",
+          "curve-TL":"Ő","curve-TR":"č","curve-BL":"ő","curve-BR":"Œ",
+          "bump-TL":"œ","bump-TR":"đ","bump-BL":"Ŕ","bump-BR":"ŕ",
         },
-        "H": { // Slope DL ↙
+        "H": { // Slope DL ↙ — natural: diag-LL→ĉ, curve-BL→Ď, bump-BL→Ē
           "full":"H",
-          "diag-UR":"ĉ","diag-LL":"ĉ","diag-UL":"ĉ","diag-LR":"ĉ",
-          "curve-TL":"Ď","curve-TR":"Ď","curve-BL":"Ď","curve-BR":"Ď",
-          "bump-TL":"Ē","bump-TR":"Ē","bump-BL":"Ē","bump-BR":"Ē",
+          "diag-UR":"Ŗ","diag-LL":"ĉ","diag-UL":"ŗ","diag-LR":"Ř",
+          "curve-TL":"ř","curve-TR":"Ś","curve-BL":"Ď","curve-BR":"ś",
+          "bump-TL":"Ŝ","bump-TR":"ŝ","bump-BL":"Ē","bump-BR":"Ş",
         },
-        "I": { // Slope DR ↘
+        "I": { // Slope DR ↘ — natural: diag-LR→ċ, curve-BR→ď, bump-BR→ē
           "full":"I",
-          "diag-UR":"ċ","diag-LL":"ċ","diag-UL":"ċ","diag-LR":"ċ",
-          "curve-TL":"ď","curve-TR":"ď","curve-BL":"ď","curve-BR":"ď",
-          "bump-TL":"ē","bump-TR":"ē","bump-BL":"ē","bump-BR":"ē",
+          "diag-UR":"ş","diag-LL":"Š","diag-UL":"š","diag-LR":"ċ",
+          "curve-TL":"Ţ","curve-TR":"ţ","curve-BL":"Ť","curve-BR":"ď",
+          "bump-TL":"ť","bump-TR":"Ŧ","bump-BL":"ŧ","bump-BR":"ē",
         },
       };
 
@@ -2452,7 +2596,7 @@
             btn.title = tip;
             const sw = document.createElement("canvas");
             sw.width = sw.height = 26;
-            drawModPreview(sw.getContext("2d"), key);
+            drawModPreview(sw.getContext("2d"), key, getModColor());
             btn.appendChild(sw);
             btn.addEventListener("click", () => {
               if (btn.classList.contains("mod-disabled")) return;
@@ -2534,9 +2678,12 @@
 
       function updateModifierStrip() {
         const hasVariants = !!VARIANT_MAP[selected];
+        const color = getModColor();
         document.querySelectorAll(".mod-btn").forEach(btn => {
           btn.classList.toggle("mod-disabled", !hasVariants);
           btn.classList.toggle("active", btn.dataset.mod === modifier);
+          const cv = btn.querySelector("canvas");
+          if (cv) drawModPreview(cv.getContext("2d"), btn.dataset.mod, color);
         });
       }
 
