@@ -1,3 +1,6 @@
 node_modules/
 memory/
 CLAUDE.md
+.claude/
+desktop.ini
+*.code-workspace

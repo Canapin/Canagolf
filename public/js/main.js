@@ -114,8 +114,10 @@
     if (names.length === 0) return;
     const mapVal  = document.getElementById('map-select-local').value || 'hole1';
     const rounds  = parseInt(document.getElementById('rounds-input').value) || 10;
-    if (mapVal === '__random' || mapVal === '__campaign') {
-      await startSession(names, mapVal, rounds);
+    if (mapVal === '__random') {
+      await startSession(names, rounds);
+    } else if (mapVal.startsWith('__camp_')) {
+      await startCampaign(names, parseInt(mapVal.slice(7)));
     } else {
       await startLocalGame(names, mapVal);
     }
@@ -125,36 +127,41 @@
 
   (async function populateMapSelects() {
     try {
-      const maps = await (await fetch('/api/maps')).json();
+      const [maps, campaigns] = await Promise.all([
+        fetch('/api/maps').then(r => r.json()),
+        fetch('/api/campaigns').then(r => r.json()).catch(() => []),
+      ]);
       const localSel = document.getElementById('map-select-local');
-      // Special session modes
-      [['__random', 'Random'], ['__campaign', 'Campaign']].forEach(([v, l]) => {
-        const opt = document.createElement('option');
-        opt.value = v; opt.textContent = l; localSel.appendChild(opt);
-      });
-      const sep = document.createElement('option'); sep.disabled = true; sep.textContent = '──────────';
-      localSel.appendChild(sep);
-      maps.forEach(m => {
-        const opt = document.createElement('option'); opt.value = m; opt.textContent = m;
-        localSel.appendChild(opt);
-      });
-      localSel.addEventListener('change', () => {
-        document.getElementById('rounds-row').hidden = !localSel.value.startsWith('__');
+      const lobbySel = document.getElementById('map-select-lobby');
+
+      campaigns.forEach((c, i) => {
+        [localSel, lobbySel].forEach(sel => {
+          const opt = document.createElement('option');
+          opt.value = `__camp_${i}`; opt.textContent = c.name;
+          sel.appendChild(opt);
+        });
       });
 
-      const lobbySel = document.getElementById('map-select-lobby');
-      [['__random', 'Random'], ['__campaign', 'Campaign']].forEach(([v, l]) => {
-        const opt = document.createElement('option'); opt.value = v; opt.textContent = l;
-        lobbySel.appendChild(opt);
+      [localSel, lobbySel].forEach(sel => {
+        const opt = document.createElement('option');
+        opt.value = '__random'; opt.textContent = 'Random';
+        sel.appendChild(opt);
+        const sep = document.createElement('option'); sep.disabled = true; sep.textContent = '──────────';
+        sel.appendChild(sep);
       });
-      const sep2 = document.createElement('option'); sep2.disabled = true; sep2.textContent = '──────────';
-      lobbySel.appendChild(sep2);
+
       maps.forEach(m => {
-        const opt = document.createElement('option'); opt.value = m; opt.textContent = m;
-        lobbySel.appendChild(opt);
+        [localSel, lobbySel].forEach(sel => {
+          const opt = document.createElement('option'); opt.value = m; opt.textContent = m;
+          sel.appendChild(opt);
+        });
+      });
+
+      localSel.addEventListener('change', () => {
+        document.getElementById('rounds-row').hidden = localSel.value !== '__random';
       });
       lobbySel.addEventListener('change', () => {
-        document.getElementById('lobby-rounds-row').hidden = !lobbySel.value.startsWith('__');
+        document.getElementById('lobby-rounds-row').hidden = lobbySel.value !== '__random';
       });
     } catch { /* no-op */ }
   })();
@@ -345,26 +352,33 @@
     await loadAndStartMap(mapName, playerNames);
   }
 
-  async function startSession(playerNames, mode, rounds) {
+  async function startSession(playerNames, rounds) {
     let maps = [];
     try { maps = await (await fetch('/api/maps')).json(); } catch {}
-    let mapList;
-    if (mode === '__campaign') {
-      mapList = maps.filter(m => /^\d+$/.test(m)).sort().slice(0, rounds);
-    } else {
-      const pool = maps.filter(m => !m.startsWith('_'));
-      for (let i = pool.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [pool[i], pool[j]] = [pool[j], pool[i]];
-      }
-      mapList = pool.slice(0, rounds);
+    const pool = maps.filter(m => !m.startsWith('_'));
+    for (let i = pool.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pool[i], pool[j]] = [pool[j], pool[i]];
     }
+    const mapList = pool.slice(0, rounds);
     if (!mapList.length) { alert('No maps found for this mode.'); return; }
     gameSession = {
       mapList, mapIndex: 0, playerNames,
       scores: Object.fromEntries(playerNames.map(n => [n, 0])),
     };
     await loadAndStartMap(mapList[0], playerNames);
+  }
+
+  async function startCampaign(playerNames, campIndex) {
+    let campaigns = [];
+    try { campaigns = await fetch('/api/campaigns').then(r => r.json()); } catch {}
+    const camp = campaigns[campIndex];
+    if (!camp?.maps?.length) { alert('Campaign not found.'); return; }
+    gameSession = {
+      mapList: camp.maps, mapIndex: 0, playerNames,
+      scores: Object.fromEntries(playerNames.map(n => [n, 0])),
+    };
+    await loadAndStartMap(camp.maps[0], playerNames);
   }
 
   function beginGame(map, playerNames) {

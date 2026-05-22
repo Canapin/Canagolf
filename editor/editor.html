@@ -89,9 +89,9 @@
         color: #7a7;
         font-size: 11px;
       }
-      .spacer {
+      /* .spacer {
         flex: 1;
-      }
+      } */
 
       /* ── Main area ── */
       #main {
@@ -166,6 +166,90 @@
         display: block;
         cursor: crosshair;
       }
+
+      /* ── Map Browser ── */
+      #map-browser {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.65);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+      }
+      #map-browser:not([hidden]) {
+        display: flex;
+      }
+      #map-browser-inner {
+        background: #1e1e1e;
+        border-radius: 10px;
+        padding: 16px;
+        width: min(90vw, 820px);
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      #map-browser-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 700;
+        font-size: 14px;
+        color: #ccc;
+        flex-shrink: 0;
+      }
+      #map-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 10px;
+        overflow-y: auto;
+      }
+      .map-card {
+        background: #2a2a2a;
+        border-radius: 6px;
+        cursor: pointer;
+        outline: 2px solid transparent;
+        transition: outline-color 0.1s;
+        display: flex;
+        flex-direction: column;
+      }
+      .map-card:hover {
+        outline-color: #5cba47;
+      }
+      .map-card img {
+        width: 100%;
+        aspect-ratio: 3/2;
+        object-fit: cover;
+        display: block;
+      }
+      .map-card-placeholder {
+        width: 100%;
+        aspect-ratio: 3/2;
+        background: #111;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: #333;
+      }
+      .map-card-thumb {
+        position: relative;
+        width: 100%;
+      }
+      .map-card-name {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        padding: 14px 7px 5px;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.72));
+        color: #fff;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
     </style>
   </head>
   <body>
@@ -182,7 +266,7 @@
       <input type="file" id="file-in" accept=".txt,.json" hidden />
       <div class="sep"></div>
       <button id="btn-select">⬚ Select</button>
-      <div class="spacer"></div>
+      <button id="btn-browse">📂 Browse</button>
       <label>Name <input type="text" id="iname" value="hole1" /></label>
       <button class="primary" id="btn-save">Save ▼</button>
       <span id="status"></span>
@@ -191,6 +275,16 @@
     <div id="main">
       <div id="palette"></div>
       <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
+    </div>
+
+    <div id="map-browser" hidden>
+      <div id="map-browser-inner">
+        <div id="map-browser-header">
+          <span>Maps</span>
+          <button id="btn-browser-close">✕</button>
+        </div>
+        <div id="map-grid"></div>
+      </div>
     </div>
 
     <script>
@@ -701,31 +795,56 @@
         return (ctx, x, y) => {
           ctx.fillStyle = face;
           ctx.beginPath();
-          if (fw === "LL")      { ctx.moveTo(x, y);     ctx.lineTo(x + T, y);     ctx.lineTo(x + T, y + T); }
-          else if (fw === "UR") { ctx.moveTo(x, y);     ctx.lineTo(x, y + T);     ctx.lineTo(x + T, y + T); }
-          else if (fw === "LR") { ctx.moveTo(x, y);     ctx.lineTo(x + T, y);     ctx.lineTo(x, y + T);     }
-          else                  { ctx.moveTo(x + T, y); ctx.lineTo(x, y + T);     ctx.lineTo(x + T, y + T); }
+          if (fw === "LL") {
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + T, y);
+            ctx.lineTo(x + T, y + T);
+          } else if (fw === "UR") {
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y + T);
+            ctx.lineTo(x + T, y + T);
+          } else if (fw === "LR") {
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + T, y);
+            ctx.lineTo(x, y + T);
+          } else {
+            ctx.moveTo(x + T, y);
+            ctx.lineTo(x, y + T);
+            ctx.lineTo(x + T, y + T);
+          }
           ctx.closePath();
           ctx.fill();
           ctx.strokeStyle = edge;
           ctx.lineWidth = 1;
           ctx.beginPath();
           if (fw === "LL") {
-            ctx.moveTo(x, y);       ctx.lineTo(x + T, y);
-            ctx.moveTo(x + T, y);   ctx.lineTo(x + T, y + T);
-            ctx.moveTo(x, y);       ctx.lineTo(x + T, y + T);
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + T, y);
+            ctx.moveTo(x + T, y);
+            ctx.lineTo(x + T, y + T);
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + T, y + T);
           } else if (fw === "UR") {
-            ctx.moveTo(x, y);       ctx.lineTo(x, y + T);
-            ctx.moveTo(x, y + T);   ctx.lineTo(x + T, y + T);
-            ctx.moveTo(x, y);       ctx.lineTo(x + T, y + T);
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y + T);
+            ctx.moveTo(x, y + T);
+            ctx.lineTo(x + T, y + T);
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + T, y + T);
           } else if (fw === "LR") {
-            ctx.moveTo(x, y);       ctx.lineTo(x + T, y);
-            ctx.moveTo(x, y);       ctx.lineTo(x, y + T);
-            ctx.moveTo(x + T, y);   ctx.lineTo(x, y + T);
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + T, y);
+            ctx.moveTo(x, y);
+            ctx.lineTo(x, y + T);
+            ctx.moveTo(x + T, y);
+            ctx.lineTo(x, y + T);
           } else {
-            ctx.moveTo(x + T, y);   ctx.lineTo(x + T, y + T);
-            ctx.moveTo(x, y + T);   ctx.lineTo(x + T, y + T);
-            ctx.moveTo(x + T, y);   ctx.lineTo(x, y + T);
+            ctx.moveTo(x + T, y);
+            ctx.lineTo(x + T, y + T);
+            ctx.moveTo(x, y + T);
+            ctx.lineTo(x + T, y + T);
+            ctx.moveTo(x + T, y);
+            ctx.lineTo(x, y + T);
           }
           ctx.stroke();
           if (showChev) {
@@ -822,15 +941,17 @@
           ctx.moveTo(ax, ay);
           ctx.arc(ax, ay, T, a0, a1, false);
           ctx.closePath();
-          ctx.fill('evenodd');
+          ctx.fill("evenodd");
           ctx.strokeStyle = edge;
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.arc(ax, ay, T, a0, a1, false);
           const ocx = ax + T * (Math.cos(a0) + Math.cos(a1));
           const ocy = ay + T * (Math.sin(a0) + Math.sin(a1));
-          ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a0), ay + T * Math.sin(a0));
-          ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
+          ctx.moveTo(ocx, ocy);
+          ctx.lineTo(ax + T * Math.cos(a0), ay + T * Math.sin(a0));
+          ctx.moveTo(ocx, ocy);
+          ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
           ctx.stroke();
         };
       }
@@ -872,8 +993,10 @@
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.arc(ax, ay, T, a0, a1, false);
-          ctx.moveTo(ax, ay); ctx.lineTo(ax + T * Math.cos(a0), ay + T * Math.sin(a0));
-          ctx.moveTo(ax, ay); ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(ax + T * Math.cos(a0), ay + T * Math.sin(a0));
+          ctx.moveTo(ax, ay);
+          ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
           ctx.stroke();
           if (face !== WL) {
             const midAngle = (a0 + a1) / 2;
@@ -1876,52 +1999,34 @@
         const reader = new FileReader();
         reader.onload = (ev) => {
           const text = ev.target.result;
-          let gnd, wls, w, h;
+          const baseName = file.name.replace(/\.(txt|json)$/, "");
           if (text.trim().startsWith("{")) {
-            // JSON format
-            const data = JSON.parse(text);
-            w = data.width;
-            h = data.height;
-            gnd = data.ground.map((r) => {
-              const a = r.split("");
-              while (a.length < w) a.push(".");
-              return a;
-            });
-            wls = data.walls.map((r) => {
-              const a = r.split("");
-              while (a.length < w) a.push(".");
-              return a;
-            });
+            loadMapJSON(JSON.parse(text), baseName);
           } else {
             // Legacy text: auto-split into layers
             const rows = text
               .trimEnd()
               .split("\n")
               .map((r) => r.split(""));
-            h = rows.length;
-            w = Math.max(...rows.map((r) => r.length));
+            const h = rows.length;
+            const w = Math.max(...rows.map((r) => r.length));
             rows.forEach((r) => {
               while (r.length < w) r.push(".");
             });
-            gnd = rows.map((row) =>
-              row.map((ch) => (WALL_CHARS_SET.has(ch) ? "." : ch)),
-            );
-            wls = rows.map((row) =>
-              row.map((ch) => (WALL_CHARS_SET.has(ch) ? ch : ".")),
+            loadMapJSON(
+              {
+                width: w,
+                height: h,
+                ground: rows.map((row) =>
+                  row.map((ch) => (WALL_CHARS_SET.has(ch) ? "." : ch)).join(""),
+                ),
+                walls: rows.map((row) =>
+                  row.map((ch) => (WALL_CHARS_SET.has(ch) ? ch : ".")).join(""),
+                ),
+              },
+              baseName,
             );
           }
-          groundGrid = gnd;
-          wallGrid = wls;
-          mapW = w;
-          mapH = h;
-          document.getElementById("iw").value = w;
-          document.getElementById("ih").value = h;
-          document.getElementById("iname").value = file.name.replace(
-            /\.(txt|json)$/,
-            "",
-          );
-          resizeCanvas();
-          render();
         };
         reader.readAsText(file);
         e.target.value = "";
@@ -1941,29 +2046,30 @@
             null,
             2,
           );
-          const filename = name + ".json";
           const statusEl = document.getElementById("status");
-          if (window.showSaveFilePicker) {
-            try {
-              const handle = await window.showSaveFilePicker({
-                suggestedName: filename,
-                types: [{ description: "Canagolf Map", accept: { "application/json": [".json"] } }],
+          statusEl.textContent = "Saving…";
+          try {
+            const png = await generateThumbnail();
+            const resp = await fetch("/editor/save", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ name, content, png }),
+            });
+            const data = await resp.json();
+            statusEl.textContent = data.ok
+              ? `✓ Saved ${data.file}`
+              : "✗ " + (data.error || "Save failed");
+            if (data.ok && png) {
+              document.querySelectorAll(`#map-grid img[src^="/maps/${name}.png"]`).forEach(el => {
+                el.src = `/maps/${name}.png?t=${Date.now()}`;
               });
-              const writable = await handle.createWritable();
-              await writable.write(content);
-              await writable.close();
-              statusEl.textContent = `✓ Saved ${handle.name}`;
-            } catch (e) {
-              if (e.name !== "AbortError") statusEl.textContent = "✗ Save failed";
-              return;
             }
-          } else {
-            const url = URL.createObjectURL(new Blob([content], { type: "application/json" }));
-            Object.assign(document.createElement("a"), { href: url, download: filename }).click();
-            URL.revokeObjectURL(url);
-            statusEl.textContent = `✓ Downloaded ${filename}`;
+          } catch {
+            statusEl.textContent = "✗ Save failed (not localhost?)";
           }
-          setTimeout(() => { statusEl.textContent = ""; }, 2500);
+          setTimeout(() => {
+            statusEl.textContent = "";
+          }, 2500);
         });
 
       // Select tool button
@@ -2019,6 +2125,118 @@
           );
       });
 
+      // ── Map browser helpers ───────────────────────────────────────────────────────
+
+      function loadMapJSON(data, name) {
+        mapW = data.width;
+        mapH = data.height;
+        groundGrid = data.ground.map((r) => {
+          const a = r.split("");
+          while (a.length < mapW) a.push(".");
+          return a;
+        });
+        wallGrid = data.walls.map((r) => {
+          const a = r.split("");
+          while (a.length < mapW) a.push(".");
+          return a;
+        });
+        document.getElementById("iw").value = mapW;
+        document.getElementById("ih").value = mapH;
+        if (name !== undefined) document.getElementById("iname").value = name;
+        resizeCanvas();
+        render();
+      }
+
+      async function generateThumbnail() {
+        const THUMB_W = 300;
+        const scale = THUMB_W / (mapW * T);
+        const tw = Math.round(mapW * T * scale);
+        const th = Math.round(mapH * T * scale);
+        const off = new OffscreenCanvas(tw, th);
+        const oc = off.getContext("2d");
+        oc.scale(scale, scale);
+        for (let r = 0; r < mapH; r++) {
+          for (let c = 0; c < mapW; c++) {
+            const x = c * T,
+              y = r * T;
+            const gTile = TILE_BY_CHAR[groundGrid[r][c]] || TILE_BY_CHAR["."];
+            const wCh = wallGrid[r][c];
+            const wTile = wCh !== "." ? TILE_BY_CHAR[wCh] || null : null;
+            gTile.d(oc, x, y);
+            if (wTile) wTile.d(oc, x, y);
+          }
+        }
+        const blob = await off.convertToBlob({ type: "image/png" });
+        return new Promise((res) => {
+          const fr = new FileReader();
+          fr.onload = (e) => res(e.target.result);
+          fr.readAsDataURL(blob);
+        });
+      }
+
+      async function openMapBrowser() {
+        const modal = document.getElementById("map-browser");
+        modal.removeAttribute("hidden");
+        const grid = document.getElementById("map-grid");
+        grid.innerHTML = '<div style="color:#666;padding:20px">Loading…</div>';
+        let maps;
+        try {
+          maps = await fetch("/api/maps").then((r) => r.json());
+        } catch {
+          grid.innerHTML =
+            '<div style="color:#c55;padding:20px">Failed to load map list.</div>';
+          return;
+        }
+        grid.innerHTML = "";
+        if (maps.length === 0) {
+          grid.innerHTML =
+            '<div style="color:#666;padding:20px">No maps saved yet.</div>';
+          return;
+        }
+        for (const name of maps) {
+          const card = document.createElement("div");
+          card.className = "map-card";
+          const thumb = document.createElement("div");
+          thumb.className = "map-card-thumb";
+          const img = document.createElement("img");
+          img.src = `/maps/${name}.png?t=${Date.now()}`;
+          const placeholder = document.createElement("div");
+          placeholder.className = "map-card-placeholder";
+          placeholder.textContent = "🗺";
+          img.onerror = () => img.replaceWith(placeholder);
+          const label = document.createElement("div");
+          label.className = "map-card-name";
+          label.textContent = name;
+          thumb.append(img, label);
+          card.append(thumb);
+          card.addEventListener("click", async () => {
+            try {
+              const data = await fetch(`/maps/${name}.json`).then((r) =>
+                r.json(),
+              );
+              loadMapJSON(data, name);
+              modal.setAttribute("hidden", "");
+            } catch {
+              alert(`Failed to load map "${name}"`);
+            }
+          });
+          grid.appendChild(card);
+        }
+      }
+
+      document
+        .getElementById("btn-browse")
+        .addEventListener("click", openMapBrowser);
+      document
+        .getElementById("btn-browser-close")
+        .addEventListener("click", () => {
+          document.getElementById("map-browser").setAttribute("hidden", "");
+        });
+      document.getElementById("map-browser").addEventListener("click", (e) => {
+        if (e.target === e.currentTarget)
+          e.currentTarget.setAttribute("hidden", "");
+      });
+
       // ── Init ──────────────────────────────────────────────────────────────────────
 
       initGrid(mapW, mapH, false);
@@ -2030,16 +2248,12 @@
       render();
 
       // Auto-load _test map on startup
-      fetch("/maps/_test.json").then(r => r.ok ? r.json() : null).then(data => {
-        if (!data) return;
-        groundGrid = data.ground.map(r => { const a = r.split(""); while (a.length < data.width) a.push("."); return a; });
-        wallGrid   = data.walls.map(r  => { const a = r.split(""); while (a.length < data.width) a.push("."); return a; });
-        mapW = data.width; mapH = data.height;
-        document.getElementById("iw").value    = mapW;
-        document.getElementById("ih").value    = mapH;
-        document.getElementById("iname").value = "_test";
-        resizeCanvas(); render();
-      }).catch(() => {});
-</script>
+      fetch("/maps/_test.json")
+        .then((r) => (r.ok ? r.json() : null))
+        .then((data) => {
+          if (data) loadMapJSON(data, "_test");
+        })
+        .catch(() => {});
+    </script>
   </body>
 </html>

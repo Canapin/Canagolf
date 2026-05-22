@@ -416,6 +416,15 @@ const Physics = (function () {
     return undefined;
   }
 
+  function isDiagHypAt(tile, lx, ly) {
+    const m = DIAG_WALL_META[tile];
+    if (!m) return false;
+    const isUB = m.shape === "UR" || m.shape === "LL";
+    return isUB
+      ? (lx === 0 && ly === 0) || (lx === TILE_SIZE && ly === TILE_SIZE)
+      : (lx === TILE_SIZE && ly === 0) || (lx === 0 && ly === TILE_SIZE);
+  }
+
   function resolveWallCollisions(ball, tiles) {
     const r = BALL_RADIUS;
     const minCol = Math.floor((ball.x - r) / TILE_SIZE);
@@ -487,7 +496,7 @@ const Physics = (function () {
           continue;
         }
 
-        // Skip ghost corners between adjacent wall-type tiles
+        // Skip ghost corners between adjacent wall-type tiles (square or diagonal)
         const onCornerX = cx === left || cx === right;
         const onCornerY = cy === top || cy === bottom;
         if (onCornerX && onCornerY) {
@@ -495,7 +504,9 @@ const Physics = (function () {
           const adjRow = cy === top ? row - 1 : row + 1;
           if (
             wallRestitution(getTile(tiles, adjCol, row)) !== undefined ||
-            wallRestitution(getTile(tiles, col, adjRow)) !== undefined
+            wallRestitution(getTile(tiles, col, adjRow)) !== undefined ||
+            isDiagHypAt(getTile(tiles, adjCol, row), cx - adjCol * TILE_SIZE, cy - row * TILE_SIZE) ||
+            isDiagHypAt(getTile(tiles, col, adjRow), cx - col * TILE_SIZE, cy - adjRow * TILE_SIZE)
           )
             continue;
         }
@@ -888,6 +899,48 @@ const Physics = (function () {
             dy = by - qy;
           const distSq = dx * dx + dy * dy;
           if (distSq === 0 || distSq >= r * r) continue;
+
+          // Ghost-corner suppression at hypotenuse endpoints.
+          // UR/LL share the TL↔BR diagonal; UL/LR share the TR↔BL diagonal.
+          // When two compatible diagonals meet at a shared hypotenuse vertex,
+          // the ball sees a phantom corner instead of a flat surface. Detect
+          // this and substitute the hypotenuse normal (same as `inside` branch).
+          const isUBGroup = meta.shape === "UR" || meta.shape === "LL";
+          const isHypVert = isUBGroup
+            ? (qx === 0 && qy === 0) || (qx === T && qy === T)
+            : (qx === T && qy === 0) || (qx === 0 && qy === T);
+          if (isHypVert) {
+            const gCol = col + (qx > 0 ? 1 : 0);
+            const gRow = row + (qy > 0 ? 1 : 0);
+            let useHyp = false;
+            for (const [nc, nr] of [[gCol-1,gRow-1],[gCol,gRow-1],[gCol-1,gRow],[gCol,gRow]]) {
+              if (nc === col && nr === row) continue;
+              const nbrTile = getTile(tiles, nc, nr);
+              const nbrMeta = DIAG_WALL_META[nbrTile];
+              const nbrIsUB = nbrMeta && (nbrMeta.shape === "UR" || nbrMeta.shape === "LL");
+              if ((nbrMeta && nbrIsUB === isUBGroup) || wallRestitution(nbrTile) !== undefined) {
+                useHyp = true;
+                break;
+              }
+            }
+            if (useHyp) {
+              const S2 = Math.SQRT2;
+              const dHyp =
+                meta.shape === "UR" ? (by - bx) / S2
+                : meta.shape === "LL" ? (bx - by) / S2
+                : meta.shape === "UL" ? (bx + by - T) / S2
+                : (T - bx - by) / S2;
+              const hypOverlap = r - dHyp;
+              if (hypOverlap > 0) {
+                ball.x += meta.nx * hypOverlap;
+                ball.y += meta.ny * hypOverlap;
+                const dot = ball.vx * meta.nx + ball.vy * meta.ny;
+                if (dot < 0) bounceVelocity(ball, meta.nx, meta.ny, dot, tile);
+              }
+              continue;
+            }
+          }
+
           const dist = Math.sqrt(distSq);
           nx = dx / dist;
           ny = dy / dist;

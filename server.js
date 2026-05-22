@@ -36,7 +36,7 @@ app.get("/editor", (req, res) => {
 });
 
 app.post("/editor/save", localOnly, (req, res) => {
-  const { name, content } = req.body || {};
+  const { name, content, png } = req.body || {};
   if (!name || !content)
     return res.status(400).json({ error: "Missing name or content" });
   const safe = name.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 50);
@@ -44,6 +44,10 @@ app.post("/editor/save", localOnly, (req, res) => {
   const isJson = content.trim().startsWith("{");
   const ext = isJson ? ".json" : ".txt";
   fs.writeFileSync(path.join(__dirname, "maps", safe + ext), content, "utf8");
+  if (png) {
+    const buf = Buffer.from(png.replace(/^data:image\/png;base64,/, ""), "base64");
+    fs.writeFileSync(path.join(__dirname, "maps", safe + ".png"), buf);
+  }
   res.json({ ok: true, file: safe + ext });
 });
 
@@ -53,6 +57,17 @@ app.get("/api/maps", (req, res) => {
     .filter((f) => /^[a-zA-Z0-9_-]+\.(json|txt)$/.test(f))
     .forEach((f) => seen.add(f.replace(/\.(json|txt)$/, "")));
   res.json([...seen].sort());
+});
+
+app.get("/api/campaigns", (req, res) => {
+  try {
+    const dir = path.join(__dirname, "maps", "campaigns");
+    const campaigns = fs.readdirSync(dir)
+      .filter(f => f.endsWith(".json"))
+      .sort()
+      .map(f => JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")));
+    res.json(campaigns);
+  } catch { res.json([]); }
 });
 
 // ── Room management ───────────────────────────────────────────────────────
@@ -169,11 +184,18 @@ io.on("connection", (socket) => {
     const allMapArr = [...allMaps];
 
     let mapList;
-    if (map === "__campaign") {
-      mapList = allMapArr
-        .filter((m) => /^\d+$/.test(m))
-        .sort()
-        .slice(0, rounds);
+    if (map.startsWith("__camp_")) {
+      const campIdx = parseInt(map.slice(7));
+      let campaigns = [];
+      try {
+        const dir = path.join(__dirname, "maps", "campaigns");
+        campaigns = fs.readdirSync(dir)
+          .filter(f => f.endsWith(".json"))
+          .sort()
+          .map(f => JSON.parse(fs.readFileSync(path.join(dir, f), "utf8")));
+      } catch {}
+      const camp = campaigns[campIdx];
+      mapList = camp ? [...camp.maps] : [];
     } else if (map === "__random") {
       const pool = allMapArr.filter((m) => !m.startsWith("_"));
       for (let i = pool.length - 1; i > 0; i--) {
