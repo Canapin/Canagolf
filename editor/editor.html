@@ -1891,6 +1891,32 @@
       let groundGrid = []; // surface tiles (base layer)
       let wallGrid = []; // wall/geometry tiles ('.' = empty)
       let groundLayersGrid = []; // extra terrain layers stacked on top [[row][col]=char, ...]
+      const history = []; // undo stack
+
+      function snapshot() {
+        history.push({
+          groundGrid: groundGrid.map(r => [...r]),
+          wallGrid: wallGrid.map(r => [...r]),
+          groundLayersGrid: groundLayersGrid.map(layer => layer.map(r => [...r])),
+          mapW,
+          mapH,
+        });
+      }
+
+      function undo() {
+        if (history.length === 0) return;
+        const state = history.pop();
+        mapW = state.mapW;
+        mapH = state.mapH;
+        groundGrid = state.groundGrid;
+        wallGrid = state.wallGrid;
+        groundLayersGrid = state.groundLayersGrid;
+        document.getElementById("iw").value = mapW;
+        document.getElementById("ih").value = mapH;
+        resizeCanvas();
+        clearSel();
+        render();
+      }
       let selected = "#";
       let modifier = "full"; // current shape modifier key
       let painting = false;
@@ -2055,6 +2081,7 @@
             render();
             return;
           }
+          snapshot();
           liftSel();
           selPhase = "selected";
           render();
@@ -2203,7 +2230,11 @@
           ? "."
           : (VARIANT_MAP[paintChar]?.[modifier] ?? paintChar);
         if (resolved === ".") {
-          // Right-click: pop topmost non-empty ground layer, or clear base
+          // Right-click: erase one tile at a time — wall first, then layers top→bottom, then base
+          if (wallGrid[row][col] !== ".") {
+            wallGrid[row][col] = ".";
+            return;
+          }
           for (let i = groundLayersGrid.length - 1; i >= 0; i--) {
             if (groundLayersGrid[i][row][col] !== ".") {
               groundLayersGrid[i][row][col] = ".";
@@ -2211,7 +2242,6 @@
               return;
             }
           }
-          wallGrid[row][col] = ".";
           groundGrid[row][col] = ".";
         } else if (isWallChar(resolved)) {
           wallGrid[row][col] = resolved;
@@ -2305,6 +2335,7 @@
           }
           return;
         }
+        snapshot();
         painting = true;
         paintChar = e.button === 2 ? "." : selected;
         lastPaintCell = null;
@@ -2495,6 +2526,7 @@
           5,
           parseInt(document.getElementById("ih").value) || mapH,
         );
+        snapshot();
         initGrid(w, h, true);
         resizeCanvas();
         render();
@@ -2511,6 +2543,7 @@
         reader.onload = (ev) => {
           const text = ev.target.result;
           const baseName = file.name.replace(/\.(txt|json)$/, "");
+          snapshot();
           if (text.trim().startsWith("{")) {
             loadMapJSON(JSON.parse(text), baseName);
           } else {
@@ -2601,6 +2634,10 @@
           render();
           return;
         }
+        if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+          if (e.target.tagName !== "INPUT") { e.preventDefault(); undo(); }
+          return;
+        }
         if (e.target.tagName === "INPUT") return;
         // Select-mode shortcuts
         if (
@@ -2621,6 +2658,7 @@
           return;
         }
         if (e.ctrlKey && e.key === "v" && clipboard) {
+          snapshot();
           pasteSel();
           e.preventDefault();
           return;
@@ -2737,6 +2775,7 @@
               const data = await fetch(`/maps/${name}.json`).then((r) =>
                 r.json(),
               );
+              snapshot();
               loadMapJSON(data, name);
               modal.setAttribute("hidden", "");
             } catch {
