@@ -681,6 +681,102 @@
         }
       }
 
+      // Shape info for drawTileShapeOnly — built after SLOPE_FACE is defined
+      let LAYER_SHAPE_INFO = null;
+      function getLayerShapeInfo() {
+        if (LAYER_SHAPE_INFO) return LAYER_SHAPE_INFO;
+        LAYER_SHAPE_INFO = {};
+        // Full terrain tiles
+        [['A',SND],['W',WTR],['w',LVA]].forEach(([c,col]) =>
+          LAYER_SHAPE_INFO[c] = { type:'full', color:col });
+        // Slope full tiles
+        Object.entries({U:'^',D:'v',L:'<',R:'>',UL:'F',UR:'G',DL:'H',DR:'I'}).forEach(([dir,c]) =>
+          LAYER_SHAPE_INFO[c] = { type:'slope', color:SLOPE_FACE[dir], dir });
+        // Diagonal sand/water/lava
+        [['a','UR',SND],['b','LL',SND],['c','UL',SND],['d','LR',SND],
+         ['e','UR',WTR],['f','LL',WTR],['g','UL',WTR],['h','LR',WTR],
+         ["'",'LL',LVA],[':','UR',LVA],['`','LR',LVA],['"','UL',LVA]].forEach(([c,tri,col]) =>
+          LAYER_SHAPE_INFO[c] = { type:'tri', color:col, tri });
+        // Curves sand/water/lava
+        [['m','TL',SND],['n','TR',SND],['o','BL',SND],['p','BR',SND],
+         ['u','TL',WTR],['x','TR',WTR],['y','BL',WTR],['z','BR',WTR],
+         ['Ā','TL',LVA],['ā','TR',LVA],['Ă','BL',LVA],['ă','BR',LVA]].forEach(([c,corner,col]) =>
+          LAYER_SHAPE_INFO[c] = { type:'curve', color:col, corner });
+        // Bumps sand/water/lava
+        [['q','TL',SND],['r','TR',SND],['s','BL',SND],['t','BR',SND],
+         ['B','TL',WTR],['C','TR',WTR],['D','BL',WTR],['E','BR',WTR],
+         ['Ą','TL',LVA],['ą','TR',LVA],['Ć','BL',LVA],['ć','BR',LVA]].forEach(([c,corner,col]) =>
+          LAYER_SHAPE_INFO[c] = { type:'bump', color:col, corner });
+        // Slope diagonals
+        [['Ĉ','UR','UR'],['ĉ','DL','LL'],['Ċ','UL','UL'],['ċ','DR','LR']].forEach(([c,dir,tri]) =>
+          LAYER_SHAPE_INFO[c] = { type:'slope-tri', color:SLOPE_FACE[dir], dir, tri });
+        // Slope curves
+        [['Č','UL','TL'],['č','UR','TR'],['Ď','DL','BL'],['ď','DR','BR']].forEach(([c,dir,corner]) =>
+          LAYER_SHAPE_INFO[c] = { type:'slope-curve', color:SLOPE_FACE[dir], dir, corner });
+        // Slope bumps
+        [['Đ','UL','TL'],['đ','UR','TR'],['Ē','DL','BL'],['ē','DR','BR']].forEach(([c,dir,corner]) =>
+          LAYER_SHAPE_INFO[c] = { type:'slope-bump', color:SLOPE_FACE[dir], dir, corner });
+        return LAYER_SHAPE_INFO;
+      }
+
+      function shapeOf(ch) {
+        const info = getLayerShapeInfo()[ch];
+        if (!info) return ch;
+        let key = info.type;
+        if (info.dir) key += '-' + info.dir;
+        if (info.tri) key += '-' + info.tri;
+        if (info.corner) key += '-' + info.corner;
+        return key;
+      }
+
+      function drawTileShapeOnly(ctx, x, y, ch) {
+        const info = getLayerShapeInfo()[ch];
+        if (!info) return;
+        function arcParams(corner) {
+          if (corner === 'TL') return [x + T, y + T, Math.PI, Math.PI * 1.5];
+          if (corner === 'TR') return [x,     y + T, Math.PI * 1.5, Math.PI * 2];
+          if (corner === 'BL') return [x + T, y,     Math.PI * 0.5, Math.PI];
+          return                       [x,     y,     0, Math.PI * 0.5];
+        }
+        if (info.type === 'full') {
+          ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T); return;
+        }
+        if (info.type === 'slope') {
+          ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T);
+          drawSlopeArrows(ctx, info.dir, x, y); return;
+        }
+        if (info.type === 'tri' || info.type === 'slope-tri') {
+          const tri = info.tri;
+          ctx.save(); ctx.beginPath();
+          if (tri==='UR') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y);   ctx.lineTo(x+T,y+T); }
+          if (tri==='LL') { ctx.moveTo(x,y);   ctx.lineTo(x,y+T);   ctx.lineTo(x+T,y+T); }
+          if (tri==='UL') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y);   ctx.lineTo(x,y+T);   }
+          if (tri==='LR') { ctx.moveTo(x+T,y); ctx.lineTo(x,y+T);   ctx.lineTo(x+T,y+T); }
+          ctx.closePath(); ctx.clip();
+          ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T);
+          if (info.type === 'slope-tri') drawSlopeArrows(ctx, info.dir, x, y);
+          ctx.restore(); return;
+        }
+        if (info.type === 'curve' || info.type === 'slope-curve') {
+          const [ax, ay, a0, a1] = arcParams(info.corner);
+          ctx.save(); ctx.beginPath();
+          ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath(); ctx.clip();
+          ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T);
+          if (info.type === 'slope-curve') drawSlopeArrows(ctx, info.dir, x, y);
+          ctx.restore(); return;
+        }
+        if (info.type === 'bump' || info.type === 'slope-bump') {
+          const [ax, ay, a0, a1] = arcParams(info.corner);
+          ctx.save(); ctx.beginPath();
+          ctx.rect(x, y, T, T);
+          ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath();
+          ctx.clip('evenodd');
+          ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T);
+          if (info.type === 'slope-bump') drawSlopeArrows(ctx, info.dir, x, y);
+          ctx.restore();
+        }
+      }
+
       function slopeDiag(dir, tri) {
         const color = SLOPE_FACE[dir];
         return (ctx, x, y) => {
@@ -1802,8 +1898,35 @@
 
       let mapW = 30,
         mapH = 20;
-      let groundGrid = []; // surface tiles
-      let wallGrid = []; // wall/geometry tiles (.'  = empty)
+      let groundGrid = []; // surface tiles (base layer)
+      let wallGrid = []; // wall/geometry tiles ('.' = empty)
+      let groundLayersGrid = []; // extra terrain layers stacked on top [[row][col]=char, ...]
+      const history = []; // undo stack
+
+      function snapshot() {
+        history.push({
+          groundGrid: groundGrid.map(r => [...r]),
+          wallGrid: wallGrid.map(r => [...r]),
+          groundLayersGrid: groundLayersGrid.map(layer => layer.map(r => [...r])),
+          mapW,
+          mapH,
+        });
+      }
+
+      function undo() {
+        if (history.length === 0) return;
+        const state = history.pop();
+        mapW = state.mapW;
+        mapH = state.mapH;
+        groundGrid = state.groundGrid;
+        wallGrid = state.wallGrid;
+        groundLayersGrid = state.groundLayersGrid;
+        document.getElementById("iw").value = mapW;
+        document.getElementById("ih").value = mapH;
+        resizeCanvas();
+        clearSel();
+        render();
+      }
       let selected = "#";
       let modifier = "full"; // current shape modifier key
       let painting = false;
@@ -1852,12 +1975,15 @@
             row.push({
               g: groundGrid[r]?.[c] ?? ".",
               w: wallGrid[r]?.[c] ?? ".",
+              layers: groundLayersGrid.map(layer => layer[r]?.[c] ?? "."),
             });
             groundGrid[r][c] = ".";
             wallGrid[r][c] = ".";
+            groundLayersGrid.forEach(layer => { layer[r][c] = "."; });
           }
           selBuf.push(row);
         }
+        pruneEmptyLayers();
         selOrigin = { c: c0, r: r0 };
         selPos = { c: c0, r: r0 };
       }
@@ -1865,10 +1991,16 @@
         if (!selBuf) return;
         for (let r = 0; r < selH; r++)
           for (let c = 0; c < selW; c++) {
-            const gc = selPos.c + c,
-              gr = selPos.r + r;
+            const gc = selPos.c + c, gr = selPos.r + r;
+            if (gr < 0 || gr >= mapH || gc < 0 || gc >= mapW) continue;
             groundGrid[gr][gc] = selBuf[r][c].g;
             wallGrid[gr][gc] = selBuf[r][c].w;
+            selBuf[r][c].layers.forEach((lch, i) => {
+              if (lch !== ".") {
+                while (groundLayersGrid.length <= i) groundLayersGrid.push(makeEmptyLayer(mapW, mapH));
+                groundLayersGrid[i][gr][gc] = lch;
+              }
+            });
           }
         clearSel();
       }
@@ -1876,11 +2008,16 @@
         if (selBuf && selOrigin)
           for (let r = 0; r < selH; r++)
             for (let c = 0; c < selW; c++) {
-              const gc = selOrigin.c + c,
-                gr = selOrigin.r + r;
+              const gc = selOrigin.c + c, gr = selOrigin.r + r;
               if (gr >= 0 && gr < mapH && gc >= 0 && gc < mapW) {
                 groundGrid[gr][gc] = selBuf[r][c].g;
                 wallGrid[gr][gc] = selBuf[r][c].w;
+                selBuf[r][c].layers.forEach((lch, i) => {
+                  if (lch !== ".") {
+                    while (groundLayersGrid.length <= i) groundLayersGrid.push(makeEmptyLayer(mapW, mapH));
+                    groundLayersGrid[i][gr][gc] = lch;
+                  }
+                });
               }
             }
         clearSel();
@@ -1954,6 +2091,7 @@
             render();
             return;
           }
+          snapshot();
           liftSel();
           selPhase = "selected";
           render();
@@ -1963,21 +2101,40 @@
         }
       }
 
+      function makeEmptyLayer(w, h) {
+        return Array.from({ length: h }, () => Array(w).fill("."));
+      }
+
+      function pruneEmptyLayers() {
+        while (groundLayersGrid.length > 0) {
+          const last = groundLayersGrid[groundLayersGrid.length - 1];
+          if (last.every(row => row.every(ch => ch === "."))) groundLayersGrid.pop();
+          else break;
+        }
+      }
+
       function initGrid(w, h, preserve) {
-        const gnd = [],
-          wls = [];
+        const gnd = [], wls = [];
         for (let r = 0; r < h; r++) {
-          gnd[r] = [];
-          wls[r] = [];
+          gnd[r] = []; wls[r] = [];
           for (let c = 0; c < w; c++) {
-            gnd[r][c] =
-              preserve && groundGrid[r]?.[c] != null ? groundGrid[r][c] : ".";
-            wls[r][c] =
-              preserve && wallGrid[r]?.[c] != null ? wallGrid[r][c] : ".";
+            gnd[r][c] = preserve && groundGrid[r]?.[c] != null ? groundGrid[r][c] : ".";
+            wls[r][c] = preserve && wallGrid[r]?.[c] != null ? wallGrid[r][c] : ".";
           }
         }
         groundGrid = gnd;
         wallGrid = wls;
+        groundLayersGrid = groundLayersGrid.map(layer => {
+          const nl = makeEmptyLayer(w, h);
+          if (preserve) {
+            for (let r = 0; r < Math.min(h, layer.length); r++)
+              for (let c = 0; c < Math.min(w, (layer[r] || []).length); c++)
+                nl[r][c] = layer[r][c];
+          }
+          return nl;
+        });
+        if (!preserve) groundLayersGrid = [];
+        pruneEmptyLayers();
         mapW = w;
         mapH = h;
       }
@@ -2003,6 +2160,10 @@
             const gTile = TILE_BY_CHAR[gCh] || TILE_BY_CHAR["."];
             const wTile = wCh !== "." ? TILE_BY_CHAR[wCh] || null : null;
             gTile.d(ctx, x, y);
+            for (const layer of groundLayersGrid) {
+              const lCh = layer[r][c];
+              if (lCh && lCh !== ".") drawTileShapeOnly(ctx, x, y, lCh);
+            }
             if (wTile) wTile.d(ctx, x, y);
             ctx.strokeStyle = "rgba(0,0,0,0.18)";
             ctx.lineWidth = 0.5;
@@ -2079,12 +2240,56 @@
           ? "."
           : (VARIANT_MAP[paintChar]?.[modifier] ?? paintChar);
         if (resolved === ".") {
-          wallGrid[row][col] = ".";
+          // Right-click: erase one tile at a time — wall first, then layers top→bottom, then base
+          if (wallGrid[row][col] !== ".") {
+            wallGrid[row][col] = ".";
+            return;
+          }
+          for (let i = groundLayersGrid.length - 1; i >= 0; i--) {
+            if (groundLayersGrid[i][row][col] !== ".") {
+              groundLayersGrid[i][row][col] = ".";
+              pruneEmptyLayers();
+              return;
+            }
+          }
           groundGrid[row][col] = ".";
         } else if (isWallChar(resolved)) {
           wallGrid[row][col] = resolved;
         } else {
-          groundGrid[row][col] = resolved;
+          // Ground tile: replace same-shape tile in-place if one exists, otherwise push
+          const newShape = shapeOf(resolved);
+          if (groundGrid[row][col] !== "." && shapeOf(groundGrid[row][col]) === newShape) {
+            groundGrid[row][col] = resolved;
+          } else {
+            let replaced = false;
+            for (let i = 0; i < groundLayersGrid.length; i++) {
+              const cur = groundLayersGrid[i][row][col];
+              if (cur !== "." && shapeOf(cur) === newShape) {
+                groundLayersGrid[i][row][col] = resolved;
+                replaced = true;
+                break;
+              }
+            }
+            if (!replaced) {
+              if (groundGrid[row][col] === ".") {
+                groundGrid[row][col] = resolved;
+              } else {
+                let pushed = false;
+                for (let i = 0; i < groundLayersGrid.length; i++) {
+                  if (groundLayersGrid[i][row][col] === ".") {
+                    groundLayersGrid[i][row][col] = resolved;
+                    pushed = true;
+                    break;
+                  }
+                }
+                if (!pushed) {
+                  const newLayer = makeEmptyLayer(mapW, mapH);
+                  newLayer[row][col] = resolved;
+                  groundLayersGrid.push(newLayer);
+                }
+              }
+            }
+          }
         }
       }
 
@@ -2133,7 +2338,11 @@
           const cell = cellAt(e);
           if (cell.row >= 0 && cell.row < mapH && cell.col >= 0 && cell.col < mapW) {
             const wch = wallGrid[cell.row][cell.col];
-            const gch = groundGrid[cell.row][cell.col];
+            let gch = groundGrid[cell.row][cell.col];
+            for (let i = groundLayersGrid.length - 1; i >= 0; i--) {
+              const lch = groundLayersGrid[i][cell.row][cell.col];
+              if (lch && lch !== ".") { gch = lch; break; }
+            }
             const ch = wch !== "." ? wch : gch;
             if (ch !== ".") {
               const lookup = CHAR_TO_BASE[ch];
@@ -2151,6 +2360,7 @@
           }
           return;
         }
+        snapshot();
         painting = true;
         paintChar = e.button === 2 ? "." : selected;
         lastPaintCell = null;
@@ -2341,6 +2551,7 @@
           5,
           parseInt(document.getElementById("ih").value) || mapH,
         );
+        snapshot();
         initGrid(w, h, true);
         resizeCanvas();
         render();
@@ -2357,6 +2568,7 @@
         reader.onload = (ev) => {
           const text = ev.target.result;
           const baseName = file.name.replace(/\.(txt|json)$/, "");
+          snapshot();
           if (text.trim().startsWith("{")) {
             loadMapJSON(JSON.parse(text), baseName);
           } else {
@@ -2393,16 +2605,16 @@
         .getElementById("btn-save")
         .addEventListener("click", async () => {
           const name = document.getElementById("iname").value.trim() || "map";
-          const content = JSON.stringify(
-            {
-              width: mapW,
-              height: mapH,
-              ground: groundGrid.map((r) => r.join("")),
-              walls: wallGrid.map((r) => r.join("")),
-            },
-            null,
-            2,
-          );
+          const mapData = {
+            width: mapW,
+            height: mapH,
+            ground: groundGrid.map((r) => r.join("")),
+            walls: wallGrid.map((r) => r.join("")),
+          };
+          if (groundLayersGrid.length > 0) {
+            mapData.groundLayers = groundLayersGrid.map(layer => layer.map(r => r.join("")));
+          }
+          const content = JSON.stringify(mapData, null, 2);
           const statusEl = document.getElementById("status");
           statusEl.textContent = "Saving…";
           try {
@@ -2447,6 +2659,10 @@
           render();
           return;
         }
+        if ((e.ctrlKey || e.metaKey) && e.key === "z") {
+          if (e.target.tagName !== "INPUT") { e.preventDefault(); undo(); }
+          return;
+        }
         if (e.target.tagName === "INPUT") return;
         // Select-mode shortcuts
         if (
@@ -2467,6 +2683,7 @@
           return;
         }
         if (e.ctrlKey && e.key === "v" && clipboard) {
+          snapshot();
           pasteSel();
           e.preventDefault();
           return;
@@ -2498,6 +2715,13 @@
           while (a.length < mapW) a.push(".");
           return a;
         });
+        groundLayersGrid = (data.groundLayers || []).map(layer =>
+          layer.map(r => {
+            const a = r.split("");
+            while (a.length < mapW) a.push(".");
+            return a;
+          })
+        );
         document.getElementById("iw").value = mapW;
         document.getElementById("ih").value = mapH;
         if (name !== undefined) document.getElementById("iname").value = name;
@@ -2521,6 +2745,10 @@
             const wCh = wallGrid[r][c];
             const wTile = wCh !== "." ? TILE_BY_CHAR[wCh] || null : null;
             gTile.d(oc, x, y);
+            for (const layer of groundLayersGrid) {
+              const lCh = layer[r][c];
+              if (lCh && lCh !== ".") drawTileShapeOnly(oc, x, y, lCh);
+            }
             if (wTile) wTile.d(oc, x, y);
           }
         }
@@ -2572,6 +2800,7 @@
               const data = await fetch(`/maps/${name}.json`).then((r) =>
                 r.json(),
               );
+              snapshot();
               loadMapJSON(data, name);
               modal.setAttribute("hidden", "");
             } catch {

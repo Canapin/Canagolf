@@ -452,7 +452,7 @@ document.addEventListener('mousemove', onMouseMove);
     // Save safe position only when ball is at rest — prevents tracking right up to water edge
     game.players.forEach(p => {
       if (!p.sunk && !p.eliminated && !p.waterPending && !Physics.isMoving(p.ball)) {
-        const gt = Physics.getSurfaceAt(game.map.ground, p.ball.x, p.ball.y);
+        const gt = Physics.getSurfaceAt(game.map.ground, p.ball.x, p.ball.y, game.map.groundLayers);
         if (!Physics.isWaterTile(gt) && !Physics.isLavaTile(gt)) {
           p.safePos = { x: p.ball.x, y: p.ball.y };
         }
@@ -463,7 +463,7 @@ document.addEventListener('mousemove', onMouseMove);
     game.players.forEach(p => {
       if (!p.sunk && !p.eliminated && !p.waterPending && Physics.isMoving(p.ball)) {
         Physics.applyHoleGravity(p.ball, game.map.holes);
-        Physics.updateBall(p.ball, game.map.walls, game.map.ground);
+        Physics.updateBall(p.ball, game.map.walls, game.map.ground, game.map.groundLayers);
       }
     });
 
@@ -472,7 +472,7 @@ document.addEventListener('mousemove', onMouseMove);
     let turnEnded = false;
 
     // Hazard checks run unconditionally — ball may have been stopped by MIN_SPEED inside hazard
-    const curTile = Physics.getSurfaceAt(game.map.ground, ball.x, ball.y);
+    const curTile = Physics.getSurfaceAt(game.map.ground, ball.x, ball.y, game.map.groundLayers);
 
     // Lava — player eliminated, no respawn
     if (!turnEnded && Physics.isLavaTile(curTile)) {
@@ -559,7 +559,7 @@ document.addEventListener('mousemove', onMouseMove);
     let nonCurStateChanged = false;
     game.players.forEach((p, i) => {
       if (i === game.currentPlayerIndex || p.sunk || p.eliminated || p.waterPending) return;
-      const gt = Physics.getSurfaceAt(game.map.ground, p.ball.x, p.ball.y);
+      const gt = Physics.getSurfaceAt(game.map.ground, p.ball.x, p.ball.y, game.map.groundLayers);
       if (Physics.isWaterTile(gt)) {
         p.waterRespawnPos = p.safePos ? { x: p.safePos.x, y: p.safePos.y } : { x: p.ball.x, y: p.ball.y };
         p.waterPending = true;

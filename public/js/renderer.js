@@ -132,39 +132,24 @@ const Renderer = (function () {
   function renderMap(ctx, map) {
     const ground = map.ground || map.tiles;
     const walls = map.walls || map.tiles;
+    const layers = map.groundLayers || [];
     for (let row = 0; row < map.height; row++) {
       for (let col = 0; col < map.width; col++) {
-        renderGroundTile(ctx, col, row, ground[row][col]);
-        renderWallTile(ctx, col, row, walls[row][col], ground[row][col]);
+        const baseTile = ground[row][col];
+        const layerTiles = layers.map(layer => layer[row]?.[col] || ".");
+        renderGroundTile(ctx, col, row, baseTile, layerTiles);
+        // openColor: topmost visible ground tile's color for wall open-areas
+        const topTile = [...layerTiles].reverse().find(t => t && t !== ".") || baseTile;
+        renderWallTile(ctx, col, row, walls[row][col], topTile);
       }
     }
   }
 
   // ── Ground tile ───────────────────────────────────────────────────────────
 
-  function renderGroundTile(ctx, col, row, tile) {
-    const x = col * T,
-      y = row * T;
-
-    ctx.fillStyle = FAIRWAY;
-    ctx.fillRect(x, y, T, T);
-
-    if (tile === Physics.TILE.SAND) {
-      ctx.fillStyle = SAND_COLOR;
-      ctx.fillRect(x, y, T, T);
-      return;
-    }
-    if (tile === Physics.TILE.WATER) {
-      ctx.fillStyle = WATER_COLOR;
-      ctx.fillRect(x, y, T, T);
-      return;
-    }
-
-    if (tile === Physics.TILE.LAVA) {
-      ctx.fillStyle = LAVA_COLOR;
-      ctx.fillRect(x, y, T, T);
-      return;
-    }
+  // Draws only the terrain shape of a tile (no fairway pre-fill). Uses clipping for partial shapes.
+  function renderTileShapeOnly(ctx, x, y, tile) {
+    if (!tile || tile === ".") return;
 
     const TP_COLORS = {
       "=": { bg: "#1a0830", ring1: "#9030d0", ring2: "#c070ff" },
@@ -173,52 +158,29 @@ const Renderer = (function () {
     };
     if (TP_COLORS[tile]) {
       const { bg, ring1, ring2 } = TP_COLORS[tile];
-      const hx = x + T / 2,
-        hy = y + T / 2;
+      const hx = x + T / 2, hy = y + T / 2;
       ctx.fillStyle = bg;
       ctx.beginPath();
       ctx.arc(hx, hy, T / 2 - 1, 0, Math.PI * 2);
       ctx.fill();
-      ctx.strokeStyle = ring1;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(hx, hy, T * 0.36, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = ring2;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.strokeStyle = ring1; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(hx, hy, T * 0.36, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = ring2; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2); ctx.stroke();
       return;
     }
 
     if (tile === Physics.TILE.SWAP) {
-      const cx = x + T / 2,
-        cy = y + T / 2;
-      ctx.fillStyle = "#c08000";
+      const cx = x + T / 2, cy = y + T / 2;
+      ctx.fillStyle = "#c08000"; ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#805000"; ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 5, 0, Math.PI * 2); ctx.fill();
+      const hw = T * 0.27, hs = 2.5;
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.lineJoin = "round";
       ctx.beginPath();
-      ctx.arc(cx, cy, T / 2 - 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = "#805000";
-      ctx.beginPath();
-      ctx.arc(cx, cy, T / 2 - 5, 0, Math.PI * 2);
-      ctx.fill();
-      const hw = T * 0.27,
-        hs = 2.5;
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 1.5;
-      ctx.lineJoin = "round";
-      ctx.beginPath();
-      ctx.moveTo(cx - hw, cy - hs);
-      ctx.lineTo(cx + hw, cy - hs);
-      ctx.moveTo(cx + hw - 4, cy - hs - 3);
-      ctx.lineTo(cx + hw, cy - hs);
-      ctx.lineTo(cx + hw - 4, cy - hs + 3);
-      ctx.moveTo(cx + hw, cy + hs);
-      ctx.lineTo(cx - hw, cy + hs);
-      ctx.moveTo(cx - hw + 4, cy + hs - 3);
-      ctx.lineTo(cx - hw, cy + hs);
-      ctx.lineTo(cx - hw + 4, cy + hs + 3);
+      ctx.moveTo(cx - hw, cy - hs); ctx.lineTo(cx + hw, cy - hs);
+      ctx.moveTo(cx + hw - 4, cy - hs - 3); ctx.lineTo(cx + hw, cy - hs); ctx.lineTo(cx + hw - 4, cy - hs + 3);
+      ctx.moveTo(cx + hw, cy + hs); ctx.lineTo(cx - hw, cy + hs);
+      ctx.moveTo(cx - hw + 4, cy + hs - 3); ctx.lineTo(cx - hw, cy + hs); ctx.lineTo(cx - hw + 4, cy + hs + 3);
       ctx.stroke();
       return;
     }
@@ -231,6 +193,11 @@ const Renderer = (function () {
       return;
     }
 
+    // Full solid tiles
+    if (tile === Physics.TILE.SAND)  { ctx.fillStyle = SAND_COLOR;  ctx.fillRect(x, y, T, T); return; }
+    if (tile === Physics.TILE.WATER) { ctx.fillStyle = WATER_COLOR; ctx.fillRect(x, y, T, T); return; }
+    if (tile === Physics.TILE.LAVA)  { ctx.fillStyle = LAVA_COLOR;  ctx.fillRect(x, y, T, T); return; }
+
     if (SLOPE_FACE[tile]) {
       ctx.fillStyle = SLOPE_FACE[tile];
       ctx.fillRect(x, y, T, T);
@@ -238,79 +205,10 @@ const Renderer = (function () {
       return;
     }
 
-    if (SLOPE_DIAG_INFO[tile]) {
-      const [dir, tri] = SLOPE_DIAG_INFO[tile];
-      const color = SLOPE_COLORS[dir];
-      ctx.fillStyle = FAIRWAY;
-      ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      drawTriPath(ctx, tri, x, y);
-      ctx.fill();
-      ctx.save();
-      ctx.beginPath();
-      drawTriPath(ctx, tri, x, y);
-      ctx.clip();
-      drawSlopeArrows(ctx, tile, x, y);
-      ctx.restore();
-      return;
-    }
-
-    if (SLOPE_CURVE_INFO[tile]) {
-      const [dir, corner] = SLOPE_CURVE_INFO[tile];
-      const color = SLOPE_COLORS[dir];
-      const meta = Physics.CURVE_META[tile];
-      const ax = x + meta.ox * T, ay = y + meta.oy * T;
-      const [a0, a1] = metaArcs(meta);
-      ctx.fillStyle = FAIRWAY;
-      ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.arc(ax, ay, T, a0, a1, false);
-      ctx.closePath();
-      ctx.fill();
-      ctx.save();
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.arc(ax, ay, T, a0, a1, false);
-      ctx.closePath();
-      ctx.clip();
-      drawSlopeArrows(ctx, tile, x, y);
-      ctx.restore();
-      return;
-    }
-
-    if (SLOPE_BUMP_INFO[tile]) {
-      const [dir] = SLOPE_BUMP_INFO[tile];
-      const color = SLOPE_COLORS[dir];
-      const meta = Physics.BUMP_META[tile];
-      const ax = x + meta.ox * T, ay = y + meta.oy * T;
-      const [a0, a1] = metaArcs(meta);
-      // Fill tile with slope color, cut out the concave area with fairway
-      ctx.fillStyle = color;
-      ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = FAIRWAY;
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.arc(ax, ay, T, a0, a1, false);
-      ctx.closePath();
-      ctx.fill();
-      // Arrows over whole tile — invisible on fairway, visible on bump region
-      drawSlopeArrows(ctx, tile, x, y);
-      return;
-    }
-
-    // Legacy single-layer combo tiles (diagonal sand/water/lava)
+    // Diagonal tiles — clip to triangle, fill
     const DIAG = {
-      a: [SAND_COLOR, "UR"],
-      b: [SAND_COLOR, "LL"],
-      c: [SAND_COLOR, "UL"],
-      d: [SAND_COLOR, "LR"],
-      e: [WATER_COLOR, "UR"],
-      f: [WATER_COLOR, "LL"],
-      g: [WATER_COLOR, "UL"],
-      h: [WATER_COLOR, "LR"],
+      a: [SAND_COLOR, "UR"], b: [SAND_COLOR, "LL"], c: [SAND_COLOR, "UL"], d: [SAND_COLOR, "LR"],
+      e: [WATER_COLOR, "UR"], f: [WATER_COLOR, "LL"], g: [WATER_COLOR, "UL"], h: [WATER_COLOR, "LR"],
       [Physics.TILE.LAVA_DIAG_UR]: [LAVA_COLOR, "LL"],
       [Physics.TILE.LAVA_DIAG_LL]: [LAVA_COLOR, "UR"],
       [Physics.TILE.LAVA_DIAG_UL]: [LAVA_COLOR, "LR"],
@@ -318,93 +216,98 @@ const Renderer = (function () {
     };
     if (DIAG[tile]) {
       const [color, tri] = DIAG[tile];
-      ctx.fillStyle = FAIRWAY;
-      ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      if (tri === "UR") {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + T, y);
-        ctx.lineTo(x + T, y + T);
-      }
-      if (tri === "LL") {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x, y + T);
-        ctx.lineTo(x + T, y + T);
-      }
-      if (tri === "UL") {
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + T, y);
-        ctx.lineTo(x, y + T);
-      }
-      if (tri === "LR") {
-        ctx.moveTo(x + T, y);
-        ctx.lineTo(x, y + T);
-        ctx.lineTo(x + T, y + T);
-      }
-      ctx.closePath();
-      ctx.fill();
+      ctx.save();
+      ctx.beginPath(); drawTriPath(ctx, tri, x, y); ctx.clip();
+      ctx.fillStyle = color; ctx.fillRect(x, y, T, T);
+      ctx.restore();
       return;
     }
 
-    // Legacy sand/water/lava curves and bumps
+    if (SLOPE_DIAG_INFO[tile]) {
+      const [dir, tri] = SLOPE_DIAG_INFO[tile];
+      ctx.save();
+      ctx.beginPath(); drawTriPath(ctx, tri, x, y); ctx.clip();
+      ctx.fillStyle = SLOPE_COLORS[dir]; ctx.fillRect(x, y, T, T);
+      drawSlopeArrows(ctx, tile, x, y);
+      ctx.restore();
+      return;
+    }
+
+    // Curve tiles — clip to arc sector, fill
     const MAT_CURVE = {
-      m: SAND_COLOR,
-      n: SAND_COLOR,
-      o: SAND_COLOR,
-      p: SAND_COLOR,
-      u: WATER_COLOR,
-      x: WATER_COLOR,
-      y: WATER_COLOR,
-      z: WATER_COLOR,
-      [Physics.TILE.LAVA_CURVE_TL]: LAVA_COLOR,
-      [Physics.TILE.LAVA_CURVE_TR]: LAVA_COLOR,
-      [Physics.TILE.LAVA_CURVE_BL]: LAVA_COLOR,
-      [Physics.TILE.LAVA_CURVE_BR]: LAVA_COLOR,
-    };
-    const MAT_BUMP = {
-      q: SAND_COLOR,
-      r: SAND_COLOR,
-      s: SAND_COLOR,
-      t: SAND_COLOR,
-      B: WATER_COLOR,
-      C: WATER_COLOR,
-      D: WATER_COLOR,
-      E: WATER_COLOR,
-      [Physics.TILE.LAVA_BUMP_TL]: LAVA_COLOR,
-      [Physics.TILE.LAVA_BUMP_TR]: LAVA_COLOR,
-      [Physics.TILE.LAVA_BUMP_BL]: LAVA_COLOR,
-      [Physics.TILE.LAVA_BUMP_BR]: LAVA_COLOR,
+      m: SAND_COLOR, n: SAND_COLOR, o: SAND_COLOR, p: SAND_COLOR,
+      u: WATER_COLOR, x: WATER_COLOR, y: WATER_COLOR, z: WATER_COLOR,
+      [Physics.TILE.LAVA_CURVE_TL]: LAVA_COLOR, [Physics.TILE.LAVA_CURVE_TR]: LAVA_COLOR,
+      [Physics.TILE.LAVA_CURVE_BL]: LAVA_COLOR, [Physics.TILE.LAVA_CURVE_BR]: LAVA_COLOR,
     };
     if (MAT_CURVE[tile]) {
       const meta = Physics.CURVE_META[tile];
-      const ax = x + meta.ox * T,
-        ay = y + meta.oy * T;
+      const ax = x + meta.ox * T, ay = y + meta.oy * T;
       const [a0, a1] = metaArcs(meta);
-      ctx.fillStyle = FAIRWAY;
-      ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = MAT_CURVE[tile];
-      ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.arc(ax, ay, T, a0, a1, false);
-      ctx.closePath();
-      ctx.fill();
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath(); ctx.clip();
+      ctx.fillStyle = MAT_CURVE[tile]; ctx.fillRect(x, y, T, T);
+      ctx.restore();
       return;
     }
+
+    if (SLOPE_CURVE_INFO[tile]) {
+      const [dir] = SLOPE_CURVE_INFO[tile];
+      const meta = Physics.CURVE_META[tile];
+      const ax = x + meta.ox * T, ay = y + meta.oy * T;
+      const [a0, a1] = metaArcs(meta);
+      ctx.save();
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath(); ctx.clip();
+      ctx.fillStyle = SLOPE_COLORS[dir]; ctx.fillRect(x, y, T, T);
+      drawSlopeArrows(ctx, tile, x, y);
+      ctx.restore();
+      return;
+    }
+
+    // Bump tiles — evenodd clip: tile rect minus arc sector = the convex bump area
+    const MAT_BUMP = {
+      q: SAND_COLOR, r: SAND_COLOR, s: SAND_COLOR, t: SAND_COLOR,
+      B: WATER_COLOR, C: WATER_COLOR, D: WATER_COLOR, E: WATER_COLOR,
+      [Physics.TILE.LAVA_BUMP_TL]: LAVA_COLOR, [Physics.TILE.LAVA_BUMP_TR]: LAVA_COLOR,
+      [Physics.TILE.LAVA_BUMP_BL]: LAVA_COLOR, [Physics.TILE.LAVA_BUMP_BR]: LAVA_COLOR,
+    };
     if (MAT_BUMP[tile]) {
       const meta = Physics.BUMP_META[tile];
-      const ax = x + meta.ox * T,
-        ay = y + meta.oy * T;
+      const ax = x + meta.ox * T, ay = y + meta.oy * T;
       const [a0, a1] = metaArcs(meta);
-      ctx.fillStyle = MAT_BUMP[tile];
-      ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = FAIRWAY;
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(ax, ay);
-      ctx.arc(ax, ay, T, a0, a1, false);
-      ctx.closePath();
-      ctx.fill();
+      ctx.rect(x, y, T, T);
+      ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath();
+      ctx.clip("evenodd");
+      ctx.fillStyle = MAT_BUMP[tile]; ctx.fillRect(x, y, T, T);
+      ctx.restore();
       return;
+    }
+
+    if (SLOPE_BUMP_INFO[tile]) {
+      const [dir] = SLOPE_BUMP_INFO[tile];
+      const meta = Physics.BUMP_META[tile];
+      const ax = x + meta.ox * T, ay = y + meta.oy * T;
+      const [a0, a1] = metaArcs(meta);
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, T, T);
+      ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath();
+      ctx.clip("evenodd");
+      ctx.fillStyle = SLOPE_COLORS[dir]; ctx.fillRect(x, y, T, T);
+      drawSlopeArrows(ctx, tile, x, y);
+      ctx.restore();
+    }
+  }
+
+  function renderGroundTile(ctx, col, row, baseTile, layerTiles) {
+    const x = col * T, y = row * T;
+    ctx.fillStyle = FAIRWAY;
+    ctx.fillRect(x, y, T, T);
+    renderTileShapeOnly(ctx, x, y, baseTile);
+    if (layerTiles) {
+      for (const lt of layerTiles) renderTileShapeOnly(ctx, x, y, lt);
     }
   }
 
