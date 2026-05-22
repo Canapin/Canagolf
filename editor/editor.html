@@ -719,6 +719,16 @@
         return LAYER_SHAPE_INFO;
       }
 
+      function shapeOf(ch) {
+        const info = getLayerShapeInfo()[ch];
+        if (!info) return ch;
+        let key = info.type;
+        if (info.dir) key += '-' + info.dir;
+        if (info.tri) key += '-' + info.tri;
+        if (info.corner) key += '-' + info.corner;
+        return key;
+      }
+
       function drawTileShapeOnly(ctx, x, y, ch) {
         const info = getLayerShapeInfo()[ch];
         if (!info) return;
@@ -2246,23 +2256,38 @@
         } else if (isWallChar(resolved)) {
           wallGrid[row][col] = resolved;
         } else {
-          // Ground tile: push onto topmost empty layer, or base if base is empty
-          if (groundGrid[row][col] === ".") {
+          // Ground tile: replace same-shape tile in-place if one exists, otherwise push
+          const newShape = shapeOf(resolved);
+          if (groundGrid[row][col] !== "." && shapeOf(groundGrid[row][col]) === newShape) {
             groundGrid[row][col] = resolved;
           } else {
-            // Find first layer with empty slot, or add a new layer
-            let pushed = false;
+            let replaced = false;
             for (let i = 0; i < groundLayersGrid.length; i++) {
-              if (groundLayersGrid[i][row][col] === ".") {
+              const cur = groundLayersGrid[i][row][col];
+              if (cur !== "." && shapeOf(cur) === newShape) {
                 groundLayersGrid[i][row][col] = resolved;
-                pushed = true;
+                replaced = true;
                 break;
               }
             }
-            if (!pushed) {
-              const newLayer = makeEmptyLayer(mapW, mapH);
-              newLayer[row][col] = resolved;
-              groundLayersGrid.push(newLayer);
+            if (!replaced) {
+              if (groundGrid[row][col] === ".") {
+                groundGrid[row][col] = resolved;
+              } else {
+                let pushed = false;
+                for (let i = 0; i < groundLayersGrid.length; i++) {
+                  if (groundLayersGrid[i][row][col] === ".") {
+                    groundLayersGrid[i][row][col] = resolved;
+                    pushed = true;
+                    break;
+                  }
+                }
+                if (!pushed) {
+                  const newLayer = makeEmptyLayer(mapW, mapH);
+                  newLayer[row][col] = resolved;
+                  groundLayersGrid.push(newLayer);
+                }
+              }
             }
           }
         }
