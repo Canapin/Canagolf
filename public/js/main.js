@@ -39,6 +39,7 @@
   let localPlayerIndex = -1;
   let isLocalHost      = false;
   let isOnlineHoleOver = false;
+  let waitingForTurnSwitch = false;
 
   // ── Debug panel ───────────────────────────────────────────────────────────
 
@@ -257,12 +258,13 @@
       }
     });
 
-    socket.on('s:start', ({ mapText, players }) => {
+    socket.on('s:start', ({ mapText, players, currentPlayerIndex = 0 }) => {
       const map = Physics.parseMap(mapText);
       localPlayerIndex = players.findIndex(p => p.id === localPlayerId);
       lobbyEl.hidden = true;
       scoreboardEl.hidden = true;
-      beginGame(map, players.map(p => p.name));
+      waitingForTurnSwitch = false;
+      beginGame(map, players.map(p => p.name), currentPlayerIndex);
     });
 
     socket.on('s:shot', ({ playerIndex, vx, vy, strokes }) => {
@@ -299,6 +301,7 @@
 
     socket.on('s:turn', ({ currentPlayerIndex, playerStates }) => {
       if (!game) return;
+      waitingForTurnSwitch = false;
       game.players[game.currentPlayerIndex].ball._tpUsedPairs.clear();
       game.currentPlayerIndex = currentPlayerIndex;
       game.players[currentPlayerIndex].started = true;
@@ -371,6 +374,7 @@
       mapList, mapIndex: 0, playerNames,
       scores: Object.fromEntries(playerNames.map(n => [n, 0])),
       holeScores: [],
+      startingPlayerOffset: Math.floor(Math.random() * playerNames.length),
     };
     await loadAndStartMap(mapList[0], playerNames);
   }
@@ -384,11 +388,12 @@
       mapList: camp.maps, mapIndex: 0, playerNames,
       scores: Object.fromEntries(playerNames.map(n => [n, 0])),
       holeScores: [],
+      startingPlayerOffset: Math.floor(Math.random() * playerNames.length),
     };
     await loadAndStartMap(camp.maps[0], playerNames);
   }
 
-  function beginGame(map, playerNames) {
+  function beginGame(map, playerNames, startPlayerIndex = 0) {
     if (loopId !== null) { cancelAnimationFrame(loopId); loopId = null; }
     lastTime    = 0;
     accumulator = 0;
@@ -396,7 +401,10 @@
     canvas.width  = map.width  * Physics.TILE_SIZE + MARGIN * 2;
     canvas.height = map.height * Physics.TILE_SIZE + MARGIN * 2;
 
-    game = Game.createGame(map, playerNames);
+    if (gameSession) {
+      startPlayerIndex = (gameSession.startingPlayerOffset + gameSession.mapIndex) % playerNames.length;
+    }
+    game = Game.createGame(map, playerNames, startPlayerIndex);
 
     if (!gameStarted) {
       gameStarted = true;
@@ -422,7 +430,7 @@ document.addEventListener('mousemove', onMouseMove);
 
   function onCanvasClick(e) {
     if (!game || game.over) return;
-    if (isOnlineMode && localPlayerIndex !== game.currentPlayerIndex) return;
+    if (isOnlineMode && (localPlayerIndex !== game.currentPlayerIndex || waitingForTurnSwitch)) return;
 
     if (game.players.some(p => !p.sunk && !p.eliminated && Physics.isMoving(p.ball))) return;
 
@@ -491,6 +499,7 @@ document.addEventListener('mousemove', onMouseMove);
             y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
             sunk: p.sunk, eliminated: p.eliminated,
           }));
+          waitingForTurnSwitch = true;
           socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: true, playerStates });
         }
       }
@@ -508,6 +517,7 @@ document.addEventListener('mousemove', onMouseMove);
             y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
             sunk: p.sunk, eliminated: p.eliminated,
           }));
+          waitingForTurnSwitch = true;
           socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
           turnEnded = true;
         }
@@ -544,6 +554,7 @@ document.addEventListener('mousemove', onMouseMove);
                 y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
                 sunk: p.sunk, eliminated: p.eliminated,
               }));
+              waitingForTurnSwitch = true;
               socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: true, playerStates });
             }
           } else {
@@ -601,6 +612,7 @@ document.addEventListener('mousemove', onMouseMove);
             y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
             sunk: p.sunk, eliminated: p.eliminated,
           }));
+          waitingForTurnSwitch = true;
           socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
         } else if (!isOnlineMode) {
           Game.onBallStopped(game); updateHUD();
@@ -662,7 +674,7 @@ document.addEventListener('mousemove', onMouseMove);
 
     const currentBall = Game.getCurrentBall(game);
     const anyBallMoving = game.players.some(p => !p.sunk && !p.eliminated && Physics.isMoving(p.ball));
-    const canAim = !anyBallMoving && !game.over &&
+    const canAim = !anyBallMoving && !game.over && !waitingForTurnSwitch &&
                    (!isOnlineMode || localPlayerIndex === game.currentPlayerIndex);
     if (canAim) {
       Renderer.renderAimLine(ctx, currentBall, mouseX, mouseY);
@@ -682,7 +694,9 @@ document.addEventListener('mousemove', onMouseMove);
       if (i === game.currentPlayerIndex && !p.sunk && !p.eliminated) classes.push('active');
       if (p.sunk || p.eliminated) classes.push('sunk');
       const suffix = p.eliminated ? ' 💀' : '';
-      return `<span class="${classes.join(' ')}">${p.name}: ${p.strokes}${suffix}</span>`;
+      const color = Renderer.BALL_COLORS[i % Renderer.BALL_COLORS.length];
+      const dot = `<span class="ball-dot" style="background:${color}"></span>`;
+      return `<span class="${classes.join(' ')}">${dot}${p.name}: ${p.strokes}${suffix}</span>`;
     }).join('<span class="sep">|</span>');
     hudEl.innerHTML = roundHtml + `<div class="hud-scores">${scoresHtml}</div>`;
   }

@@ -113,6 +113,8 @@ function loadMapText(mapName) {
 function emitStartMap(room, roomCode) {
   const mapName = room.session.mapList[room.session.mapIndex];
   const mapText = loadMapText(mapName);
+  const startIdx = (room.startingPlayerOffset + room.session.mapIndex) % room.players.length;
+  room.currentPlayerIndex = startIdx;
   room.players.forEach((p) => {
     p.sunk = false;
     p.strokes = 0;
@@ -120,7 +122,7 @@ function emitStartMap(room, roomCode) {
   io.to(roomCode).emit("s:start", {
     mapText,
     players: room.players.map((p) => ({ id: p.id, name: p.name })),
-    currentPlayerIndex: 0,
+    currentPlayerIndex: startIdx,
   });
 }
 
@@ -215,6 +217,7 @@ io.on("connection", (socket) => {
       scores: Object.fromEntries(room.players.map((p) => [p.name, 0])),
       holeScores: [],
     };
+    room.startingPlayerOffset = Math.floor(Math.random() * room.players.length);
 
     emitStartMap(room, roomCode);
   });
@@ -307,7 +310,6 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomCode);
     if (!room || room.hostId !== socket.id) return;
     room.session.mapIndex++;
-    room.currentPlayerIndex = 0;
     emitStartMap(room, roomCode);
   });
 

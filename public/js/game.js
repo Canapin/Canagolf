@@ -1,16 +1,16 @@
 const Game = (function () {
 
-  function createGame(map, playerNames) {
+  function createGame(map, playerNames, startPlayerIndex = 0) {
     const players = playerNames.map((name, i) => ({
       name,
       strokes: 0,
       ball: Physics.createBall(map.startX, map.startY),
       sunk: false,
       eliminated: false,
-      started: i === 0,
+      started: i === startPlayerIndex,
       strokeOrigin: { x: map.startX, y: map.startY },
     }));
-    return { map, players, currentPlayerIndex: 0, over: false, turnActive: false };
+    return { map, players, currentPlayerIndex: startPlayerIndex, over: false, turnActive: false };
   }
 
   function getCurrentPlayer(game) {
