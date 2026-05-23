@@ -1013,6 +1013,45 @@
         };
       }
 
+      function drawGhostChev(ctx, cx, cy, dir, a) {
+        ctx.strokeStyle = "#d4dcd4";
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        if (dir === "UR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy - a); ctx.lineTo(cx, cy + a); }
+        if (dir === "UL") { ctx.moveTo(cx + a, cy); ctx.lineTo(cx - a, cy - a); ctx.lineTo(cx, cy + a); }
+        if (dir === "DR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy + a); ctx.lineTo(cx, cy - a); }
+        if (dir === "DL") { ctx.moveTo(cx + a, cy); ctx.lineTo(cx - a, cy + a); ctx.lineTo(cx, cy - a); }
+        ctx.stroke();
+      }
+
+      function ghostDiag(fw, dir) {
+        const base = diagWall(fw);
+        return (ctx, x, y) => {
+          base(ctx, x, y);
+          const a = T * 0.1;
+          const cgx = fw === "LL" ? x + T / 3 : fw === "UR" ? x + T * 2 / 3 : fw === "LR" ? x + T * 2 / 3 : x + T / 3;
+          const cgy = fw === "LL" ? y + T * 2 / 3 : fw === "UR" ? y + T / 3 : fw === "LR" ? y + T * 2 / 3 : y + T / 3;
+          drawGhostChev(ctx, cgx, cgy, dir, a);
+        };
+      }
+
+      function ghostCurveShape(corner, dir) {
+        const base = curve(corner);
+        return (ctx, x, y) => {
+          base(ctx, x, y);
+          drawGhostChev(ctx, x + T / 2, y + T / 2, dir, T * 0.1);
+        };
+      }
+
+      function ghostBumpShape(corner, dir) {
+        const base = bump(corner);
+        return (ctx, x, y) => {
+          base(ctx, x, y);
+          drawGhostChev(ctx, x + T / 2, y + T / 2, dir, T * 0.1);
+        };
+      }
+
       function lava() {
         return (ctx, x, y) => {
           ctx.fillStyle = "#b02000";
@@ -1315,27 +1354,6 @@
           ctx.moveTo(ax, ay);
           ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
           ctx.stroke();
-          if (face !== WL) {
-            const midAngle = (a0 + a1) / 2;
-            const spread = Math.PI / 8;
-            const a = T * 0.09;
-            ctx.strokeStyle = "rgba(255,255,255,0.5)";
-            ctx.lineWidth = 1.5;
-            ctx.lineJoin = "round";
-            [midAngle - spread, midAngle + spread].forEach((angle) => {
-              const pcx = ax + T * 0.52 * Math.cos(angle);
-              const pcy = ay + T * 0.52 * Math.sin(angle);
-              const nx = Math.cos(angle),
-                ny = Math.sin(angle);
-              const tx = -ny,
-                ty = nx;
-              ctx.beginPath();
-              ctx.moveTo(pcx - tx * a, pcy - ty * a);
-              ctx.lineTo(pcx + nx * a, pcy + ny * a);
-              ctx.lineTo(pcx + tx * a, pcy + ty * a);
-              ctx.stroke();
-            });
-          }
         };
       }
 
@@ -1814,6 +1832,21 @@
         { c: "!", l: "Phantom ↖", g: "Ghost", sg: "", d: ghostWall("UL") },
         { c: ",", l: "Phantom ↘", g: "Ghost", sg: "", d: ghostWall("DR") },
         { c: ";", l: "Phantom ↙", g: "Ghost", sg: "", d: ghostWall("DL") },
+        // Ghost diagonal walls (shaped one-way)
+        { c: "Ū", l: "Ghost Wall ↗", g: "Ghost", sg: "diag", d: ghostDiag("LL", "UR") },
+        { c: "ū", l: "Ghost Wall ↙", g: "Ghost", sg: "diag", d: ghostDiag("UR", "DL") },
+        { c: "Ŭ", l: "Ghost Wall ↖", g: "Ghost", sg: "diag", d: ghostDiag("LR", "UL") },
+        { c: "ŭ", l: "Ghost Wall ↘", g: "Ghost", sg: "diag", d: ghostDiag("UL", "DR") },
+        // Ghost concave pocket walls
+        { c: "Ů", l: "Ghost Pocket ↖", g: "Ghost", sg: "curve", d: ghostCurveShape("TL", "UL") },
+        { c: "ů", l: "Ghost Pocket ↗", g: "Ghost", sg: "curve", d: ghostCurveShape("TR", "UR") },
+        { c: "Ű", l: "Ghost Pocket ↙", g: "Ghost", sg: "curve", d: ghostCurveShape("BL", "DL") },
+        { c: "ű", l: "Ghost Pocket ↘", g: "Ghost", sg: "curve", d: ghostCurveShape("BR", "DR") },
+        // Ghost convex bump walls
+        { c: "Ų", l: "Ghost Bump ↖", g: "Ghost", sg: "bump", d: ghostBumpShape("TL", "DR") },
+        { c: "ų", l: "Ghost Bump ↗", g: "Ghost", sg: "bump", d: ghostBumpShape("TR", "DL") },
+        { c: "Ŵ", l: "Ghost Bump ↙", g: "Ghost", sg: "bump", d: ghostBumpShape("BL", "UR") },
+        { c: "ŵ", l: "Ghost Bump ↘", g: "Ghost", sg: "bump", d: ghostBumpShape("BR", "UL") },
         // Special tiles
         {
           c: "=",

@@ -174,6 +174,19 @@ const Physics = (function () {
     PHANTOM_DR: ",", // passes if ball moves down-right
     PHANTOM_DL: ";", // passes if ball moves down-left
     CIRCLE_WALL: "\\", // circular wall obstacle (full circle, radius = half tile)
+    // Ghost shaped walls — one-way walls with diagonal/curve/bump collision geometry
+    GHOST_WALL_UR: "Ū", // solid UR triangle, passes when vx>0 && vy<0
+    GHOST_WALL_LL: "ū", // solid LL triangle, passes when vx<0 && vy>0
+    GHOST_WALL_UL: "Ŭ", // solid UL triangle, passes when vx<0 && vy<0
+    GHOST_WALL_LR: "ŭ", // solid LR triangle, passes when vx>0 && vy>0
+    GHOST_BUMP_TL: "Ů", // concave TL pocket (like BUMP_TL), passes when vx<0 && vy<0
+    GHOST_BUMP_TR: "ů", // concave TR pocket, passes when vx>0 && vy<0
+    GHOST_BUMP_BL: "Ű", // concave BL pocket, passes when vx<0 && vy>0
+    GHOST_BUMP_BR: "ű", // concave BR pocket, passes when vx>0 && vy>0
+    GHOST_CURVE_TL: "Ų", // convex TL bump (like CURVE_TL), passes when vx>0 && vy>0
+    GHOST_CURVE_TR: "ų", // convex TR bump, passes when vx<0 && vy>0
+    GHOST_CURVE_BL: "Ŵ", // convex BL bump, passes when vx>0 && vy<0
+    GHOST_CURVE_BR: "ŵ", // convex BR bump, passes when vx<0 && vy<0
   };
 
   let SAND_FRICTION = 0.96;
@@ -248,6 +261,11 @@ const Physics = (function () {
   const PHANTOM_TILES = new Set([
     TILE.PHANTOM_UR, TILE.PHANTOM_UL, TILE.PHANTOM_DR, TILE.PHANTOM_DL,
   ]);
+  const GHOST_SHAPED_TILES = new Set([
+    TILE.GHOST_WALL_UR, TILE.GHOST_WALL_LL, TILE.GHOST_WALL_UL, TILE.GHOST_WALL_LR,
+    TILE.GHOST_BUMP_TL, TILE.GHOST_BUMP_TR, TILE.GHOST_BUMP_BL, TILE.GHOST_BUMP_BR,
+    TILE.GHOST_CURVE_TL, TILE.GHOST_CURVE_TR, TILE.GHOST_CURVE_BL, TILE.GHOST_CURVE_BR,
+  ]);
   const WALL_CHARS_SET = new Set([
     TILE.WALL, TILE.BOUNCY, TILE.STICKY_WALL, TILE.CIRCLE_WALL,
     TILE.WALL_UR, TILE.WALL_LL, TILE.WALL_UL, TILE.WALL_LR,
@@ -261,6 +279,9 @@ const Physics = (function () {
     TILE.STICKY_BUMP_TL, TILE.STICKY_BUMP_TR, TILE.STICKY_BUMP_BL, TILE.STICKY_BUMP_BR,
     TILE.GHOST_R, TILE.GHOST_L, TILE.GHOST_U, TILE.GHOST_D,
     TILE.PHANTOM_UR, TILE.PHANTOM_UL, TILE.PHANTOM_DR, TILE.PHANTOM_DL,
+    TILE.GHOST_WALL_UR, TILE.GHOST_WALL_LL, TILE.GHOST_WALL_UL, TILE.GHOST_WALL_LR,
+    TILE.GHOST_BUMP_TL, TILE.GHOST_BUMP_TR, TILE.GHOST_BUMP_BL, TILE.GHOST_BUMP_BR,
+    TILE.GHOST_CURVE_TL, TILE.GHOST_CURVE_TR, TILE.GHOST_CURVE_BL, TILE.GHOST_CURVE_BR,
   ]);
 
   function isSandTile(t) {
@@ -408,6 +429,7 @@ const Physics = (function () {
     )
       return 1.0;
     if (PHANTOM_TILES.has(tile)) return 1.0;
+    if (GHOST_SHAPED_TILES.has(tile)) return 1.0;
     return undefined;
   }
 
@@ -446,6 +468,18 @@ const Physics = (function () {
           continue;
         if (wallTile === TILE.PHANTOM_DL && ball.vx < 0 && ball.vy > 0)
           continue;
+        if (wallTile === TILE.GHOST_WALL_UR && ball.vx > 0 && ball.vy < 0) continue;
+        if (wallTile === TILE.GHOST_WALL_LL && ball.vx < 0 && ball.vy > 0) continue;
+        if (wallTile === TILE.GHOST_WALL_UL && ball.vx < 0 && ball.vy < 0) continue;
+        if (wallTile === TILE.GHOST_WALL_LR && ball.vx > 0 && ball.vy > 0) continue;
+        if (wallTile === TILE.GHOST_BUMP_TL && ball.vx < 0 && ball.vy < 0) continue;
+        if (wallTile === TILE.GHOST_BUMP_TR && ball.vx > 0 && ball.vy < 0) continue;
+        if (wallTile === TILE.GHOST_BUMP_BL && ball.vx < 0 && ball.vy > 0) continue;
+        if (wallTile === TILE.GHOST_BUMP_BR && ball.vx > 0 && ball.vy > 0) continue;
+        if (wallTile === TILE.GHOST_CURVE_TL && ball.vx > 0 && ball.vy > 0) continue;
+        if (wallTile === TILE.GHOST_CURVE_TR && ball.vx < 0 && ball.vy > 0) continue;
+        if (wallTile === TILE.GHOST_CURVE_BL && ball.vx > 0 && ball.vy < 0) continue;
+        if (wallTile === TILE.GHOST_CURVE_BR && ball.vx < 0 && ball.vy < 0) continue;
 
         const left = col * TILE_SIZE;
         const top = row * TILE_SIZE;
@@ -556,25 +590,25 @@ const Physics = (function () {
   // Ground tiles: all CURVE_* surface tiles use concave collision.
   const CURVE_META = {};
   [
-    [TILE.BUMP_TL,
+    [TILE.BUMP_TL, TILE.GHOST_BUMP_TL,
      TILE.SAND_CURVE_TL, TILE.WATER_CURVE_TL, TILE.LAVA_CURVE_TL,
      TILE.BOUNCY_BUMP_TL, TILE.STICKY_BUMP_TL,
      TILE.SLOPE_CURVE_TL,
      TILE.SLOPE_U_CURVE_TL, TILE.SLOPE_D_CURVE_TL, TILE.SLOPE_L_CURVE_TL, TILE.SLOPE_R_CURVE_TL,
      TILE.SLOPE_UR_CURVE_TL, TILE.SLOPE_DL_CURVE_TL, TILE.SLOPE_DR_CURVE_TL],
-    [TILE.BUMP_TR,
+    [TILE.BUMP_TR, TILE.GHOST_BUMP_TR,
      TILE.SAND_CURVE_TR, TILE.WATER_CURVE_TR, TILE.LAVA_CURVE_TR,
      TILE.BOUNCY_BUMP_TR, TILE.STICKY_BUMP_TR,
      TILE.SLOPE_CURVE_TR,
      TILE.SLOPE_U_CURVE_TR, TILE.SLOPE_D_CURVE_TR, TILE.SLOPE_L_CURVE_TR, TILE.SLOPE_R_CURVE_TR,
      TILE.SLOPE_UL_CURVE_TR, TILE.SLOPE_DL_CURVE_TR, TILE.SLOPE_DR_CURVE_TR],
-    [TILE.BUMP_BL,
+    [TILE.BUMP_BL, TILE.GHOST_BUMP_BL,
      TILE.SAND_CURVE_BL, TILE.WATER_CURVE_BL, TILE.LAVA_CURVE_BL,
      TILE.BOUNCY_BUMP_BL, TILE.STICKY_BUMP_BL,
      TILE.SLOPE_CURVE_BL,
      TILE.SLOPE_U_CURVE_BL, TILE.SLOPE_D_CURVE_BL, TILE.SLOPE_L_CURVE_BL, TILE.SLOPE_R_CURVE_BL,
      TILE.SLOPE_UL_CURVE_BL, TILE.SLOPE_UR_CURVE_BL, TILE.SLOPE_DR_CURVE_BL],
-    [TILE.BUMP_BR,
+    [TILE.BUMP_BR, TILE.GHOST_BUMP_BR,
      TILE.SAND_CURVE_BR, TILE.WATER_CURVE_BR, TILE.LAVA_CURVE_BR,
      TILE.BOUNCY_BUMP_BR, TILE.STICKY_BUMP_BR,
      TILE.SLOPE_CURVE_BR,
@@ -589,10 +623,10 @@ const Physics = (function () {
   // Each entry: outward normal (nx,ny) pointing from wall into fairway.
   const DIAG_WALL_META = {};
   [
-    ["UR", -1 / Math.SQRT2, +1 / Math.SQRT2, [TILE.WALL_UR, TILE.BOUNCY_WALL_UR, TILE.STICKY_WALL_UR]],
-    ["LL", +1 / Math.SQRT2, -1 / Math.SQRT2, [TILE.WALL_LL, TILE.BOUNCY_WALL_LL, TILE.STICKY_WALL_LL]],
-    ["UL", +1 / Math.SQRT2, +1 / Math.SQRT2, [TILE.WALL_UL, TILE.BOUNCY_WALL_UL, TILE.STICKY_WALL_UL]],
-    ["LR", -1 / Math.SQRT2, -1 / Math.SQRT2, [TILE.WALL_LR, TILE.BOUNCY_WALL_LR, TILE.STICKY_WALL_LR]],
+    ["UR", -1 / Math.SQRT2, +1 / Math.SQRT2, [TILE.WALL_UR, TILE.BOUNCY_WALL_UR, TILE.STICKY_WALL_UR, TILE.GHOST_WALL_UR]],
+    ["LL", +1 / Math.SQRT2, -1 / Math.SQRT2, [TILE.WALL_LL, TILE.BOUNCY_WALL_LL, TILE.STICKY_WALL_LL, TILE.GHOST_WALL_LL]],
+    ["UL", +1 / Math.SQRT2, +1 / Math.SQRT2, [TILE.WALL_UL, TILE.BOUNCY_WALL_UL, TILE.STICKY_WALL_UL, TILE.GHOST_WALL_UL]],
+    ["LR", -1 / Math.SQRT2, -1 / Math.SQRT2, [TILE.WALL_LR, TILE.BOUNCY_WALL_LR, TILE.STICKY_WALL_LR, TILE.GHOST_WALL_LR]],
   ].forEach(([shape, nx, ny, tiles]) => {
     tiles.forEach(t => { DIAG_WALL_META[t] = { nx, ny, shape }; });
   });
@@ -602,25 +636,25 @@ const Physics = (function () {
   // Ground tiles: all BUMP_* surface tiles use convex collision.
   const BUMP_META = {};
   [
-    [TILE.CURVE_TL,
+    [TILE.CURVE_TL, TILE.GHOST_CURVE_TL,
      TILE.SAND_BUMP_TL, TILE.WATER_BUMP_TL, TILE.LAVA_BUMP_TL,
      TILE.BOUNCY_CURVE_TL, TILE.STICKY_CURVE_TL,
      TILE.SLOPE_BUMP_TL,
      TILE.SLOPE_U_BUMP_TL, TILE.SLOPE_D_BUMP_TL, TILE.SLOPE_L_BUMP_TL, TILE.SLOPE_R_BUMP_TL,
      TILE.SLOPE_UR_BUMP_TL, TILE.SLOPE_DL_BUMP_TL, TILE.SLOPE_DR_BUMP_TL],
-    [TILE.CURVE_TR,
+    [TILE.CURVE_TR, TILE.GHOST_CURVE_TR,
      TILE.SAND_BUMP_TR, TILE.WATER_BUMP_TR, TILE.LAVA_BUMP_TR,
      TILE.BOUNCY_CURVE_TR, TILE.STICKY_CURVE_TR,
      TILE.SLOPE_BUMP_TR,
      TILE.SLOPE_U_BUMP_TR, TILE.SLOPE_D_BUMP_TR, TILE.SLOPE_L_BUMP_TR, TILE.SLOPE_R_BUMP_TR,
      TILE.SLOPE_UL_BUMP_TR, TILE.SLOPE_DL_BUMP_TR, TILE.SLOPE_DR_BUMP_TR],
-    [TILE.CURVE_BL,
+    [TILE.CURVE_BL, TILE.GHOST_CURVE_BL,
      TILE.SAND_BUMP_BL, TILE.WATER_BUMP_BL, TILE.LAVA_BUMP_BL,
      TILE.BOUNCY_CURVE_BL, TILE.STICKY_CURVE_BL,
      TILE.SLOPE_BUMP_BL,
      TILE.SLOPE_U_BUMP_BL, TILE.SLOPE_D_BUMP_BL, TILE.SLOPE_L_BUMP_BL, TILE.SLOPE_R_BUMP_BL,
      TILE.SLOPE_UL_BUMP_BL, TILE.SLOPE_UR_BUMP_BL, TILE.SLOPE_DR_BUMP_BL],
-    [TILE.CURVE_BR,
+    [TILE.CURVE_BR, TILE.GHOST_CURVE_BR,
      TILE.SAND_BUMP_BR, TILE.WATER_BUMP_BR, TILE.LAVA_BUMP_BR,
      TILE.BOUNCY_CURVE_BR, TILE.STICKY_CURVE_BR,
      TILE.SLOPE_BUMP_BR,
@@ -679,6 +713,11 @@ const Physics = (function () {
         const meta = CURVE_META[tile];
         if (!meta) continue;
 
+        if (tile === TILE.GHOST_BUMP_TL && ball.vx < 0 && ball.vy < 0) continue;
+        if (tile === TILE.GHOST_BUMP_TR && ball.vx > 0 && ball.vy < 0) continue;
+        if (tile === TILE.GHOST_BUMP_BL && ball.vx < 0 && ball.vy > 0) continue;
+        if (tile === TILE.GHOST_BUMP_BR && ball.vx > 0 && ball.vy > 0) continue;
+
         const tileX = col * T;
         const tileY = row * T;
         const ax = tileX + meta.ox * T;
@@ -736,6 +775,11 @@ const Physics = (function () {
         const tile = getTile(tiles, col, row);
         const meta = BUMP_META[tile];
         if (!meta) continue;
+
+        if (tile === TILE.GHOST_CURVE_TL && ball.vx > 0 && ball.vy > 0) continue;
+        if (tile === TILE.GHOST_CURVE_TR && ball.vx < 0 && ball.vy > 0) continue;
+        if (tile === TILE.GHOST_CURVE_BL && ball.vx > 0 && ball.vy < 0) continue;
+        if (tile === TILE.GHOST_CURVE_BR && ball.vx < 0 && ball.vy < 0) continue;
 
         const ax = col * T + meta.ox * T;
         const ay = row * T + meta.oy * T;
@@ -850,6 +894,11 @@ const Physics = (function () {
         const tile = getTile(tiles, col, row);
         const meta = DIAG_WALL_META[tile];
         if (!meta) continue;
+
+        if (tile === TILE.GHOST_WALL_UR && ball.vx > 0 && ball.vy < 0) continue;
+        if (tile === TILE.GHOST_WALL_LL && ball.vx < 0 && ball.vy > 0) continue;
+        if (tile === TILE.GHOST_WALL_UL && ball.vx < 0 && ball.vy < 0) continue;
+        if (tile === TILE.GHOST_WALL_LR && ball.vx > 0 && ball.vy > 0) continue;
 
         const bx = ball.x - col * T;
         const by = ball.y - row * T;
@@ -1339,6 +1388,7 @@ const Physics = (function () {
     BOUNCY_TILES,
     STICKY_TILES,
     PHANTOM_TILES,
+    GHOST_SHAPED_TILES,
     get MAX_POWER() {
       return MAX_POWER;
     },

@@ -123,6 +123,28 @@ const Renderer = (function () {
     return [WALL_FACE, WALL_EDGE];
   }
 
+  const _TL = Physics.TILE;
+  const GHOST_SHAPED_DIR = {
+    [_TL.GHOST_WALL_UR]: "UR", [_TL.GHOST_WALL_LL]: "DL",
+    [_TL.GHOST_WALL_UL]: "UL", [_TL.GHOST_WALL_LR]: "DR",
+    [_TL.GHOST_BUMP_TL]: "UL", [_TL.GHOST_BUMP_TR]: "UR",
+    [_TL.GHOST_BUMP_BL]: "DL", [_TL.GHOST_BUMP_BR]: "DR",
+    [_TL.GHOST_CURVE_TL]: "DR", [_TL.GHOST_CURVE_TR]: "DL",
+    [_TL.GHOST_CURVE_BL]: "UR", [_TL.GHOST_CURVE_BR]: "UL",
+  };
+
+  function drawGhostShapedChev(ctx, cx, cy, dir, a) {
+    ctx.strokeStyle = GHOST_CHEV;
+    ctx.lineWidth = 1.5;
+    ctx.lineJoin = "round";
+    ctx.beginPath();
+    if (dir === "UR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy - a); ctx.lineTo(cx, cy + a); }
+    if (dir === "UL") { ctx.moveTo(cx + a, cy); ctx.lineTo(cx - a, cy - a); ctx.lineTo(cx, cy + a); }
+    if (dir === "DR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy + a); ctx.lineTo(cx, cy - a); }
+    if (dir === "DL") { ctx.moveTo(cx + a, cy); ctx.lineTo(cx - a, cy + a); ctx.lineTo(cx, cy - a); }
+    ctx.stroke();
+  }
+
   function groundColor(tile) {
     if (Physics.isSandTile(tile)) return SAND_COLOR;
     if (Physics.isWaterTile(tile)) return WATER_COLOR;
@@ -565,6 +587,10 @@ const Renderer = (function () {
       ")": "UR",
       "[": "LR",
       "]": "UL",
+      [Physics.TILE.GHOST_WALL_UR]: "LL",
+      [Physics.TILE.GHOST_WALL_LL]: "UR",
+      [Physics.TILE.GHOST_WALL_UL]: "LR",
+      [Physics.TILE.GHOST_WALL_LR]: "UL",
     };
     if (DIAG_WALL[tile]) {
       const fw = DIAG_WALL[tile];
@@ -675,6 +701,13 @@ const Renderer = (function () {
           ctx.stroke();
         });
       }
+      const diagGhostDir = GHOST_SHAPED_DIR[tile];
+      if (diagGhostDir) {
+        // Chevron at centroid of the open triangle
+        const cgx = fw === "LL" ? x + T / 3 : fw === "UR" ? x + T * 2 / 3 : fw === "LR" ? x + T * 2 / 3 : x + T / 3;
+        const cgy = fw === "LL" ? y + T * 2 / 3 : fw === "UR" ? y + T / 3 : fw === "LR" ? y + T * 2 / 3 : y + T / 3;
+        drawGhostShapedChev(ctx, cgx, cgy, diagGhostDir, T * 0.1);
+      }
       return;
     }
 
@@ -724,10 +757,12 @@ const Renderer = (function () {
           ctx.stroke();
         });
       }
+      const curveGhostDir = GHOST_SHAPED_DIR[tile];
+      if (curveGhostDir) drawGhostShapedChev(ctx, x + T / 2, y + T / 2, curveGhostDir, T * 0.1);
       return;
     }
 
-    // Bumps — solid arc, open area uses openColor; 3 chevrons in solid arc area
+    // Bumps — solid arc, open area uses openColor
     const bumpMeta = Physics.BUMP_META[tile];
     if (bumpMeta) {
       const bax = x + bumpMeta.ox * T,
@@ -749,27 +784,8 @@ const Renderer = (function () {
       ctx.moveTo(bax, bay); ctx.lineTo(bax + T * Math.cos(ba0), bay + T * Math.sin(ba0));
       ctx.moveTo(bax, bay); ctx.lineTo(bax + T * Math.cos(ba1), bay + T * Math.sin(ba1));
       ctx.stroke();
-      if (Physics.BOUNCY_TILES.has(tile) || Physics.STICKY_TILES.has(tile)) {
-        const midAngle = (ba0 + ba1) / 2;
-        const spread = Math.PI / 8;
-        const a = T * 0.09;
-        ctx.strokeStyle = "rgba(255,255,255,0.5)";
-        ctx.lineWidth = 1.5;
-        ctx.lineJoin = "round";
-        [midAngle - spread, midAngle + spread].forEach((angle) => {
-          const pcx = bax + T * 0.52 * Math.cos(angle);
-          const pcy = bay + T * 0.52 * Math.sin(angle);
-          const nx = Math.cos(angle),
-            ny = Math.sin(angle);
-          const tx = -ny,
-            ty = nx;
-          ctx.beginPath();
-          ctx.moveTo(pcx - tx * a, pcy - ty * a);
-          ctx.lineTo(pcx + nx * a, pcy + ny * a);
-          ctx.lineTo(pcx + tx * a, pcy + ty * a);
-          ctx.stroke();
-        });
-      }
+      const ghostDir = GHOST_SHAPED_DIR[tile];
+      if (ghostDir) drawGhostShapedChev(ctx, x + T / 2, y + T / 2, ghostDir, T * 0.1);
       return;
     }
   }
