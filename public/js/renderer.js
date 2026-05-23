@@ -703,10 +703,13 @@ const Renderer = (function () {
       }
       const diagGhostDir = GHOST_SHAPED_DIR[tile];
       if (diagGhostDir) {
-        // Chevron at centroid of the open triangle
-        const cgx = fw === "LL" ? x + T / 3 : fw === "UR" ? x + T * 2 / 3 : fw === "LR" ? x + T * 2 / 3 : x + T / 3;
-        const cgy = fw === "LL" ? y + T * 2 / 3 : fw === "UR" ? y + T / 3 : fw === "LR" ? y + T * 2 / 3 : y + T / 3;
-        drawGhostShapedChev(ctx, cgx, cgy, diagGhostDir, T * 0.1);
+        let p1x, p1y, p2x, p2y;
+        if (fw === "LL") { p1x = x+T*0.22; p1y = y+T*0.56; p2x = x+T*0.45; p2y = y+T*0.78; }
+        if (fw === "UR") { p1x = x+T*0.78; p1y = y+T*0.44; p2x = x+T*0.55; p2y = y+T*0.22; }
+        if (fw === "LR") { p1x = x+T*0.56; p1y = y+T*0.78; p2x = x+T*0.78; p2y = y+T*0.56; }
+        if (fw === "UL") { p1x = x+T*0.22; p1y = y+T*0.44; p2x = x+T*0.45; p2y = y+T*0.22; }
+        drawGhostShapedChev(ctx, p1x, p1y, diagGhostDir, T * 0.09);
+        drawGhostShapedChev(ctx, p2x, p2y, diagGhostDir, T * 0.09);
       }
       return;
     }
@@ -758,7 +761,12 @@ const Renderer = (function () {
         });
       }
       const curveGhostDir = GHOST_SHAPED_DIR[tile];
-      if (curveGhostDir) drawGhostShapedChev(ctx, x + T / 2, y + T / 2, curveGhostDir, T * 0.1);
+      if (curveGhostDir) {
+        const mid = (a0 + a1) / 2, sp = Math.PI / 8, a = T * 0.09;
+        [mid - sp, mid + sp].forEach(ang =>
+          drawGhostShapedChev(ctx, ax + T*0.52*Math.cos(ang), ay + T*0.52*Math.sin(ang), curveGhostDir, a)
+        );
+      }
       return;
     }
 
@@ -785,7 +793,15 @@ const Renderer = (function () {
       ctx.moveTo(bax, bay); ctx.lineTo(bax + T * Math.cos(ba1), bay + T * Math.sin(ba1));
       ctx.stroke();
       const ghostDir = GHOST_SHAPED_DIR[tile];
-      if (ghostDir) drawGhostShapedChev(ctx, x + T / 2, y + T / 2, ghostDir, T * 0.1);
+      if (ghostDir) {
+        let p1x, p1y, p2x, p2y;
+        if (bumpMeta.ox === 1 && bumpMeta.oy === 1) { p1x=x+T*0.18; p1y=y+T*0.30; p2x=x+T*0.30; p2y=y+T*0.18; }
+        if (bumpMeta.ox === 0 && bumpMeta.oy === 1) { p1x=x+T*0.82; p1y=y+T*0.30; p2x=x+T*0.70; p2y=y+T*0.18; }
+        if (bumpMeta.ox === 1 && bumpMeta.oy === 0) { p1x=x+T*0.18; p1y=y+T*0.70; p2x=x+T*0.30; p2y=y+T*0.82; }
+        if (bumpMeta.ox === 0 && bumpMeta.oy === 0) { p1x=x+T*0.82; p1y=y+T*0.70; p2x=x+T*0.70; p2y=y+T*0.82; }
+        drawGhostShapedChev(ctx, p1x, p1y, ghostDir, T * 0.09);
+        drawGhostShapedChev(ctx, p2x, p2y, ghostDir, T * 0.09);
+      }
       return;
     }
   }

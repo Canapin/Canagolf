@@ -1029,10 +1029,14 @@
         const base = diagWall(fw);
         return (ctx, x, y) => {
           base(ctx, x, y);
-          const a = T * 0.1;
-          const cgx = fw === "LL" ? x + T / 3 : fw === "UR" ? x + T * 2 / 3 : fw === "LR" ? x + T * 2 / 3 : x + T / 3;
-          const cgy = fw === "LL" ? y + T * 2 / 3 : fw === "UR" ? y + T / 3 : fw === "LR" ? y + T * 2 / 3 : y + T / 3;
-          drawGhostChev(ctx, cgx, cgy, dir, a);
+          const a = T * 0.09;
+          let p1x, p1y, p2x, p2y;
+          if (fw === "LL") { p1x = x+T*0.22; p1y = y+T*0.56; p2x = x+T*0.45; p2y = y+T*0.78; }
+          if (fw === "UR") { p1x = x+T*0.78; p1y = y+T*0.44; p2x = x+T*0.55; p2y = y+T*0.22; }
+          if (fw === "LR") { p1x = x+T*0.56; p1y = y+T*0.78; p2x = x+T*0.78; p2y = y+T*0.56; }
+          if (fw === "UL") { p1x = x+T*0.22; p1y = y+T*0.44; p2x = x+T*0.45; p2y = y+T*0.22; }
+          drawGhostChev(ctx, p1x, p1y, dir, a);
+          drawGhostChev(ctx, p2x, p2y, dir, a);
         };
       }
 
@@ -1040,7 +1044,15 @@
         const base = curve(corner);
         return (ctx, x, y) => {
           base(ctx, x, y);
-          drawGhostChev(ctx, x + T / 2, y + T / 2, dir, T * 0.1);
+          let ax, ay, a0, a1;
+          if (corner === "TL") { ax = x+T; ay = y+T; a0 = Math.PI;     a1 = Math.PI*1.5; }
+          if (corner === "TR") { ax = x;   ay = y+T; a0 = Math.PI*1.5; a1 = Math.PI*2;   }
+          if (corner === "BL") { ax = x+T; ay = y;   a0 = Math.PI*0.5; a1 = Math.PI;     }
+          if (corner === "BR") { ax = x;   ay = y;   a0 = 0;           a1 = Math.PI*0.5; }
+          const mid = (a0 + a1) / 2, sp = Math.PI / 8, a = T * 0.09;
+          [mid - sp, mid + sp].forEach(ang =>
+            drawGhostChev(ctx, ax + T*0.52*Math.cos(ang), ay + T*0.52*Math.sin(ang), dir, a)
+          );
         };
       }
 
@@ -1048,7 +1060,14 @@
         const base = bump(corner);
         return (ctx, x, y) => {
           base(ctx, x, y);
-          drawGhostChev(ctx, x + T / 2, y + T / 2, dir, T * 0.1);
+          const a = T * 0.09;
+          let p1x, p1y, p2x, p2y;
+          if (corner === "TL") { p1x = x+T*0.18; p1y = y+T*0.30; p2x = x+T*0.30; p2y = y+T*0.18; }
+          if (corner === "TR") { p1x = x+T*0.82; p1y = y+T*0.30; p2x = x+T*0.70; p2y = y+T*0.18; }
+          if (corner === "BL") { p1x = x+T*0.18; p1y = y+T*0.70; p2x = x+T*0.30; p2y = y+T*0.82; }
+          if (corner === "BR") { p1x = x+T*0.82; p1y = y+T*0.70; p2x = x+T*0.70; p2y = y+T*0.82; }
+          drawGhostChev(ctx, p1x, p1y, dir, a);
+          drawGhostChev(ctx, p2x, p2y, dir, a);
         };
       }
 
@@ -1832,7 +1851,7 @@
         { c: "!", l: "Phantom ↖", g: "Ghost", sg: "", d: ghostWall("UL") },
         { c: ",", l: "Phantom ↘", g: "Ghost", sg: "", d: ghostWall("DR") },
         { c: ";", l: "Phantom ↙", g: "Ghost", sg: "", d: ghostWall("DL") },
-        // Ghost diagonal walls (shaped one-way)
+        // Ghost diagonal walls (shaped one-way) — accessible via phantom base + shape modifier
         { c: "Ū", l: "Ghost Wall ↗", g: "Ghost", sg: "diag", d: ghostDiag("LL", "UR") },
         { c: "ū", l: "Ghost Wall ↙", g: "Ghost", sg: "diag", d: ghostDiag("UR", "DL") },
         { c: "Ŭ", l: "Ghost Wall ↖", g: "Ghost", sg: "diag", d: ghostDiag("LR", "UL") },
@@ -2002,6 +2021,11 @@
           "curve-TL":"Ţ","curve-TR":"ţ","curve-BL":"Ť","curve-BR":"ď",
           "bump-TL":"ť","bump-TR":"Ŧ","bump-BL":"ŧ","bump-BR":"ē",
         },
+        // Phantom base tiles — shaped variants share the phantom's pass direction
+        "-": { "full":"-", "diag-UR":"Ū", "curve-TR":"ů", "bump-BL":"Ŵ" },
+        "!": { "full":"!", "diag-UL":"Ŭ", "curve-TL":"Ů", "bump-BR":"ŵ" },
+        ",": { "full":",", "diag-LR":"ŭ", "curve-BR":"ű", "bump-TL":"Ų" },
+        ";": { "full":";", "diag-LL":"ū", "curve-BL":"Ű", "bump-TR":"ų" },
       };
 
       // Reverse map: variant char → { base, mod } for tile picker
