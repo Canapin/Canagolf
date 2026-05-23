@@ -123,21 +123,26 @@ const Renderer = (function () {
     return [WALL_FACE, WALL_EDGE];
   }
 
+  const GHOST_SHAPED_DIR = {};
   const _TL = Physics.TILE;
-  const GHOST_SHAPED_DIR = {
-    [_TL.GHOST_WALL_UR]: "UR", [_TL.GHOST_WALL_LL]: "DL",
-    [_TL.GHOST_WALL_UL]: "UL", [_TL.GHOST_WALL_LR]: "DR",
-    [_TL.GHOST_BUMP_TL]: "UL", [_TL.GHOST_BUMP_TR]: "UR",
-    [_TL.GHOST_BUMP_BL]: "DL", [_TL.GHOST_BUMP_BR]: "DR",
-    [_TL.GHOST_CURVE_TL]: "DR", [_TL.GHOST_CURVE_TR]: "DL",
-    [_TL.GHOST_CURVE_BL]: "UR", [_TL.GHOST_CURVE_BR]: "UL",
-  };
+  for (const t of Physics.GHOST_R_PASS) if (t !== _TL.GHOST_R) GHOST_SHAPED_DIR[t] = "R";
+  for (const t of Physics.GHOST_L_PASS) if (t !== _TL.GHOST_L) GHOST_SHAPED_DIR[t] = "L";
+  for (const t of Physics.GHOST_U_PASS) if (t !== _TL.GHOST_U) GHOST_SHAPED_DIR[t] = "U";
+  for (const t of Physics.GHOST_D_PASS) if (t !== _TL.GHOST_D) GHOST_SHAPED_DIR[t] = "D";
+  for (const t of Physics.GHOST_UR_PASS) if (t !== _TL.PHANTOM_UR) GHOST_SHAPED_DIR[t] = "UR";
+  for (const t of Physics.GHOST_UL_PASS) if (t !== _TL.PHANTOM_UL) GHOST_SHAPED_DIR[t] = "UL";
+  for (const t of Physics.GHOST_DR_PASS) if (t !== _TL.PHANTOM_DR) GHOST_SHAPED_DIR[t] = "DR";
+  for (const t of Physics.GHOST_DL_PASS) if (t !== _TL.PHANTOM_DL) GHOST_SHAPED_DIR[t] = "DL";
 
   function drawGhostShapedChev(ctx, cx, cy, dir, a) {
     ctx.strokeStyle = GHOST_CHEV;
     ctx.lineWidth = 1.5;
     ctx.lineJoin = "round";
     ctx.beginPath();
+    if (dir === "R")  { ctx.moveTo(cx - a, cy - a); ctx.lineTo(cx + a, cy); ctx.lineTo(cx - a, cy + a); }
+    if (dir === "L")  { ctx.moveTo(cx + a, cy - a); ctx.lineTo(cx - a, cy); ctx.lineTo(cx + a, cy + a); }
+    if (dir === "U")  { ctx.moveTo(cx - a, cy + a); ctx.lineTo(cx, cy - a); ctx.lineTo(cx + a, cy + a); }
+    if (dir === "D")  { ctx.moveTo(cx - a, cy - a); ctx.lineTo(cx, cy + a); ctx.lineTo(cx + a, cy - a); }
     if (dir === "UR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy - a); ctx.lineTo(cx, cy + a); }
     if (dir === "UL") { ctx.moveTo(cx + a, cy); ctx.lineTo(cx - a, cy - a); ctx.lineTo(cx, cy + a); }
     if (dir === "DR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy + a); ctx.lineTo(cx, cy - a); }

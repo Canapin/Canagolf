@@ -1018,6 +1018,10 @@
         ctx.lineWidth = 1.5;
         ctx.lineJoin = "round";
         ctx.beginPath();
+        if (dir === "R")  { ctx.moveTo(cx - a, cy - a); ctx.lineTo(cx + a, cy); ctx.lineTo(cx - a, cy + a); }
+        if (dir === "L")  { ctx.moveTo(cx + a, cy - a); ctx.lineTo(cx - a, cy); ctx.lineTo(cx + a, cy + a); }
+        if (dir === "U")  { ctx.moveTo(cx - a, cy + a); ctx.lineTo(cx, cy - a); ctx.lineTo(cx + a, cy + a); }
+        if (dir === "D")  { ctx.moveTo(cx - a, cy - a); ctx.lineTo(cx, cy + a); ctx.lineTo(cx + a, cy - a); }
         if (dir === "UR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy - a); ctx.lineTo(cx, cy + a); }
         if (dir === "UL") { ctx.moveTo(cx + a, cy); ctx.lineTo(cx - a, cy - a); ctx.lineTo(cx, cy + a); }
         if (dir === "DR") { ctx.moveTo(cx - a, cy); ctx.lineTo(cx + a, cy + a); ctx.lineTo(cx, cy - a); }
@@ -1866,6 +1870,98 @@
         { c: "ų", l: "Ghost Bump ↗", g: "Ghost", sg: "bump", d: ghostBumpShape("TR", "DL") },
         { c: "Ŵ", l: "Ghost Bump ↙", g: "Ghost", sg: "bump", d: ghostBumpShape("BL", "UR") },
         { c: "ŵ", l: "Ghost Bump ↘", g: "Ghost", sg: "bump", d: ghostBumpShape("BR", "UL") },
+        // Ghost R (J) shaped variants
+        { c: "Ŷ", l: "Ghost → ↗diag", g: "Ghost", sg: "diag", d: ghostDiag("LL", "R") },
+        { c: "ŷ", l: "Ghost → ↙diag", g: "Ghost", sg: "diag", d: ghostDiag("UR", "R") },
+        { c: "Ÿ", l: "Ghost → ↖diag", g: "Ghost", sg: "diag", d: ghostDiag("LR", "R") },
+        { c: "Ź", l: "Ghost → ↘diag", g: "Ghost", sg: "diag", d: ghostDiag("UL", "R") },
+        { c: "ź", l: "Ghost → concave TL", g: "Ghost", sg: "curve", d: ghostCurveShape("TL", "R") },
+        { c: "Ż", l: "Ghost → concave TR", g: "Ghost", sg: "curve", d: ghostCurveShape("TR", "R") },
+        { c: "ż", l: "Ghost → concave BL", g: "Ghost", sg: "curve", d: ghostCurveShape("BL", "R") },
+        { c: "Ž", l: "Ghost → concave BR", g: "Ghost", sg: "curve", d: ghostCurveShape("BR", "R") },
+        { c: "ž", l: "Ghost → convex TL", g: "Ghost", sg: "bump", d: ghostBumpShape("TL", "R") },
+        { c: "ſ", l: "Ghost → convex TR", g: "Ghost", sg: "bump", d: ghostBumpShape("TR", "R") },
+        { c: "ƀ", l: "Ghost → convex BL", g: "Ghost", sg: "bump", d: ghostBumpShape("BL", "R") },
+        { c: "Ɓ", l: "Ghost → convex BR", g: "Ghost", sg: "bump", d: ghostBumpShape("BR", "R") },
+        // Ghost L (K) shaped variants
+        { c: "Ƃ", l: "Ghost ← ↗diag", g: "Ghost", sg: "diag", d: ghostDiag("LL", "L") },
+        { c: "ƃ", l: "Ghost ← ↙diag", g: "Ghost", sg: "diag", d: ghostDiag("UR", "L") },
+        { c: "Ƅ", l: "Ghost ← ↖diag", g: "Ghost", sg: "diag", d: ghostDiag("LR", "L") },
+        { c: "ƅ", l: "Ghost ← ↘diag", g: "Ghost", sg: "diag", d: ghostDiag("UL", "L") },
+        { c: "Ɔ", l: "Ghost ← concave TL", g: "Ghost", sg: "curve", d: ghostCurveShape("TL", "L") },
+        { c: "Ƈ", l: "Ghost ← concave TR", g: "Ghost", sg: "curve", d: ghostCurveShape("TR", "L") },
+        { c: "ƈ", l: "Ghost ← concave BL", g: "Ghost", sg: "curve", d: ghostCurveShape("BL", "L") },
+        { c: "Ɖ", l: "Ghost ← concave BR", g: "Ghost", sg: "curve", d: ghostCurveShape("BR", "L") },
+        { c: "Ɗ", l: "Ghost ← convex TL", g: "Ghost", sg: "bump", d: ghostBumpShape("TL", "L") },
+        { c: "Ƌ", l: "Ghost ← convex TR", g: "Ghost", sg: "bump", d: ghostBumpShape("TR", "L") },
+        { c: "ƌ", l: "Ghost ← convex BL", g: "Ghost", sg: "bump", d: ghostBumpShape("BL", "L") },
+        { c: "ƍ", l: "Ghost ← convex BR", g: "Ghost", sg: "bump", d: ghostBumpShape("BR", "L") },
+        // Ghost U (L) shaped variants
+        { c: "Ǝ", l: "Ghost ↑ ↗diag", g: "Ghost", sg: "diag", d: ghostDiag("LL", "U") },
+        { c: "Ə", l: "Ghost ↑ ↙diag", g: "Ghost", sg: "diag", d: ghostDiag("UR", "U") },
+        { c: "Ɛ", l: "Ghost ↑ ↖diag", g: "Ghost", sg: "diag", d: ghostDiag("LR", "U") },
+        { c: "Ƒ", l: "Ghost ↑ ↘diag", g: "Ghost", sg: "diag", d: ghostDiag("UL", "U") },
+        { c: "ƒ", l: "Ghost ↑ concave TL", g: "Ghost", sg: "curve", d: ghostCurveShape("TL", "U") },
+        { c: "Ɠ", l: "Ghost ↑ concave TR", g: "Ghost", sg: "curve", d: ghostCurveShape("TR", "U") },
+        { c: "Ɣ", l: "Ghost ↑ concave BL", g: "Ghost", sg: "curve", d: ghostCurveShape("BL", "U") },
+        { c: "ƕ", l: "Ghost ↑ concave BR", g: "Ghost", sg: "curve", d: ghostCurveShape("BR", "U") },
+        { c: "Ɩ", l: "Ghost ↑ convex TL", g: "Ghost", sg: "bump", d: ghostBumpShape("TL", "U") },
+        { c: "Ɨ", l: "Ghost ↑ convex TR", g: "Ghost", sg: "bump", d: ghostBumpShape("TR", "U") },
+        { c: "Ƙ", l: "Ghost ↑ convex BL", g: "Ghost", sg: "bump", d: ghostBumpShape("BL", "U") },
+        { c: "ƙ", l: "Ghost ↑ convex BR", g: "Ghost", sg: "bump", d: ghostBumpShape("BR", "U") },
+        // Ghost D (M) shaped variants
+        { c: "ƚ", l: "Ghost ↓ ↗diag", g: "Ghost", sg: "diag", d: ghostDiag("LL", "D") },
+        { c: "ƛ", l: "Ghost ↓ ↙diag", g: "Ghost", sg: "diag", d: ghostDiag("UR", "D") },
+        { c: "Ɯ", l: "Ghost ↓ ↖diag", g: "Ghost", sg: "diag", d: ghostDiag("LR", "D") },
+        { c: "Ɲ", l: "Ghost ↓ ↘diag", g: "Ghost", sg: "diag", d: ghostDiag("UL", "D") },
+        { c: "ƞ", l: "Ghost ↓ concave TL", g: "Ghost", sg: "curve", d: ghostCurveShape("TL", "D") },
+        { c: "Ɵ", l: "Ghost ↓ concave TR", g: "Ghost", sg: "curve", d: ghostCurveShape("TR", "D") },
+        { c: "Ơ", l: "Ghost ↓ concave BL", g: "Ghost", sg: "curve", d: ghostCurveShape("BL", "D") },
+        { c: "ơ", l: "Ghost ↓ concave BR", g: "Ghost", sg: "curve", d: ghostCurveShape("BR", "D") },
+        { c: "Ƣ", l: "Ghost ↓ convex TL", g: "Ghost", sg: "bump", d: ghostBumpShape("TL", "D") },
+        { c: "ƣ", l: "Ghost ↓ convex TR", g: "Ghost", sg: "bump", d: ghostBumpShape("TR", "D") },
+        { c: "Ƥ", l: "Ghost ↓ convex BL", g: "Ghost", sg: "bump", d: ghostBumpShape("BL", "D") },
+        { c: "ƥ", l: "Ghost ↓ convex BR", g: "Ghost", sg: "bump", d: ghostBumpShape("BR", "D") },
+        // Phantom UR (-) remaining shaped variants
+        { c: "Ʀ", l: "Ghost ↗ ↙diag", g: "Ghost", sg: "diag", d: ghostDiag("UR", "UR") },
+        { c: "Ƨ", l: "Ghost ↗ ↖diag", g: "Ghost", sg: "diag", d: ghostDiag("LR", "UR") },
+        { c: "ƨ", l: "Ghost ↗ ↘diag", g: "Ghost", sg: "diag", d: ghostDiag("UL", "UR") },
+        { c: "Ʃ", l: "Ghost ↗ concave TL", g: "Ghost", sg: "curve", d: ghostCurveShape("TL", "UR") },
+        { c: "ƪ", l: "Ghost ↗ concave BL", g: "Ghost", sg: "curve", d: ghostCurveShape("BL", "UR") },
+        { c: "ƫ", l: "Ghost ↗ concave BR", g: "Ghost", sg: "curve", d: ghostCurveShape("BR", "UR") },
+        { c: "Ƭ", l: "Ghost ↗ convex TL", g: "Ghost", sg: "bump", d: ghostBumpShape("TL", "UR") },
+        { c: "ƭ", l: "Ghost ↗ convex TR", g: "Ghost", sg: "bump", d: ghostBumpShape("TR", "UR") },
+        { c: "Ʈ", l: "Ghost ↗ convex BR", g: "Ghost", sg: "bump", d: ghostBumpShape("BR", "UR") },
+        // Phantom UL (!) remaining shaped variants
+        { c: "Ư", l: "Ghost ↖ ↗diag", g: "Ghost", sg: "diag", d: ghostDiag("LL", "UL") },
+        { c: "ư", l: "Ghost ↖ ↙diag", g: "Ghost", sg: "diag", d: ghostDiag("UR", "UL") },
+        { c: "Ʊ", l: "Ghost ↖ ↘diag", g: "Ghost", sg: "diag", d: ghostDiag("UL", "UL") },
+        { c: "Ʋ", l: "Ghost ↖ concave TR", g: "Ghost", sg: "curve", d: ghostCurveShape("TR", "UL") },
+        { c: "Ƴ", l: "Ghost ↖ concave BL", g: "Ghost", sg: "curve", d: ghostCurveShape("BL", "UL") },
+        { c: "ƴ", l: "Ghost ↖ concave BR", g: "Ghost", sg: "curve", d: ghostCurveShape("BR", "UL") },
+        { c: "Ƶ", l: "Ghost ↖ convex TL", g: "Ghost", sg: "bump", d: ghostBumpShape("TL", "UL") },
+        { c: "ƶ", l: "Ghost ↖ convex TR", g: "Ghost", sg: "bump", d: ghostBumpShape("TR", "UL") },
+        { c: "Ʒ", l: "Ghost ↖ convex BL", g: "Ghost", sg: "bump", d: ghostBumpShape("BL", "UL") },
+        // Phantom DR (,) remaining shaped variants
+        { c: "Ƹ", l: "Ghost ↘ ↗diag", g: "Ghost", sg: "diag", d: ghostDiag("LL", "DR") },
+        { c: "ƹ", l: "Ghost ↘ ↙diag", g: "Ghost", sg: "diag", d: ghostDiag("UR", "DR") },
+        { c: "ƺ", l: "Ghost ↘ ↖diag", g: "Ghost", sg: "diag", d: ghostDiag("LR", "DR") },
+        { c: "ƻ", l: "Ghost ↘ concave TL", g: "Ghost", sg: "curve", d: ghostCurveShape("TL", "DR") },
+        { c: "Ƽ", l: "Ghost ↘ concave TR", g: "Ghost", sg: "curve", d: ghostCurveShape("TR", "DR") },
+        { c: "ƽ", l: "Ghost ↘ concave BL", g: "Ghost", sg: "curve", d: ghostCurveShape("BL", "DR") },
+        { c: "ƾ", l: "Ghost ↘ convex TR", g: "Ghost", sg: "bump", d: ghostBumpShape("TR", "DR") },
+        { c: "ƿ", l: "Ghost ↘ convex BL", g: "Ghost", sg: "bump", d: ghostBumpShape("BL", "DR") },
+        { c: "ǀ", l: "Ghost ↘ convex BR", g: "Ghost", sg: "bump", d: ghostBumpShape("BR", "DR") },
+        // Phantom DL (;) remaining shaped variants
+        { c: "ǁ", l: "Ghost ↙ ↗diag", g: "Ghost", sg: "diag", d: ghostDiag("LL", "DL") },
+        { c: "ǂ", l: "Ghost ↙ ↖diag", g: "Ghost", sg: "diag", d: ghostDiag("LR", "DL") },
+        { c: "ǃ", l: "Ghost ↙ ↘diag", g: "Ghost", sg: "diag", d: ghostDiag("UL", "DL") },
+        { c: "Ǆ", l: "Ghost ↙ concave TL", g: "Ghost", sg: "curve", d: ghostCurveShape("TL", "DL") },
+        { c: "ǅ", l: "Ghost ↙ concave TR", g: "Ghost", sg: "curve", d: ghostCurveShape("TR", "DL") },
+        { c: "ǆ", l: "Ghost ↙ concave BR", g: "Ghost", sg: "curve", d: ghostCurveShape("BR", "DL") },
+        { c: "Ǉ", l: "Ghost ↙ convex TL", g: "Ghost", sg: "bump", d: ghostBumpShape("TL", "DL") },
+        { c: "ǈ", l: "Ghost ↙ convex BL", g: "Ghost", sg: "bump", d: ghostBumpShape("BL", "DL") },
+        { c: "ǉ", l: "Ghost ↙ convex BR", g: "Ghost", sg: "bump", d: ghostBumpShape("BR", "DL") },
         // Special tiles
         {
           c: "=",
@@ -2021,11 +2117,56 @@
           "curve-TL":"Ţ","curve-TR":"ţ","curve-BL":"Ť","curve-BR":"ď",
           "bump-TL":"ť","bump-TR":"Ŧ","bump-BL":"ŧ","bump-BR":"ē",
         },
-        // Phantom base tiles — shaped variants share the phantom's pass direction
-        "-": { "full":"-", "diag-UR":"Ū", "curve-TR":"ů", "bump-BL":"Ŵ" },
-        "!": { "full":"!", "diag-UL":"Ŭ", "curve-TL":"Ů", "bump-BR":"ŵ" },
-        ",": { "full":",", "diag-LR":"ŭ", "curve-BR":"ű", "bump-TL":"Ų" },
-        ";": { "full":";", "diag-LL":"ū", "curve-BL":"Ű", "bump-TR":"ų" },
+        // Cardinal ghost base tiles — all 12 shape variants
+        "J": {
+          "full":"J",
+          "diag-UR":"Ŷ", "diag-LL":"ŷ", "diag-UL":"Ÿ", "diag-LR":"Ź",
+          "curve-TL":"ź", "curve-TR":"Ż", "curve-BL":"ż", "curve-BR":"Ž",
+          "bump-TL":"ž", "bump-TR":"ſ", "bump-BL":"ƀ", "bump-BR":"Ɓ",
+        },
+        "K": {
+          "full":"K",
+          "diag-UR":"Ƃ", "diag-LL":"ƃ", "diag-UL":"Ƅ", "diag-LR":"ƅ",
+          "curve-TL":"Ɔ", "curve-TR":"Ƈ", "curve-BL":"ƈ", "curve-BR":"Ɖ",
+          "bump-TL":"Ɗ", "bump-TR":"Ƌ", "bump-BL":"ƌ", "bump-BR":"ƍ",
+        },
+        "L": {
+          "full":"L",
+          "diag-UR":"Ǝ", "diag-LL":"Ə", "diag-UL":"Ɛ", "diag-LR":"Ƒ",
+          "curve-TL":"ƒ", "curve-TR":"Ɠ", "curve-BL":"Ɣ", "curve-BR":"ƕ",
+          "bump-TL":"Ɩ", "bump-TR":"Ɨ", "bump-BL":"Ƙ", "bump-BR":"ƙ",
+        },
+        "M": {
+          "full":"M",
+          "diag-UR":"ƚ", "diag-LL":"ƛ", "diag-UL":"Ɯ", "diag-LR":"Ɲ",
+          "curve-TL":"ƞ", "curve-TR":"Ɵ", "curve-BL":"Ơ", "curve-BR":"ơ",
+          "bump-TL":"Ƣ", "bump-TR":"ƣ", "bump-BL":"Ƥ", "bump-BR":"ƥ",
+        },
+        // Phantom base tiles — all 12 shape variants
+        "-": {
+          "full":"-",
+          "diag-UR":"Ū",  "diag-LL":"Ʀ", "diag-UL":"Ƨ", "diag-LR":"ƨ",
+          "curve-TL":"Ʃ", "curve-TR":"ů", "curve-BL":"ƪ", "curve-BR":"ƫ",
+          "bump-TL":"Ƭ",  "bump-TR":"ƭ", "bump-BL":"Ŵ",  "bump-BR":"Ʈ",
+        },
+        "!": {
+          "full":"!",
+          "diag-UR":"Ư", "diag-LL":"ư", "diag-UL":"Ŭ",  "diag-LR":"Ʊ",
+          "curve-TL":"Ů", "curve-TR":"Ʋ", "curve-BL":"Ƴ", "curve-BR":"ƴ",
+          "bump-TL":"Ƶ", "bump-TR":"ƶ", "bump-BL":"Ʒ",  "bump-BR":"ŵ",
+        },
+        ",": {
+          "full":",",
+          "diag-UR":"Ƹ", "diag-LL":"ƹ", "diag-UL":"ƺ", "diag-LR":"ŭ",
+          "curve-TL":"ƻ", "curve-TR":"Ƽ", "curve-BL":"ƽ", "curve-BR":"ű",
+          "bump-TL":"Ų",  "bump-TR":"ƾ", "bump-BL":"ƿ",  "bump-BR":"ǀ",
+        },
+        ";": {
+          "full":";",
+          "diag-UR":"ǁ", "diag-LL":"ū",  "diag-UL":"ǂ", "diag-LR":"ǃ",
+          "curve-TL":"Ǆ", "curve-TR":"ǅ", "curve-BL":"Ű", "curve-BR":"ǆ",
+          "bump-TL":"Ǉ", "bump-TR":"ų",  "bump-BL":"ǈ",  "bump-BR":"ǉ",
+        },
       };
 
       // Reverse map: variant char → { base, mod } for tile picker
