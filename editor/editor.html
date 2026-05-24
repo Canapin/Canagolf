@@ -91,23 +91,20 @@
       }
       #tile-toast {
         position: fixed;
-        bottom: 60px;
-        left: 50%;
-        transform: translateX(-50%);
         background: rgba(20,20,20,0.88);
         border: 1px solid #555;
-        padding: 8px 12px;
+        padding: 4px 6px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 5px;
+        gap: 3px;
         opacity: 0;
-        transition: opacity 0.12s;
+        transition: opacity 0.08s;
         pointer-events: none;
         z-index: 200;
       }
       #tile-toast.visible { opacity: 1; }
-      #tile-toast-label { font-family: monospace; font-size: 12px; color: #ccc; }
+      #tile-toast-label { font-family: monospace; font-size: 10px; color: #ccc; }
 
       #resize-anchor {
         display: grid;
@@ -2824,15 +2821,19 @@
         const toastEl = document.getElementById("tile-toast");
         const cv = document.getElementById("tile-toast-canvas");
         const tc = cv.getContext("2d");
-        tc.clearRect(0, 0, 52, 52);
+        tc.clearRect(0, 0, 32, 32);
         tc.save();
-        tc.scale(52 / T, 52 / T);
+        tc.scale(32 / T, 32 / T);
         tile.d(tc, 0, 0);
         tc.restore();
         document.getElementById("tile-toast-label").textContent = MOD_TIPS[modifier] || modifier;
+        if (lastMouseEvt) {
+          toastEl.style.left = (lastMouseEvt.clientX + 16) + "px";
+          toastEl.style.top  = (lastMouseEvt.clientY + 16) + "px";
+        }
         toastEl.classList.add("visible");
         if (toastTimeout) clearTimeout(toastTimeout);
-        toastTimeout = setTimeout(() => { toastEl.classList.remove("visible"); }, 1200);
+        toastTimeout = setTimeout(() => { toastEl.classList.remove("visible"); }, 600);
       }
 
       // Keyboard: Escape cancels selection; tile chars select tile in paint mode
@@ -3040,7 +3041,7 @@
         .catch(() => {});
     </script>
     <div id="tile-toast">
-      <canvas id="tile-toast-canvas" width="52" height="52"></canvas>
+      <canvas id="tile-toast-canvas" width="32" height="32"></canvas>
       <div id="tile-toast-label"></div>
     </div>
   </body>
