@@ -570,28 +570,26 @@ const Renderer = (function () {
       const fw = DIAG_WALL[tile];
       const [face, edge] = wallFaceColors(tile);
       ctx.fillStyle = face;
-      ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = openColor;
       ctx.beginPath();
       if (fw === "LL") {
         ctx.moveTo(x, y);
-        ctx.lineTo(x, y + T);
+        ctx.lineTo(x + T, y);
         ctx.lineTo(x + T, y + T);
       }
       if (fw === "UR") {
         ctx.moveTo(x, y);
-        ctx.lineTo(x + T, y);
+        ctx.lineTo(x, y + T);
         ctx.lineTo(x + T, y + T);
       }
       if (fw === "LR") {
-        ctx.moveTo(x + T, y);
-        ctx.lineTo(x, y + T);
-        ctx.lineTo(x + T, y + T);
-      }
-      if (fw === "UL") {
         ctx.moveTo(x, y);
         ctx.lineTo(x + T, y);
         ctx.lineTo(x, y + T);
+      }
+      if (fw === "UL") {
+        ctx.moveTo(x + T, y);
+        ctx.lineTo(x, y + T);
+        ctx.lineTo(x + T, y + T);
       }
       ctx.closePath();
       ctx.fill();
