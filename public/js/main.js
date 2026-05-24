@@ -302,7 +302,7 @@
     socket.on('s:turn', ({ currentPlayerIndex, playerStates }) => {
       if (!game) return;
       waitingForTurnSwitch = false;
-      game.players[game.currentPlayerIndex].ball._tpUsedPairs.clear();
+      game.map.teleporterPairs.forEach(pair => { pair.uses = 0; });
       game.currentPlayerIndex = currentPlayerIndex;
       game.players[currentPlayerIndex].started = true;
       game.turnActive = false;
@@ -536,9 +536,10 @@ document.addEventListener('mousemove', onMouseMove);
           target.ball.x = ball.x; target.ball.y = ball.y;
           ball.x = tx; ball.y = ty;
           target.ball.vx = ball.vx; target.ball.vy = ball.vy;
+          target.ball._wasOnSwap = true;
+          ball.vx = 0; ball.vy = 0;
+          // turn advances via all-stopped check once target ball settles
         }
-        ball.vx = 0; ball.vy = 0;
-        // turn advances via all-stopped check once target ball settles
       }
 
       // Hole — sink ball
@@ -570,6 +571,22 @@ document.addEventListener('mousemove', onMouseMove);
     let nonCurStateChanged = false;
     game.players.forEach((p, i) => {
       if (i === game.currentPlayerIndex || p.sunk || p.eliminated || p.waterPending) return;
+      if (Physics.isMoving(p.ball) && !p.ball._wasOnSwap &&
+          Physics.checkSwap(p.ball, game.map.ground)) {
+        const swapTargets = game.players.filter((tp, ti) =>
+          ti !== i && !tp.sunk && !tp.eliminated && tp.started
+        );
+        if (swapTargets.length > 0) {
+          const target = swapTargets[Math.floor(Math.random() * swapTargets.length)];
+          const tx = target.ball.x, ty = target.ball.y;
+          target.ball.x = p.ball.x; target.ball.y = p.ball.y;
+          p.ball.x = tx; p.ball.y = ty;
+          target.ball.vx = p.ball.vx; target.ball.vy = p.ball.vy;
+          target.ball._wasOnSwap = true;
+          p.ball.vx = 0; p.ball.vy = 0;
+          nonCurStateChanged = true;
+        }
+      }
       const gt = Physics.getSurfaceAt(game.map.ground, p.ball.x, p.ball.y, game.map.groundLayers);
       if (Physics.isWaterTile(gt)) {
         p.waterRespawnPos = p.safePos ? { x: p.safePos.x, y: p.safePos.y } : { x: p.ball.x, y: p.ball.y };
@@ -596,10 +613,13 @@ document.addEventListener('mousemove', onMouseMove);
       if (game.over) return 'over';
     }
 
-    // Teleporter — fires on entry (outside wasMoving so it works even at low speed)
+    // Teleporter — fires for any active ball (covers target balls kicked by swap)
     if (!turnEnded) {
-      const tpDest = Physics.checkTeleporter(ball, game.map.teleporterPairs);
-      if (tpDest) { ball.x = tpDest.x; ball.y = tpDest.y; }
+      game.players.forEach(p => {
+        if (p.sunk || p.eliminated) return;
+        const tpDest = Physics.checkTeleporter(p.ball, game.map.teleporterPairs);
+        if (tpDest) { p.ball.x = tpDest.x; p.ball.y = tpDest.y; }
+      });
     }
 
     // Advance turn only when ALL balls have come to rest
@@ -623,8 +643,14 @@ document.addEventListener('mousemove', onMouseMove);
     // Track teleporter and swap occupancy to implement entry-only triggering
     game.players.forEach(p => {
       if (!p.sunk && !p.eliminated) {
-        p.ball._wasOnTp   = Physics.isOnTeleporter(p.ball, game.map.ground);
+        p.ball._tpOccupied = Physics.isOnTeleporter(p.ball, game.map.ground);
         p.ball._wasOnSwap = Physics.checkSwap(p.ball, game.map.ground);
+        if (p.ball._tpExitTile) {
+          const [ec, er] = p.ball._tpExitTile.split(',').map(Number);
+          if (Math.floor(p.ball.x / Physics.TILE_SIZE) !== ec ||
+              Math.floor(p.ball.y / Physics.TILE_SIZE) !== er)
+            p.ball._tpExitTile = null;
+        }
       }
     });
 

@@ -185,6 +185,17 @@ const Renderer = (function () {
         renderWallTile(ctx, col, row, walls[row][col], topTile);
       }
     }
+    if (map.teleporterPairs) {
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      for (const pair of map.teleporterPairs) {
+        if (pair.uses < 5) continue;
+        for (const tile of pair) {
+          ctx.beginPath();
+          ctx.arc(tile.col * T + T / 2, tile.row * T + T / 2, T / 2 - 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
   }
 
   // ── Ground tile ───────────────────────────────────────────────────────────

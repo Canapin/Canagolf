@@ -339,8 +339,11 @@ const Physics = (function () {
     }
     const teleporterPairs = [];
     Object.values(tpByType).forEach((tiles) => {
-      for (let i = 0; i + 1 < tiles.length; i += 2)
-        teleporterPairs.push([tiles[i], tiles[i + 1]]);
+      for (let i = 0; i + 1 < tiles.length; i += 2) {
+        const pair = [tiles[i], tiles[i + 1]];
+        pair.uses = 0;
+        teleporterPairs.push(pair);
+      }
     });
 
     return {
@@ -370,9 +373,9 @@ const Physics = (function () {
       _maxX: x,
       _minY: y,
       _maxY: y,
-      _wasOnTp: false,
+      _tpOccupied: new Set(),
+      _tpExitTile: null,
       _wasOnSwap: false,
-      _tpUsedPairs: new Set(),
     };
   }
 
@@ -1190,6 +1193,7 @@ const Physics = (function () {
       TILE.TELEPORTER_B,
       TILE.TELEPORTER_C,
     ]);
+    const occupied = new Set();
     const minCol = Math.floor((ball.x - TILE_SIZE / 2) / TILE_SIZE);
     const maxCol = Math.floor((ball.x + TILE_SIZE / 2) / TILE_SIZE);
     const minRow = Math.floor((ball.y - TILE_SIZE / 2) / TILE_SIZE);
@@ -1199,24 +1203,29 @@ const Physics = (function () {
         if (!TP_CHARS.has(getTile(groundTiles, col, row))) continue;
         const cx = col * TILE_SIZE + TILE_SIZE / 2;
         const cy = row * TILE_SIZE + TILE_SIZE / 2;
-        if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) return true;
+        if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) occupied.add(`${col},${row}`);
       }
     }
-    return false;
+    return occupied;
   }
 
   function checkTeleporter(ball, pairs) {
-    if (ball._wasOnTp) return null;
     const r2 = (TILE_SIZE / 2) * (TILE_SIZE / 2);
-    for (let i = 0; i < pairs.length; i++) {
-      if (ball._tpUsedPairs.has(i)) continue;
-      const [a, b] = pairs[i];
+    for (const pair of pairs) {
+      if (pair.uses >= 5) continue;
+      const [a, b] = pair;
+      const aKey = `${a.col},${a.row}`;
+      const bKey = `${b.col},${b.row}`;
       if ((ball.x - a.x) ** 2 + (ball.y - a.y) ** 2 < r2) {
-        ball._tpUsedPairs.add(i);
+        if (ball._tpOccupied.has(aKey) || ball._tpExitTile === aKey) continue;
+        pair.uses++;
+        ball._tpExitTile = bKey;
         return b;
       }
       if ((ball.x - b.x) ** 2 + (ball.y - b.y) ** 2 < r2) {
-        ball._tpUsedPairs.add(i);
+        if (ball._tpOccupied.has(bKey) || ball._tpExitTile === bKey) continue;
+        pair.uses++;
+        ball._tpExitTile = aKey;
         return a;
       }
     }
@@ -1417,6 +1426,7 @@ const Physics = (function () {
     set HOLE_GRAVITY_FORCE(v) {
       HOLE_GRAVITY_FORCE = v;
     },
+    TILE_SIZE,
     POWER_EXP,
     TILE,
     WALL_CHARS_SET,

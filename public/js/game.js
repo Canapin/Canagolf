@@ -48,7 +48,7 @@ const Game = (function () {
   }
 
   function _advanceToNextActive(game) {
-    game.players[game.currentPlayerIndex].ball._tpUsedPairs.clear();
+    game.map.teleporterPairs.forEach(pair => { pair.uses = 0; });
     game.players.forEach(p => {
       if (p.waterPending && p.waterRespawnPos) {
         p.ball.x = p.waterRespawnPos.x; p.ball.y = p.waterRespawnPos.y;
