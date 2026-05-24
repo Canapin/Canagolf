@@ -89,6 +89,20 @@
         color: #7a7;
         font-size: 11px;
       }
+      #resize-anchor {
+        display: grid;
+        grid-template-columns: repeat(3, 9px);
+        grid-template-rows: repeat(3, 9px);
+        gap: 2px;
+      }
+      #resize-anchor button {
+        width: 9px; height: 9px;
+        padding: 0; border: 1px solid #555;
+        background: #333; cursor: pointer;
+        font-size: 0;
+      }
+      #resize-anchor button:hover { background: #555; }
+      #resize-anchor button.active { background: #4a70cc; border-color: #7aacff; }
       /* .spacer {
         flex: 1;
       } */
@@ -340,6 +354,7 @@
       <label
         >H <input type="number" id="ih" value="20" min="5" max="80"
       /></label>
+      <div id="resize-anchor" title="Resize anchor"></div>
       <button id="btn-resize">Resize</button>
       <div class="sep"></div>
       <button id="btn-load">Load ▲</button>
@@ -1987,6 +2002,7 @@
       let wallGrid = []; // wall/geometry tiles ('.' = empty)
       let groundLayersGrid = []; // extra terrain layers stacked on top [[row][col]=char, ...]
       const history = []; // undo stack
+      let resizeAnchorR = 0, resizeAnchorC = 0; // top-left by default
 
       function snapshot() {
         history.push({
@@ -2198,13 +2214,14 @@
         }
       }
 
-      function initGrid(w, h, preserve) {
+      function initGrid(w, h, preserve, dr = 0, dc = 0) {
         const gnd = [], wls = [];
         for (let r = 0; r < h; r++) {
           gnd[r] = []; wls[r] = [];
           for (let c = 0; c < w; c++) {
-            gnd[r][c] = preserve && groundGrid[r]?.[c] != null ? groundGrid[r][c] : ".";
-            wls[r][c] = preserve && wallGrid[r]?.[c] != null ? wallGrid[r][c] : ".";
+            const srcR = r - dr, srcC = c - dc;
+            gnd[r][c] = preserve && groundGrid[srcR]?.[srcC] != null ? groundGrid[srcR][srcC] : ".";
+            wls[r][c] = preserve && wallGrid[srcR]?.[srcC] != null ? wallGrid[srcR][srcC] : ".";
           }
         }
         groundGrid = gnd;
@@ -2212,9 +2229,12 @@
         groundLayersGrid = groundLayersGrid.map(layer => {
           const nl = makeEmptyLayer(w, h);
           if (preserve) {
-            for (let r = 0; r < Math.min(h, layer.length); r++)
-              for (let c = 0; c < Math.min(w, (layer[r] || []).length); c++)
-                nl[r][c] = layer[r][c];
+            for (let r = 0; r < h; r++)
+              for (let c = 0; c < w; c++) {
+                const srcR = r - dr, srcC = c - dc;
+                if (srcR >= 0 && srcR < layer.length && srcC >= 0 && srcC < (layer[srcR] || []).length)
+                  nl[r][c] = layer[srcR][srcC];
+              }
           }
           return nl;
         });
@@ -2630,6 +2650,24 @@
 
       // ── Toolbar ───────────────────────────────────────────────────────────────────
 
+      // Build 3×3 anchor grid
+      {
+        const anchorEl = document.getElementById("resize-anchor");
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            const btn = document.createElement("button");
+            btn.dataset.r = r; btn.dataset.c = c;
+            if (r === 0 && c === 0) btn.classList.add("active");
+            btn.addEventListener("click", () => {
+              resizeAnchorR = r; resizeAnchorC = c;
+              anchorEl.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+              btn.classList.add("active");
+            });
+            anchorEl.appendChild(btn);
+          }
+        }
+      }
+
       document.getElementById("btn-resize").addEventListener("click", () => {
         const w = Math.max(
           5,
@@ -2639,8 +2677,10 @@
           5,
           parseInt(document.getElementById("ih").value) || mapH,
         );
+        const dr = Math.round(resizeAnchorR / 2 * (h - mapH));
+        const dc = Math.round(resizeAnchorC / 2 * (w - mapW));
         snapshot();
-        initGrid(w, h, true);
+        initGrid(w, h, true, dr, dc);
         resizeCanvas();
         render();
       });
