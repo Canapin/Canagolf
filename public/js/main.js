@@ -191,7 +191,8 @@
     if (!name) { onlineErrorEl.textContent = 'Enter your name first.'; return; }
     onlineErrorEl.textContent = '';
     connectSocket();
-    socket.emit('c:create', { name });
+    const isSpectator = document.getElementById('host-spectator').checked;
+    socket.emit('c:create', { name, isSpectator });
   });
 
   btnJoin.addEventListener('click', () => {
@@ -201,7 +202,7 @@
     if (code.length !== 4) { onlineErrorEl.textContent = 'Enter a 4-letter room code.'; return; }
     onlineErrorEl.textContent = '';
     connectSocket();
-    socket.emit('c:join', { name, code });
+    socket.emit('c:join', { name, code, isSpectator: document.getElementById('host-spectator').checked });
   });
 
   // ── Lobby ─────────────────────────────────────────────────────────────────
@@ -250,7 +251,7 @@
     socket.on('s:lobby', ({ players, hostId }) => {
       isLocalHost = localPlayerId === hostId;
       lobbyPlayersEl.innerHTML = players
-        .map(p => `<li>${p.name}${p.id === hostId ? ' 👑' : ''}</li>`)
+        .map(p => `<li>${p.name}${p.id === hostId ? ' 👑' : ''}${p.isSpectator ? ' (spectator)' : ''}</li>`)
         .join('');
       if (isLocalHost) {
         lobbyStartBtn.hidden  = false;
@@ -263,6 +264,7 @@
       localPlayerIndex = players.findIndex(p => p.id === localPlayerId);
       lobbyEl.hidden = true;
       scoreboardEl.hidden = true;
+      isOnlineHoleOver = false;
       waitingForTurnSwitch = false;
       beginGame(map, players.map(p => p.name), currentPlayerIndex);
     });
@@ -323,19 +325,22 @@
     });
 
     socket.on('s:holeover', ({ players, holeIndex, totalHoles }) => {
-      if (!game) return;
+      if (!game || isOnlineHoleOver) return;
       isOnlineHoleOver = true;
       game.over = true;
       render();
-      setTimeout(() => showScoreboard(
-        players, isLocalHost,
-        `Hole ${holeIndex + 1} / ${totalHoles}`,
-        'Next Hole ▶'
-      ), 400);
+      setTimeout(() => {
+        if (!isOnlineHoleOver) return;
+        showScoreboard(
+          players, isLocalHost,
+          `Hole ${holeIndex + 1} / ${totalHoles}`,
+          'Next Hole ▶'
+        );
+      }, 400);
     });
 
     socket.on('s:gameover', ({ players, holeScores }) => {
-      if (!game) return;
+      if (!game || game.over) return;
       game.over = true;
       render();
       setTimeout(() => showFinalResults(holeScores, isLocalHost), 400);
@@ -610,7 +615,7 @@ document.addEventListener('mousemove', onMouseMove);
     });
     if (nonCurStateChanged) {
       updateHUD();
-      if (game.over) return 'over';
+      if (game.over && !isOnlineMode) return 'over';
     }
 
     // Teleporter — fires for any active ball (covers target balls kicked by swap)
@@ -805,6 +810,7 @@ document.addEventListener('mousemove', onMouseMove);
     if (isOnlineMode) {
       if (isOnlineHoleOver) {
         isOnlineHoleOver = false;
+        scoreboardEl.hidden = true;
         socket.emit('c:nexthole');
       } else {
         socket.emit('c:close');

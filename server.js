@@ -88,7 +88,7 @@ function makeCode() {
 
 function broadcastLobby(room) {
   io.to(room.code).emit("s:lobby", {
-    players: room.players.map((p) => ({ id: p.id, name: p.name })),
+    players: room.players.map((p) => ({ id: p.id, name: p.name, isSpectator: !!p.isSpectator })),
     hostId: room.hostId,
   });
 }
@@ -112,7 +112,7 @@ function loadMapText(mapName) {
 
 function emitStartMap(room, roomCode) {
   const mapName = room.session.mapList[room.session.mapIndex];
-  const mapText = loadMapText(mapName);
+  const mapText = loadMapText(mapName).replace(/^﻿/, '');
   const startIdx = (room.startingPlayerOffset + room.session.mapIndex) % room.players.length;
   room.currentPlayerIndex = startIdx;
   room.players.forEach((p) => {
@@ -129,12 +129,12 @@ function emitStartMap(room, roomCode) {
 io.on("connection", (socket) => {
   let roomCode = null;
 
-  socket.on("c:create", ({ name }) => {
+  socket.on("c:create", ({ name, isSpectator = false }) => {
     const code = makeCode();
     const room = {
       code,
       hostId: socket.id,
-      players: [{ id: socket.id, name, strokes: 0, sunk: false }],
+      players: [{ id: socket.id, name, strokes: 0, sunk: false, isSpectator }],
       started: false,
       over: false,
       currentPlayerIndex: 0,
@@ -147,7 +147,7 @@ io.on("connection", (socket) => {
     broadcastLobby(room);
   });
 
-  socket.on("c:join", ({ code, name }) => {
+  socket.on("c:join", ({ code, name, isSpectator = false }) => {
     const room = rooms.get(code.toUpperCase());
     if (!room) {
       socket.emit("s:error", { msg: "Room not found." });
@@ -166,7 +166,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    room.players.push({ id: socket.id, name, strokes: 0, sunk: false });
+    room.players.push({ id: socket.id, name, strokes: 0, sunk: false, isSpectator });
     roomCode = code.toUpperCase();
     socket.join(roomCode);
     socket.emit("s:joined", { code: roomCode, playerId: socket.id });
@@ -177,6 +177,7 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomCode);
     if (!room || room.hostId !== socket.id || room.started) return;
     room.started = true;
+    room.players = room.players.filter((p) => !p.isSpectator);
 
     // Build map list
     const allMaps = new Set();
@@ -316,6 +317,7 @@ io.on("connection", (socket) => {
   socket.on("c:close", () => {
     const room = rooms.get(roomCode);
     if (!room || room.hostId !== socket.id) return;
+    if (!room.over) return;
     io.to(roomCode).emit("s:close");
     rooms.delete(roomCode);
   });
@@ -325,12 +327,13 @@ io.on("connection", (socket) => {
     const room = rooms.get(roomCode);
     if (!room) return;
 
+    const wasInPlayers = room.players.some((p) => p.id === socket.id);
     room.players = room.players.filter((p) => p.id !== socket.id);
     if (room.players.length === 0) {
       rooms.delete(roomCode);
       return;
     }
-    if (room.hostId === socket.id) room.hostId = room.players[0].id;
+    if (wasInPlayers && room.hostId === socket.id) room.hostId = room.players[0].id;
     if (!room.started) broadcastLobby(room);
   });
 });
