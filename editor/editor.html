@@ -1140,6 +1140,20 @@
         };
       }
 
+      function blackHole() {
+        return (ctx, x, y) => {
+          const cx = x + T / 2, cy = y + T / 2;
+          ctx.fillStyle = "#000";
+          ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 1, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = "#7000cc"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 3, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = "#aa50ff"; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(cx, cy, T * 0.18, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = "#fff";
+          ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
+        };
+      }
+
       function diagWall(fw, face = WL, edge = WL_E, showChev = false) {
         return (ctx, x, y) => {
           ctx.fillStyle = face;
@@ -1869,6 +1883,7 @@
           d: teleporter("#1a1000", "#b87010", "#ffe050"),
         },
         { c: "?", l: "Swap", g: "Special", sg: "", d: swap() },
+        { c: "Ū", l: "Black Hole", g: "Special", sg: "", d: blackHole() },
         // Lava
         { c: "w", l: "Lava", g: "Lava", sg: "", d: lava() },
         { c: "'", l: "Lava ↗", g: "Lava", sg: "diag", d: lavaDiag("LL") },

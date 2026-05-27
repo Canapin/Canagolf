@@ -168,6 +168,7 @@ const Physics = (function () {
     TELEPORTER_B: "|", // teleporter pair 2 (cyan)
     TELEPORTER_C: "/", // teleporter pair 3 (gold)
     SWAP: "?", // ball swaps position with a random opponent's ball and stops
+    BLACKHOLE: "Ū", // pulls nearby balls toward it on activation; one use per turn
     // One-way walls — diagonal (complement GHOST_R/L/U/D for 8-direction coverage)
     PHANTOM_UR: "-", // passes if ball moves up-right (vx>0 && vy<0)
     PHANTOM_UL: "!", // passes if ball moves up-left
@@ -183,6 +184,8 @@ const Physics = (function () {
   let BALL_FRICTION = 0.3; // ball-to-ball tangential friction (Coulomb μ)
   let BOUNCY_RESTITUTION = 1.5;
   let STICKY_RESTITUTION = 0.1;
+  let BH_IMPULSE_FACTOR = 0.75;
+  let BH_RADIUS_TILES = 10;
 
   const SAND_SET = new Set([
     TILE.SAND, TILE.SAND_UR, TILE.SAND_LL, TILE.SAND_UL, TILE.SAND_LR,
@@ -308,6 +311,7 @@ const Physics = (function () {
       startY = null;
     const holes = [];
     const tpByType = {};
+    const blackHoleTiles = [];
     const TP_CHARS = new Set([
       TILE.TELEPORTER,
       TILE.TELEPORTER_B,
@@ -334,6 +338,8 @@ const Physics = (function () {
             y: row * TILE_SIZE + TILE_SIZE / 2,
           };
           (tpByType[ch] = tpByType[ch] || []).push(tp);
+        } else if (ch === TILE.BLACKHOLE) {
+          blackHoleTiles.push({ col, row, dormant: false });
         }
       }
     }
@@ -357,6 +363,7 @@ const Physics = (function () {
       startY,
       holes,
       teleporterPairs,
+      blackHoleTiles,
     };
   }
 
@@ -376,6 +383,7 @@ const Physics = (function () {
       _tpOccupied: new Set(),
       _tpExitTile: null,
       _wasOnSwap: false,
+      _wasOnBlackHole: false,
     };
   }
 
@@ -1251,6 +1259,38 @@ const Physics = (function () {
     return false;
   }
 
+  // ── Black hole detection & impulse ───────────────────────────────────────
+
+  function checkBlackHole(ball, blackHoleTiles) {
+    const r2 = (TILE_SIZE / 2) ** 2;
+    for (const bh of blackHoleTiles) {
+      const cx = bh.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = bh.row * TILE_SIZE + TILE_SIZE / 2;
+      if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) return true;
+    }
+    return false;
+  }
+
+  function getActiveBlackHole(ball, blackHoleTiles) {
+    const r2 = (TILE_SIZE / 2) ** 2;
+    for (const bh of blackHoleTiles) {
+      if (bh.dormant) continue;
+      const cx = bh.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = bh.row * TILE_SIZE + TILE_SIZE / 2;
+      if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) return bh;
+    }
+    return null;
+  }
+
+  function applyBlackHoleImpulse(ball, bhX, bhY) {
+    const dx = bhX - ball.x, dy = bhY - ball.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 1) return;
+    const v = BH_IMPULSE_FACTOR * dist * (1 - FRICTION);
+    ball.vx += (dx / dist) * v;
+    ball.vy += (dy / dist) * v;
+  }
+
   // ── Tile helpers ──────────────────────────────────────────────────────────
 
   function getTile(tiles, col, row) {
@@ -1426,6 +1466,18 @@ const Physics = (function () {
     set HOLE_GRAVITY_FORCE(v) {
       HOLE_GRAVITY_FORCE = v;
     },
+    get BH_IMPULSE_FACTOR() {
+      return BH_IMPULSE_FACTOR;
+    },
+    set BH_IMPULSE_FACTOR(v) {
+      BH_IMPULSE_FACTOR = v;
+    },
+    get BH_RADIUS_TILES() {
+      return BH_RADIUS_TILES;
+    },
+    set BH_RADIUS_TILES(v) {
+      BH_RADIUS_TILES = v;
+    },
     TILE_SIZE,
     POWER_EXP,
     TILE,
@@ -1454,6 +1506,9 @@ const Physics = (function () {
     isOnTeleporter,
     checkTeleporter,
     checkSwap,
+    checkBlackHole,
+    getActiveBlackHole,
+    applyBlackHoleImpulse,
     getTile,
     tileAt,
     getSurfaceAt,

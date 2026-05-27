@@ -196,6 +196,26 @@ const Renderer = (function () {
         }
       }
     }
+    if (map.blackHoleTiles) {
+      ctx.fillStyle = "rgba(80,80,80,0.65)";
+      for (const bh of map.blackHoleTiles) {
+        if (!bh.dormant) continue;
+        ctx.beginPath();
+        ctx.arc(bh.col * T + T / 2, bh.row * T + T / 2, T / 2 - 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = "rgba(170,80,255,0.45)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([6, 5]);
+      for (const bh of map.blackHoleTiles) {
+        if (bh.dormant) continue;
+        const r = Physics.BH_RADIUS_TILES * T;
+        ctx.beginPath();
+        ctx.arc(bh.col * T + T / 2, bh.row * T + T / 2, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
   }
 
   // ── Ground tile ───────────────────────────────────────────────────────────
@@ -235,6 +255,19 @@ const Renderer = (function () {
       ctx.moveTo(cx + hw, cy + hs); ctx.lineTo(cx - hw, cy + hs);
       ctx.moveTo(cx - hw + 4, cy + hs - 3); ctx.lineTo(cx - hw, cy + hs); ctx.lineTo(cx - hw + 4, cy + hs + 3);
       ctx.stroke();
+      return;
+    }
+
+    if (tile === Physics.TILE.BLACKHOLE) {
+      const cx = x + T / 2, cy = y + T / 2;
+      ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#7000cc"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 3, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = "#aa50ff"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(cx, cy, T * 0.18, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
       return;
     }
 

@@ -54,6 +54,8 @@
       { id: 'sl-sticky',    val: 'val-sticky',    prop: 'STICKY_RESTITUTION', fmt: v => v.toFixed(2) },
       { id: 'sl-slope',     val: 'val-slope',     prop: 'SLOPE_FORCE',        fmt: v => v.toFixed(3) },
       { id: 'sl-slope-rf',  val: 'val-slope-rf',  prop: 'SLOPE_ROLL_FRICTION',fmt: v => v.toFixed(4) },
+      { id: 'sl-bh-impulse',val: 'val-bh-impulse',prop: 'BH_IMPULSE_FACTOR',  fmt: v => v.toFixed(2) },
+      { id: 'sl-bh-radius', val: 'val-bh-radius', prop: 'BH_RADIUS_TILES',    fmt: v => v.toFixed(0) },
     ];
     sliders.forEach(({ id, val, prop, fmt }) => {
       const input = document.getElementById(id);
@@ -305,6 +307,7 @@
       if (!game) return;
       waitingForTurnSwitch = false;
       game.map.teleporterPairs.forEach(pair => { pair.uses = 0; });
+      game.map.blackHoleTiles.forEach(bh => { bh.dormant = false; });
       game.currentPlayerIndex = currentPlayerIndex;
       game.players[currentPlayerIndex].started = true;
       game.turnActive = false;
@@ -547,6 +550,22 @@ document.addEventListener('mousemove', onMouseMove);
         }
       }
 
+      // Black hole — pull nearby opponents toward it; one activation per turn
+      if (!turnEnded && !ball._wasOnBlackHole) {
+        const bh = Physics.getActiveBlackHole(ball, game.map.blackHoleTiles);
+        if (bh) {
+          bh.dormant = true;
+          const bhX = bh.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
+          const bhY = bh.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
+          const pullR2 = (Physics.TILE_SIZE * Physics.BH_RADIUS_TILES) ** 2;
+          game.players.forEach((p, i) => {
+            if (i === game.currentPlayerIndex || p.sunk || p.eliminated) return;
+            const dx = bhX - p.ball.x, dy = bhY - p.ball.y;
+            if (dx * dx + dy * dy <= pullR2) Physics.applyBlackHoleImpulse(p.ball, bhX, bhY);
+          });
+        }
+      }
+
       // Hole — sink ball
       if (!turnEnded) {
         const hole = Physics.checkHole(ball, game.map.holes);
@@ -589,6 +608,21 @@ document.addEventListener('mousemove', onMouseMove);
           target.ball.vx = p.ball.vx; target.ball.vy = p.ball.vy;
           target.ball._wasOnSwap = true;
           p.ball.vx = 0; p.ball.vy = 0;
+          nonCurStateChanged = true;
+        }
+      }
+      if (Physics.isMoving(p.ball) && !p.ball._wasOnBlackHole) {
+        const bh2 = Physics.getActiveBlackHole(p.ball, game.map.blackHoleTiles);
+        if (bh2) {
+          bh2.dormant = true;
+          const bhX = bh2.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
+          const bhY = bh2.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
+          const pullR2 = (Physics.TILE_SIZE * Physics.BH_RADIUS_TILES) ** 2;
+          game.players.forEach((tp, ti) => {
+            if (ti === i || tp.sunk || tp.eliminated) return;
+            const dx = bhX - tp.ball.x, dy = bhY - tp.ball.y;
+            if (dx * dx + dy * dy <= pullR2) Physics.applyBlackHoleImpulse(tp.ball, bhX, bhY);
+          });
           nonCurStateChanged = true;
         }
       }
@@ -650,6 +684,7 @@ document.addEventListener('mousemove', onMouseMove);
       if (!p.sunk && !p.eliminated) {
         p.ball._tpOccupied = Physics.isOnTeleporter(p.ball, game.map.ground);
         p.ball._wasOnSwap = Physics.checkSwap(p.ball, game.map.ground);
+        p.ball._wasOnBlackHole = Physics.checkBlackHole(p.ball, game.map.blackHoleTiles);
         if (p.ball._tpExitTile) {
           const [ec, er] = p.ball._tpExitTile.split(',').map(Number);
           if (Math.floor(p.ball.x / Physics.TILE_SIZE) !== ec ||
