@@ -50,6 +50,7 @@ const Game = (function () {
   function _advanceToNextActive(game) {
     game.map.teleporterPairs.forEach(pair => { pair.uses = 0; });
     game.map.blackHoleTiles.forEach(bh => { bh.dormant = false; });
+    game.players.forEach(p => { p.ball._triggeredSiphon = false; });
     game.players.forEach(p => {
       if (p.waterPending && p.waterRespawnPos) {
         p.ball.x = p.waterRespawnPos.x; p.ball.y = p.waterRespawnPos.y;

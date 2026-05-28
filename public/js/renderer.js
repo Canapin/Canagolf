@@ -855,6 +855,76 @@ const Renderer = (function () {
     ctx.restore();
   }
 
+  function renderSiphonCones(ctx, map, players) {
+    if (!map.blackHoleTiles) return;
+    const BR = Physics.BALL_RADIUS, TT = Physics.TILE_SIZE;
+    const TILE_R = TT / 2 - 3;
+    for (const p of players) {
+      if (p.sunk || p.eliminated || p.waterPending || !Physics.isMoving(p.ball)) continue;
+      const b = p.ball;
+      for (const bh of map.blackHoleTiles) {
+        if (!bh.dormant) continue;
+        const cx = bh.col * TT + TT / 2, cy = bh.row * TT + TT / 2;
+        const effectR = (bh.radius ?? Physics.BH_RADIUS_TILES) * TT;
+        const dx = b.x - cx, dy = b.y - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist >= effectR || dist < 1) continue;
+        if (b._triggeredSiphon) continue;
+        if (b.vx * dx + b.vy * dy >= 0) continue;
+        const t = dist / effectR;
+        const nx = dx / dist, ny = dy / dist;
+        const px = -ny, py = nx;
+        const sx = cx + nx * TILE_R, sy = cy + ny * TILE_R;
+        const bx = b.x - nx * BR, by = b.y - ny * BR;
+        const halfW = t * 8;
+        ctx.fillStyle = "rgba(130,50,210,0.35)";
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(bx + px * halfW, by + py * halfW);
+        ctx.lineTo(bx - px * halfW, by - py * halfW);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = "rgba(160,80,240,0.5)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(bx + px * halfW, by + py * halfW);
+        ctx.lineTo(bx - px * halfW, by - py * halfW);
+        ctx.closePath();
+        ctx.stroke();
+      }
+    }
+  }
+
+  function renderSwapDots(ctx, map, players) {
+    if (!map.swapTiles) return;
+    const BR = Physics.BALL_RADIUS, TT = Physics.TILE_SIZE;
+    const TILE_R = TT / 2 - 2;
+    ctx.lineCap = "round";
+    for (const p of players) {
+      if (p.sunk || p.eliminated || p.waterPending || !(p.started || Physics.isMoving(p.ball))) continue;
+      const b = p.ball;
+      const color = BALL_COLORS[players.indexOf(p) % BALL_COLORS.length];
+      for (const sw of map.swapTiles) {
+        const cx = sw.col * TT + TT / 2, cy = sw.row * TT + TT / 2;
+        const effectR = (sw.radius ?? Physics.SWAP_RADIUS_TILES) * TT;
+        const dx = b.x - cx, dy = b.y - cy;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist >= effectR || dist < 1) continue;
+        const nx = dx / dist, ny = dy / dist;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([0, 6]);
+        ctx.beginPath();
+        ctx.moveTo(b.x - nx * BR, b.y - ny * BR);
+        ctx.lineTo(cx + nx * TILE_R, cy + ny * TILE_R);
+        ctx.stroke();
+      }
+    }
+    ctx.setLineDash([]);
+    ctx.lineCap = "butt";
+  }
+
   return {
     BALL_COLORS,
     renderMap,
@@ -862,5 +932,7 @@ const Renderer = (function () {
     renderWallTile,
     renderBall,
     renderAimLine,
+    renderSwapDots,
+    renderSiphonCones,
   };
 })();

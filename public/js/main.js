@@ -330,6 +330,7 @@
       waitingForTurnSwitch = false;
       game.map.teleporterPairs.forEach(pair => { pair.uses = 0; });
       game.map.blackHoleTiles.forEach(bh => { bh.dormant = false; });
+      game.players.forEach(p => { p.ball._triggeredSiphon = false; });
       game.currentPlayerIndex = currentPlayerIndex;
       game.players[currentPlayerIndex].started = true;
       game.turnActive = false;
@@ -589,6 +590,7 @@
         const bh = Physics.getActiveBlackHole(ball, game.map.blackHoleTiles);
         if (bh) {
           bh.dormant = true;
+          ball._triggeredSiphon = true;
           const bhX = bh.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
           const bhY = bh.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
           const pullR2 = (Physics.TILE_SIZE * (bh.radius ?? Physics.BH_RADIUS_TILES)) ** 2;
@@ -656,6 +658,7 @@
         const bh2 = Physics.getActiveBlackHole(p.ball, game.map.blackHoleTiles);
         if (bh2) {
           bh2.dormant = true;
+          p.ball._triggeredSiphon = true;
           const bhX = bh2.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
           const bhY = bh2.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
           const pullR2 = (Physics.TILE_SIZE * (bh2.radius ?? Physics.BH_RADIUS_TILES)) ** 2;
@@ -798,6 +801,9 @@
         }
       }
     }
+
+    Renderer.renderSwapDots(ctx, game.map, game.players);
+    Renderer.renderSiphonCones(ctx, game.map, game.players);
 
     game.players.forEach((p, i) => {
       if (!p.sunk && !p.eliminated && !p.waterPending && (p.started || Physics.isMoving(p.ball)))
