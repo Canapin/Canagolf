@@ -27,6 +27,7 @@ const Physics = (function () {
   let MAX_POWER = 6;
   let POWER_SCALE = 0.05; // px-of-cursor-distance → power unit
   const POWER_EXP = 1.5; // exponent for power curve (>1 = finer at short range)
+  let MAX_VELOCITY = 25; // absolute speed cap (px/frame) — prevents bouncy-wall runaway
 
   const TILE = {
     EMPTY: ".",
@@ -1093,6 +1094,11 @@ const Physics = (function () {
     }
 
     const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+    if (speed > MAX_VELOCITY) {
+      const scale = MAX_VELOCITY / speed;
+      ball.vx *= scale;
+      ball.vy *= scale;
+    }
     if (speed < MIN_SPEED && !isSlopeTile(curTile)) {
       ball.vx = 0;
       ball.vy = 0;
