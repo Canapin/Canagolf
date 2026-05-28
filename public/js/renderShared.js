@@ -12,6 +12,20 @@ const RenderShared = (function () {
     }
   }
 
+  function drawSandSpecks(ctx, x, y, T) {
+    const dots = [
+      [0.2, 0.25, "rgba(0,0,0,0.1)"], [0.45, 0.2, "rgba(255,255,255,0.2)"], [0.75, 0.3, "rgba(0,0,0,0.08)"],
+      [0.3, 0.5, "rgba(255,255,255,0.25)"], [0.65, 0.55, "rgba(0,0,0,0.12)"], [0.85, 0.5, "rgba(255,255,255,0.18)"],
+      [0.15, 0.75, "rgba(0,0,0,0.09)"], [0.5, 0.8, "rgba(255,255,255,0.22)"], [0.7, 0.72, "rgba(0,0,0,0.11)"],
+    ];
+    for (const [fx, fy, col] of dots) {
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.arc(x + T * fx, y + T * fy, T * 0.035, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   const ARC = {
     TL: { ox: 1, oy: 1, a0: Math.PI, a1: Math.PI * 1.5 },
     TR: { ox: 0, oy: 1, a0: Math.PI * 1.5, a1: Math.PI * 2 },
@@ -35,13 +49,14 @@ const RenderShared = (function () {
     }
   }
 
-  function renderFull(ctx, x, y, T, color, isWater) {
+  function renderFull(ctx, x, y, T, color, isWater, isSand) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, T, T);
     if (isWater) drawWaterWaves(ctx, x, y, T);
+    if (isSand) drawSandSpecks(ctx, x, y, T);
   }
 
-  function renderDiag(ctx, x, y, T, tri, color, isWater) {
+  function renderDiag(ctx, x, y, T, tri, color, isWater, isSand) {
     ctx.save();
     ctx.beginPath();
     triPath(ctx, x, y, T, tri);
@@ -50,10 +65,11 @@ const RenderShared = (function () {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, T, T);
     if (isWater) drawWaterWaves(ctx, x, y, T);
+    if (isSand) drawSandSpecks(ctx, x, y, T);
     ctx.restore();
   }
 
-  function renderCurve(ctx, x, y, T, corner, color, isWater) {
+  function renderCurve(ctx, x, y, T, corner, color, isWater, isSand) {
     const c = ARC[corner];
     const ax = x + c.ox * T, ay = y + c.oy * T;
     ctx.save();
@@ -65,10 +81,11 @@ const RenderShared = (function () {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, T, T);
     if (isWater) drawWaterWaves(ctx, x, y, T);
+    if (isSand) drawSandSpecks(ctx, x, y, T);
     ctx.restore();
   }
 
-  function renderBump(ctx, x, y, T, corner, color, isWater) {
+  function renderBump(ctx, x, y, T, corner, color, isWater, isSand) {
     const c = ARC[corner];
     const ax = x + c.ox * T, ay = y + c.oy * T;
     ctx.save();
@@ -81,6 +98,7 @@ const RenderShared = (function () {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, T, T);
     if (isWater) drawWaterWaves(ctx, x, y, T);
+    if (isSand) drawSandSpecks(ctx, x, y, T);
     ctx.restore();
   }
 

@@ -269,9 +269,9 @@ const Renderer = (function () {
     }
 
     // Full solid tiles
-    if (tile === Physics.TILE.SAND)  { RenderShared.renderFull(ctx, x, y, T, SAND_COLOR, false); return; }
-    if (tile === Physics.TILE.WATER) { RenderShared.renderFull(ctx, x, y, T, WATER_COLOR, true); return; }
-    if (tile === Physics.TILE.LAVA)  { RenderShared.renderFull(ctx, x, y, T, LAVA_COLOR, false); return; }
+    if (tile === Physics.TILE.SAND)  { RenderShared.renderFull(ctx, x, y, T, SAND_COLOR, false, true); return; }
+    if (tile === Physics.TILE.WATER) { RenderShared.renderFull(ctx, x, y, T, WATER_COLOR, true, false); return; }
+    if (tile === Physics.TILE.LAVA)  { RenderShared.renderFull(ctx, x, y, T, LAVA_COLOR, false, false); return; }
 
     if (SLOPE_FACE[tile]) {
       ctx.fillStyle = SLOPE_FACE[tile];
@@ -291,7 +291,7 @@ const Renderer = (function () {
     };
     if (DIAG[tile]) {
       const [color, tri] = DIAG[tile];
-      RenderShared.renderDiag(ctx, x, y, T, tri, color, Physics.isWaterTile(tile));
+      RenderShared.renderDiag(ctx, x, y, T, tri, color, Physics.isWaterTile(tile), Physics.isSandTile(tile));
       return;
     }
 
@@ -315,7 +315,7 @@ const Renderer = (function () {
     if (MAT_CURVE[tile]) {
       const meta = Physics.CURVE_META[tile];
       const corner = RenderShared.cornerFromMeta(meta.ox, meta.oy);
-      RenderShared.renderCurve(ctx, x, y, T, corner, MAT_CURVE[tile], Physics.isWaterTile(tile));
+      RenderShared.renderCurve(ctx, x, y, T, corner, MAT_CURVE[tile], Physics.isWaterTile(tile), Physics.isSandTile(tile));
       return;
     }
 
@@ -635,6 +635,7 @@ const Renderer = (function () {
       ctx.stroke();
       // 2 chevrons in solid wall area — only for bouncy/sticky variants
       if (Physics.BOUNCY_TILES.has(tile) || Physics.STICKY_TILES.has(tile)) {
+        const isSticky = Physics.STICKY_TILES.has(tile);
         let p1x, p1y, p2x, p2y;
         if (fw === "LL") {
           p1x = x + T * 0.78;
@@ -670,24 +671,48 @@ const Renderer = (function () {
         ].forEach(([pcx, pcy]) => {
           ctx.beginPath();
           if (fw === "LL") {
-            ctx.moveTo(pcx + a, pcy);
-            ctx.lineTo(pcx - a, pcy + a);
-            ctx.lineTo(pcx, pcy - a);
+            if (isSticky) {
+              ctx.moveTo(pcx - a, pcy);
+              ctx.lineTo(pcx + a, pcy - a);
+              ctx.lineTo(pcx, pcy + a);
+            } else {
+              ctx.moveTo(pcx + a, pcy);
+              ctx.lineTo(pcx - a, pcy + a);
+              ctx.lineTo(pcx, pcy - a);
+            }
           }
           if (fw === "UR") {
-            ctx.moveTo(pcx - a, pcy);
-            ctx.lineTo(pcx + a, pcy - a);
-            ctx.lineTo(pcx, pcy + a);
+            if (isSticky) {
+              ctx.moveTo(pcx + a, pcy);
+              ctx.lineTo(pcx - a, pcy + a);
+              ctx.lineTo(pcx, pcy - a);
+            } else {
+              ctx.moveTo(pcx - a, pcy);
+              ctx.lineTo(pcx + a, pcy - a);
+              ctx.lineTo(pcx, pcy + a);
+            }
           }
           if (fw === "LR") {
-            ctx.moveTo(pcx - a, pcy);
-            ctx.lineTo(pcx + a, pcy + a);
-            ctx.lineTo(pcx, pcy - a);
+            if (isSticky) {
+              ctx.moveTo(pcx + a, pcy);
+              ctx.lineTo(pcx - a, pcy - a);
+              ctx.lineTo(pcx, pcy + a);
+            } else {
+              ctx.moveTo(pcx - a, pcy);
+              ctx.lineTo(pcx + a, pcy + a);
+              ctx.lineTo(pcx, pcy - a);
+            }
           }
           if (fw === "UL") {
-            ctx.moveTo(pcx + a, pcy);
-            ctx.lineTo(pcx - a, pcy - a);
-            ctx.lineTo(pcx, pcy + a);
+            if (isSticky) {
+              ctx.moveTo(pcx - a, pcy);
+              ctx.lineTo(pcx + a, pcy + a);
+              ctx.lineTo(pcx, pcy - a);
+            } else {
+              ctx.moveTo(pcx + a, pcy);
+              ctx.lineTo(pcx - a, pcy - a);
+              ctx.lineTo(pcx, pcy + a);
+            }
           }
           ctx.stroke();
         });
@@ -745,6 +770,7 @@ const Renderer = (function () {
       ctx.moveTo(bax, bay); ctx.lineTo(bax + T * Math.cos(ba1), bay + T * Math.sin(ba1));
       ctx.stroke();
       if (Physics.BOUNCY_TILES.has(tile) || Physics.STICKY_TILES.has(tile)) {
+        const isSticky = Physics.STICKY_TILES.has(tile);
         const midAngle = (ba0 + ba1) / 2;
         const spread = Math.PI / 8;
         const a = T * 0.09;
@@ -752,15 +778,15 @@ const Renderer = (function () {
         ctx.lineWidth = 1.5;
         ctx.lineJoin = "round";
         [midAngle - spread, midAngle + spread].forEach((angle) => {
-          const pcx = bax + T * 0.52 * Math.cos(angle);
-          const pcy = bay + T * 0.52 * Math.sin(angle);
+          const pcx = bax + T * 0.72 * Math.cos(angle);
+          const pcy = bay + T * 0.72 * Math.sin(angle);
           const nx = Math.cos(angle),
             ny = Math.sin(angle);
           const tx = -ny,
             ty = nx;
           ctx.beginPath();
           ctx.moveTo(pcx - tx * a, pcy - ty * a);
-          ctx.lineTo(pcx + nx * a, pcy + ny * a);
+          ctx.lineTo(pcx + (isSticky ? -nx : nx) * a, pcy + (isSticky ? -ny : ny) * a);
           ctx.lineTo(pcx + tx * a, pcy + ty * a);
           ctx.stroke();
         });

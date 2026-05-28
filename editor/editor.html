@@ -538,7 +538,7 @@
 
       function fill(color) {
         return (ctx, x, y) => {
-          RenderShared.renderFull(ctx, x, y, T, color, color === WTR);
+          RenderShared.renderFull(ctx, x, y, T, color, color === WTR, color === SND);
         };
       }
 
@@ -587,7 +587,7 @@
         return (ctx, x, y) => {
           ctx.fillStyle = FW;
           ctx.fillRect(x, y, T, T);
-          RenderShared.renderDiag(ctx, x, y, T, tri, color, color === WTR);
+          RenderShared.renderDiag(ctx, x, y, T, tri, color, color === WTR, color === SND);
         };
       }
 
@@ -595,7 +595,7 @@
         return (ctx, x, y) => {
           ctx.fillStyle = FW;
           ctx.fillRect(x, y, T, T);
-          RenderShared.renderCurve(ctx, x, y, T, corner, color, color === WTR);
+          RenderShared.renderCurve(ctx, x, y, T, corner, color, color === WTR, color === SND);
         };
       }
 
@@ -734,7 +734,7 @@
           return                       [x,     y,     0, Math.PI * 0.5];
         }
         if (info.type === 'full') {
-          RenderShared.renderFull(ctx, x, y, T, info.color, info.color === WTR);
+          RenderShared.renderFull(ctx, x, y, T, info.color, info.color === WTR, info.color === SND);
           return;
         }
         if (info.type === 'slope') {
@@ -744,7 +744,7 @@
         if (info.type === 'tri' || info.type === 'slope-tri') {
           const tri = info.tri;
           if (info.type === 'tri') {
-            RenderShared.renderDiag(ctx, x, y, T, tri, info.color, info.color === WTR);
+            RenderShared.renderDiag(ctx, x, y, T, tri, info.color, info.color === WTR, info.color === SND);
           } else {
             ctx.save(); ctx.beginPath();
             if (tri==='UR') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y);   ctx.lineTo(x+T,y+T); }
@@ -760,7 +760,7 @@
         }
         if (info.type === 'curve' || info.type === 'slope-curve') {
           if (info.type === 'curve') {
-            RenderShared.renderCurve(ctx, x, y, T, info.corner, info.color, info.color === WTR);
+            RenderShared.renderCurve(ctx, x, y, T, info.corner, info.color, info.color === WTR, info.color === SND);
           } else {
             const [ax, ay, a0, a1] = arcParams(info.corner);
             ctx.save(); ctx.beginPath();
