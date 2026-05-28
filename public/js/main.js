@@ -306,12 +306,14 @@
       updateHUD();
     });
 
-    socket.on('s:ballpos', ({ playerIndex, x, y }) => {
-      if (!game) return;
-      const ball = game.players[playerIndex].ball;
-      ball.x = x;
-      ball.y = y;
-    });
+     socket.on('s:ballpos', ({ playerIndex, x, y }) => {
+       if (!game) return;
+       const ball = game.players[playerIndex].ball;
+       ball.x = x;
+       ball.y = y;
+       ball.vx = 0;
+       ball.vy = 0;
+     });
 
     socket.on('s:sink', ({ playerIndex, x, y }) => {
       if (!game) return;
@@ -574,7 +576,7 @@
           return dx * dx + dy * dy <= swapR2;
         });
         if (others.length > 0) {
-          const target = others[Math.floor(Math.random() * others.length)];
+          const target = others[Math.abs(Math.floor(ball.x * 7 + ball.y * 13)) % others.length];
           const tx = target.ball.x, ty = target.ball.y;
           target.ball.x = ball.x; target.ball.y = ball.y;
           ball.x = tx; ball.y = ty;
@@ -644,7 +646,7 @@
           return dx * dx + dy * dy <= swapR2;
         });
         if (swapTargets.length > 0) {
-          const target = swapTargets[Math.floor(Math.random() * swapTargets.length)];
+          const target = swapTargets[Math.abs(Math.floor(p.ball.x * 7 + p.ball.y * 13)) % swapTargets.length];
           const tx = target.ball.x, ty = target.ball.y;
           target.ball.x = p.ball.x; target.ball.y = p.ball.y;
           p.ball.x = tx; p.ball.y = ty;
