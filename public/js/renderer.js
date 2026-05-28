@@ -204,17 +204,6 @@ const Renderer = (function () {
         ctx.arc(bh.col * T + T / 2, bh.row * T + T / 2, T / 2 - 1, 0, Math.PI * 2);
         ctx.fill();
       }
-      ctx.strokeStyle = "rgba(170,80,255,0.45)";
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([6, 5]);
-      for (const bh of map.blackHoleTiles) {
-        if (bh.dormant) continue;
-        const r = Physics.BH_RADIUS_TILES * T;
-        ctx.beginPath();
-        ctx.arc(bh.col * T + T / 2, bh.row * T + T / 2, r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.setLineDash([]);
     }
   }
 

@@ -2050,6 +2050,8 @@
       let wallGrid = []; // wall/geometry tiles ('.' = empty)
       let groundLayersGrid = []; // extra terrain layers stacked on top [[row][col]=char, ...]
       const history = []; // undo stack
+      let swapRadii = {};
+      let bhRadii = {};
       let resizeAnchorR = 0, resizeAnchorC = 0; // top-left by default
 
       function snapshot() {
@@ -2322,6 +2324,25 @@
             ctx.strokeStyle = "rgba(0,0,0,0.18)";
             ctx.lineWidth = 0.5;
             ctx.strokeRect(x, y, T, T);
+          }
+        }
+
+        // Radius circles for swap and black hole tiles
+        ctx.lineWidth = 1;
+        for (let r = 0; r < mapH; r++) {
+          for (let c = 0; c < mapW; c++) {
+            const ch = groundGrid[r][c];
+            if (ch === '?') {
+              ctx.strokeStyle = 'rgba(192,128,0,0.5)';
+              ctx.beginPath();
+              ctx.arc(c * T + T / 2, r * T + T / 2, (swapRadii[c + ',' + r] ?? 8) * T, 0, Math.PI * 2);
+              ctx.stroke();
+            } else if (ch === 'Ū') {
+              ctx.strokeStyle = 'rgba(170,80,255,0.5)';
+              ctx.beginPath();
+              ctx.arc(c * T + T / 2, r * T + T / 2, (bhRadii[c + ',' + r] ?? 10) * T, 0, Math.PI * 2);
+              ctx.stroke();
+            }
           }
         }
 
@@ -2791,6 +2812,16 @@
           if (groundLayersGrid.length > 0) {
             mapData.groundLayers = groundLayersGrid.map(layer => layer.map(r => r.join("")));
           }
+          const swapRadiiOut = {}, bhRadiiOut = {};
+          for (let row = 0; row < mapH; row++) {
+            for (let col = 0; col < mapW; col++) {
+              const key = col + ',' + row;
+              if (groundGrid[row][col] === '?' && swapRadii[key] != null) swapRadiiOut[key] = swapRadii[key];
+              if (groundGrid[row][col] === 'Ū' && bhRadii[key] != null) bhRadiiOut[key] = bhRadii[key];
+            }
+          }
+          if (Object.keys(swapRadiiOut).length > 0) mapData.swapRadii = swapRadiiOut;
+          if (Object.keys(bhRadiiOut).length > 0) mapData.bhRadii = bhRadiiOut;
           const content = JSON.stringify(mapData, null, 2);
           const statusEl = document.getElementById("status");
           statusEl.textContent = "Saving…";
@@ -2865,6 +2896,27 @@
         if (e.target.tagName === "INPUT") return;
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
           e.preventDefault();
+          if (lastMouseEvt) {
+            const cell = cellAt(lastMouseEvt);
+            if (cell.row >= 0 && cell.row < mapH && cell.col >= 0 && cell.col < mapW) {
+              const groundCh = groundGrid[cell.row][cell.col];
+              const delta = e.key === 'ArrowRight' ? 1 : -1;
+              if (groundCh === '?') {
+                const key = cell.col + ',' + cell.row;
+                swapRadii[key] = Math.max(1, Math.min(30, (swapRadii[key] ?? 8) + delta));
+                document.getElementById('status').textContent = `Swap radius: ${swapRadii[key]} tiles`;
+                render();
+                return;
+              }
+              if (groundCh === 'Ū') {
+                const key = cell.col + ',' + cell.row;
+                bhRadii[key] = Math.max(1, Math.min(30, (bhRadii[key] ?? 10) + delta));
+                document.getElementById('status').textContent = `Black hole radius: ${bhRadii[key]} tiles`;
+                render();
+                return;
+              }
+            }
+          }
           if (!VARIANT_MAP[selected]) return;
           const availMods = ALL_MODS.filter(m => m in VARIANT_MAP[selected]);
           const idx = availMods.indexOf(modifier);
@@ -2938,6 +2990,19 @@
         document.getElementById("iw").value = mapW;
         document.getElementById("ih").value = mapH;
         if (name !== undefined) document.getElementById("iname").value = name;
+        swapRadii = Object.assign({}, data.swapRadii || {});
+        bhRadii = Object.assign({}, data.bhRadii || {});
+        // backward compat: old single-value fields become per-tile for any existing tiles
+        if (typeof data.swapRadius === 'number') {
+          for (let row = 0; row < mapH; row++)
+            for (let col = 0; col < mapW; col++)
+              if (groundGrid[row][col] === '?') swapRadii[col + ',' + row] = data.swapRadius;
+        }
+        if (typeof data.bhRadius === 'number') {
+          for (let row = 0; row < mapH; row++)
+            for (let col = 0; col < mapW; col++)
+              if (groundGrid[row][col] === 'Ū') bhRadii[col + ',' + row] = data.bhRadius;
+        }
         resizeCanvas();
         render();
       }

@@ -54,8 +54,9 @@
       { id: 'sl-sticky',    val: 'val-sticky',    prop: 'STICKY_RESTITUTION', fmt: v => v.toFixed(2) },
       { id: 'sl-slope',     val: 'val-slope',     prop: 'SLOPE_FORCE',        fmt: v => v.toFixed(3) },
       { id: 'sl-slope-rf',  val: 'val-slope-rf',  prop: 'SLOPE_ROLL_FRICTION',fmt: v => v.toFixed(4) },
-      { id: 'sl-bh-impulse',val: 'val-bh-impulse',prop: 'BH_IMPULSE_FACTOR',  fmt: v => v.toFixed(2) },
-      { id: 'sl-bh-radius', val: 'val-bh-radius', prop: 'BH_RADIUS_TILES',    fmt: v => v.toFixed(0) },
+      { id: 'sl-bh-impulse',  val: 'val-bh-impulse',  prop: 'BH_IMPULSE_FACTOR',  fmt: v => v.toFixed(2) },
+      { id: 'sl-bh-radius',   val: 'val-bh-radius',   prop: 'BH_RADIUS_TILES',    fmt: v => v.toFixed(0) },
+      { id: 'sl-swap-radius', val: 'val-swap-radius', prop: 'SWAP_RADIUS_TILES',  fmt: v => v.toFixed(0) },
     ];
     sliders.forEach(({ id, val, prop, fmt }) => {
       const input = document.getElementById(id);
@@ -68,6 +69,11 @@
       const current = Physics[prop];
       input.value = current;
       label.textContent = fmt(current);
+    });
+
+    document.getElementById('debug-toggle').addEventListener('click', () => {
+      debugPanelEl.hidden = !debugPanelEl.hidden;
+      localStorage.setItem('canagolf_debugOpen', debugPanelEl.hidden ? '0' : '1');
     });
   })();
 
@@ -419,8 +425,13 @@
       setupEl.hidden = true;
       lobbyEl.hidden = true;
       gameEl.hidden  = false;
-      debugPanelEl.hidden = isOnlineMode && !isLocalHost;
-document.addEventListener('mousemove', onMouseMove);
+      const debugAllowed = !isOnlineMode || isLocalHost;
+      const toggleBtn = document.getElementById('debug-toggle');
+      toggleBtn.hidden = !debugAllowed;
+      if (debugAllowed) {
+        debugPanelEl.hidden = localStorage.getItem('canagolf_debugOpen') !== '1';
+      }
+      document.addEventListener('mousemove', onMouseMove);
       canvas.addEventListener('click', onCanvasClick);
     }
 
@@ -533,11 +544,18 @@ document.addEventListener('mousemove', onMouseMove);
     }
 
     if (wasMoving) {
-      // Swap — exchange position, transfer velocity to target; only on entry
-      if (!turnEnded && Physics.checkSwap(ball, game.map.ground) && !ball._wasOnSwap) {
-        const others = game.players.filter((p, i) =>
-          i !== game.currentPlayerIndex && !p.sunk && !p.eliminated && p.started
-        );
+      // Swap — exchange position, transfer velocity to target; only on entry; radius-limited
+      const swapTile = Physics.checkSwap(ball, game.map.ground);
+      if (!turnEnded && swapTile && !ball._wasOnSwap) {
+        const swapCX = swapTile.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
+        const swapCY = swapTile.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
+        const swapObj = game.map.swapTiles.find(s => s.col === swapTile.col && s.row === swapTile.row);
+        const swapR2 = (Physics.TILE_SIZE * (swapObj?.radius ?? Physics.SWAP_RADIUS_TILES)) ** 2;
+        const others = game.players.filter((p, i) => {
+          if (i === game.currentPlayerIndex || p.sunk || p.eliminated || !p.started) return false;
+          const dx = p.ball.x - swapCX, dy = p.ball.y - swapCY;
+          return dx * dx + dy * dy <= swapR2;
+        });
         if (others.length > 0) {
           const target = others[Math.floor(Math.random() * others.length)];
           const tx = target.ball.x, ty = target.ball.y;
@@ -557,7 +575,7 @@ document.addEventListener('mousemove', onMouseMove);
           bh.dormant = true;
           const bhX = bh.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
           const bhY = bh.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
-          const pullR2 = (Physics.TILE_SIZE * Physics.BH_RADIUS_TILES) ** 2;
+          const pullR2 = (Physics.TILE_SIZE * (bh.radius ?? Physics.BH_RADIUS_TILES)) ** 2;
           game.players.forEach((p, i) => {
             if (i === game.currentPlayerIndex || p.sunk || p.eliminated) return;
             const dx = bhX - p.ball.x, dy = bhY - p.ball.y;
@@ -595,11 +613,18 @@ document.addEventListener('mousemove', onMouseMove);
     let nonCurStateChanged = false;
     game.players.forEach((p, i) => {
       if (i === game.currentPlayerIndex || p.sunk || p.eliminated || p.waterPending) return;
-      if (Physics.isMoving(p.ball) && !p.ball._wasOnSwap &&
-          Physics.checkSwap(p.ball, game.map.ground)) {
-        const swapTargets = game.players.filter((tp, ti) =>
-          ti !== i && !tp.sunk && !tp.eliminated && tp.started
-        );
+      const swapTile2 = Physics.isMoving(p.ball) && !p.ball._wasOnSwap
+        ? Physics.checkSwap(p.ball, game.map.ground) : null;
+      if (swapTile2) {
+        const swapCX = swapTile2.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
+        const swapCY = swapTile2.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
+        const swapObj2 = game.map.swapTiles.find(s => s.col === swapTile2.col && s.row === swapTile2.row);
+        const swapR2 = (Physics.TILE_SIZE * (swapObj2?.radius ?? Physics.SWAP_RADIUS_TILES)) ** 2;
+        const swapTargets = game.players.filter((tp, ti) => {
+          if (ti === i || tp.sunk || tp.eliminated || !tp.started) return false;
+          const dx = tp.ball.x - swapCX, dy = tp.ball.y - swapCY;
+          return dx * dx + dy * dy <= swapR2;
+        });
         if (swapTargets.length > 0) {
           const target = swapTargets[Math.floor(Math.random() * swapTargets.length)];
           const tx = target.ball.x, ty = target.ball.y;
@@ -617,7 +642,7 @@ document.addEventListener('mousemove', onMouseMove);
           bh2.dormant = true;
           const bhX = bh2.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
           const bhY = bh2.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
-          const pullR2 = (Physics.TILE_SIZE * Physics.BH_RADIUS_TILES) ** 2;
+          const pullR2 = (Physics.TILE_SIZE * (bh2.radius ?? Physics.BH_RADIUS_TILES)) ** 2;
           game.players.forEach((tp, ti) => {
             if (ti === i || tp.sunk || tp.eliminated) return;
             const dx = bhX - tp.ball.x, dy = bhY - tp.ball.y;
@@ -732,6 +757,31 @@ document.addEventListener('mousemove', onMouseMove);
     ctx.translate(MARGIN, MARGIN);
 
     Renderer.renderMap(ctx, game.map);
+
+    const isMyTurn = !game.over && (!isOnlineMode || localPlayerIndex === game.currentPlayerIndex);
+    if (isMyTurn) {
+      const TT = Physics.TILE_SIZE;
+      ctx.lineWidth = 1.5;
+      if (game.map.swapTiles && game.map.swapTiles.length > 0) {
+        ctx.strokeStyle = "rgba(192,128,0,0.5)";
+        for (const sw of game.map.swapTiles) {
+          const r = (sw.radius ?? Physics.SWAP_RADIUS_TILES) * TT;
+          ctx.beginPath();
+          ctx.arc(sw.col * TT + TT / 2, sw.row * TT + TT / 2, r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+      if (game.map.blackHoleTiles && game.map.blackHoleTiles.length > 0) {
+        ctx.strokeStyle = "rgba(170,80,255,0.5)";
+        for (const bh of game.map.blackHoleTiles) {
+          if (bh.dormant) continue;
+          const r = (bh.radius ?? Physics.BH_RADIUS_TILES) * TT;
+          ctx.beginPath();
+          ctx.arc(bh.col * TT + TT / 2, bh.row * TT + TT / 2, r, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+    }
 
     game.players.forEach((p, i) => {
       if (!p.sunk && !p.eliminated && !p.waterPending && (p.started || Physics.isMoving(p.ball)))

@@ -186,6 +186,7 @@ const Physics = (function () {
   let STICKY_RESTITUTION = 0.1;
   let BH_IMPULSE_FACTOR = 0.75;
   let BH_RADIUS_TILES = 10;
+  let SWAP_RADIUS_TILES = 8;
 
   const SAND_SET = new Set([
     TILE.SAND, TILE.SAND_UR, TILE.SAND_LL, TILE.SAND_UL, TILE.SAND_LR,
@@ -286,6 +287,8 @@ const Physics = (function () {
 
   function parseMap(input) {
     let ground, walls, groundLayers = [];
+    let swapRadiiData = {}, bhRadiiData = {};
+    let legacySwapRadius, legacyBhRadius;
 
     if (input.trim().startsWith("{")) {
       const data = JSON.parse(input);
@@ -294,6 +297,10 @@ const Physics = (function () {
       if (data.groundLayers) {
         groundLayers = data.groundLayers.map(layer => layer.map(r => r.split("")));
       }
+      if (data.swapRadii) swapRadiiData = data.swapRadii;
+      if (data.bhRadii) bhRadiiData = data.bhRadii;
+      if (typeof data.swapRadius === 'number') legacySwapRadius = data.swapRadius;
+      if (typeof data.bhRadius === 'number') legacyBhRadius = data.bhRadius;
     } else {
       const rows = input
         .trim()
@@ -312,6 +319,7 @@ const Physics = (function () {
     const holes = [];
     const tpByType = {};
     const blackHoleTiles = [];
+    const swapTiles = [];
     const TP_CHARS = new Set([
       TILE.TELEPORTER,
       TILE.TELEPORTER_B,
@@ -339,7 +347,15 @@ const Physics = (function () {
           };
           (tpByType[ch] = tpByType[ch] || []).push(tp);
         } else if (ch === TILE.BLACKHOLE) {
-          blackHoleTiles.push({ col, row, dormant: false });
+          const bhEntry = { col, row, dormant: false };
+          const bhR = bhRadiiData[col + ',' + row] ?? legacyBhRadius;
+          if (bhR != null) bhEntry.radius = bhR;
+          blackHoleTiles.push(bhEntry);
+        } else if (ch === TILE.SWAP) {
+          const swEntry = { col, row };
+          const swR = swapRadiiData[col + ',' + row] ?? legacySwapRadius;
+          if (swR != null) swEntry.radius = swR;
+          swapTiles.push(swEntry);
         }
       }
     }
@@ -364,6 +380,7 @@ const Physics = (function () {
       holes,
       teleporterPairs,
       blackHoleTiles,
+      swapTiles,
     };
   }
 
@@ -1241,6 +1258,7 @@ const Physics = (function () {
   }
 
   // ── Swap detection (circular hitbox, radius = TILE_SIZE/2) ───────────────
+  // Returns the swap tile {col,row} the ball is on, or null.
 
   function checkSwap(ball, groundTiles) {
     const r2 = (TILE_SIZE / 2) ** 2;
@@ -1253,10 +1271,10 @@ const Physics = (function () {
         if (getTile(groundTiles, col, row) !== TILE.SWAP) continue;
         const cx = col * TILE_SIZE + TILE_SIZE / 2;
         const cy = row * TILE_SIZE + TILE_SIZE / 2;
-        if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) return true;
+        if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) return { col, row };
       }
     }
-    return false;
+    return null;
   }
 
   // ── Black hole detection & impulse ───────────────────────────────────────
@@ -1477,6 +1495,12 @@ const Physics = (function () {
     },
     set BH_RADIUS_TILES(v) {
       BH_RADIUS_TILES = v;
+    },
+    get SWAP_RADIUS_TILES() {
+      return SWAP_RADIUS_TILES;
+    },
+    set SWAP_RADIUS_TILES(v) {
+      SWAP_RADIUS_TILES = v;
     },
     TILE_SIZE,
     POWER_EXP,
