@@ -15,7 +15,7 @@ const Renderer = (function () {
   const HOLE_COLOR = "#0a0a0a";
   const SAND_COLOR = "#c8a84b";
   const WATER_COLOR = "#2a7fd4";
-  const LAVA_COLOR = "#b02000";
+  const LAVA_COLOR = "#c83500";
   const SLOPE_COLORS = {
     U: "#72c45a", UL: "#65bc52", UR: "#509e40",
     L: "#50a03c", R: "#2d6228",
@@ -269,9 +269,9 @@ const Renderer = (function () {
     }
 
     // Full solid tiles
-    if (tile === Physics.TILE.SAND)  { RenderShared.renderFull(ctx, x, y, T, SAND_COLOR, false, true); return; }
-    if (tile === Physics.TILE.WATER) { RenderShared.renderFull(ctx, x, y, T, WATER_COLOR, true, false); return; }
-    if (tile === Physics.TILE.LAVA)  { RenderShared.renderFull(ctx, x, y, T, LAVA_COLOR, false, false); return; }
+    if (tile === Physics.TILE.SAND)  { RenderShared.renderFull(ctx, x, y, T, SAND_COLOR, false, true, false); return; }
+    if (tile === Physics.TILE.WATER) { RenderShared.renderFull(ctx, x, y, T, WATER_COLOR, true, false, false); return; }
+    if (tile === Physics.TILE.LAVA)  { RenderShared.renderFull(ctx, x, y, T, LAVA_COLOR, false, false, true); return; }
 
     if (SLOPE_FACE[tile]) {
       ctx.fillStyle = SLOPE_FACE[tile];
@@ -291,7 +291,7 @@ const Renderer = (function () {
     };
     if (DIAG[tile]) {
       const [color, tri] = DIAG[tile];
-      RenderShared.renderDiag(ctx, x, y, T, tri, color, Physics.isWaterTile(tile), Physics.isSandTile(tile));
+      RenderShared.renderDiag(ctx, x, y, T, tri, color, Physics.isWaterTile(tile), Physics.isSandTile(tile), Physics.isLavaTile(tile));
       return;
     }
 
@@ -315,7 +315,7 @@ const Renderer = (function () {
     if (MAT_CURVE[tile]) {
       const meta = Physics.CURVE_META[tile];
       const corner = RenderShared.cornerFromMeta(meta.ox, meta.oy);
-      RenderShared.renderCurve(ctx, x, y, T, corner, MAT_CURVE[tile], Physics.isWaterTile(tile), Physics.isSandTile(tile));
+      RenderShared.renderCurve(ctx, x, y, T, corner, MAT_CURVE[tile], Physics.isWaterTile(tile), Physics.isSandTile(tile), Physics.isLavaTile(tile));
       return;
     }
 
@@ -342,7 +342,7 @@ const Renderer = (function () {
     if (MAT_BUMP[tile]) {
       const meta = Physics.BUMP_META[tile];
       const corner = RenderShared.cornerFromMeta(meta.ox, meta.oy);
-      RenderShared.renderBump(ctx, x, y, T, corner, MAT_BUMP[tile], false);
+      RenderShared.renderBump(ctx, x, y, T, corner, MAT_BUMP[tile], false, false, false);
       return;
     }
 
@@ -744,6 +744,28 @@ const Renderer = (function () {
       ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a0), ay + T * Math.sin(a0));
       ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
       ctx.stroke();
+      if (Physics.BOUNCY_TILES.has(tile) || Physics.STICKY_TILES.has(tile)) {
+        const isSticky = Physics.STICKY_TILES.has(tile);
+        const midAngle = (a0 + a1) / 2 + Math.PI;
+        const spread = Math.PI / 8;
+        const a = T * 0.09;
+        ctx.strokeStyle = "rgba(255,255,255,0.55)";
+        ctx.lineWidth = 1.5;
+        ctx.lineJoin = "round";
+        [midAngle - spread, midAngle + spread].forEach((angle) => {
+          const pcx = ax + T * 0.52 * Math.cos(angle);
+          const pcy = ay + T * 0.52 * Math.sin(angle);
+          const nx = Math.cos(angle),
+            ny = Math.sin(angle);
+          const tx = -ny,
+            ty = nx;
+          ctx.beginPath();
+          ctx.moveTo(pcx - tx * a, pcy - ty * a);
+          ctx.lineTo(pcx + (isSticky ? -nx : nx) * a, pcy + (isSticky ? -ny : ny) * a);
+          ctx.lineTo(pcx + tx * a, pcy + ty * a);
+          ctx.stroke();
+        });
+      }
       return;
     }
 

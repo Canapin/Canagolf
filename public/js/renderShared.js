@@ -26,6 +26,24 @@ const RenderShared = (function () {
     }
   }
 
+  function drawLavaBubbles(ctx, x, y, T) {
+    ctx.lineWidth = 1.5;
+    const bubbles = [
+      { fx: 0.3, fy: 0.25, r: 0.08, fill: "rgba(255,200,80,0.35)" },
+      { fx: 0.7, fy: 0.3, r: 0.07, stroke: "rgba(255,180,50,0.35)" },
+      { fx: 0.5, fy: 0.65, r: 0.075, fill: "rgba(255,190,60,0.3)" },
+      { fx: 0.2, fy: 0.72, r: 0.06, stroke: "rgba(255,210,70,0.3)" },
+      { fx: 0.8, fy: 0.65, r: 0.065, fill: "rgba(255,170,40,0.3)" },
+      { fx: 0.4, fy: 0.4, r: 0.05, stroke: "rgba(255,200,80,0.25)" },
+    ];
+    for (const b of bubbles) {
+      ctx.beginPath();
+      ctx.arc(x + T * b.fx, y + T * b.fy, T * b.r, 0, Math.PI * 2);
+      if (b.fill) { ctx.fillStyle = b.fill; ctx.fill(); }
+      if (b.stroke) { ctx.strokeStyle = b.stroke; ctx.stroke(); }
+    }
+  }
+
   const ARC = {
     TL: { ox: 1, oy: 1, a0: Math.PI, a1: Math.PI * 1.5 },
     TR: { ox: 0, oy: 1, a0: Math.PI * 1.5, a1: Math.PI * 2 },
@@ -49,14 +67,15 @@ const RenderShared = (function () {
     }
   }
 
-  function renderFull(ctx, x, y, T, color, isWater, isSand) {
+  function renderFull(ctx, x, y, T, color, isWater, isSand, isLava) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, T, T);
     if (isWater) drawWaterWaves(ctx, x, y, T);
     if (isSand) drawSandSpecks(ctx, x, y, T);
+    if (isLava) drawLavaBubbles(ctx, x, y, T);
   }
 
-  function renderDiag(ctx, x, y, T, tri, color, isWater, isSand) {
+  function renderDiag(ctx, x, y, T, tri, color, isWater, isSand, isLava) {
     ctx.save();
     ctx.beginPath();
     triPath(ctx, x, y, T, tri);
@@ -66,10 +85,11 @@ const RenderShared = (function () {
     ctx.fillRect(x, y, T, T);
     if (isWater) drawWaterWaves(ctx, x, y, T);
     if (isSand) drawSandSpecks(ctx, x, y, T);
+    if (isLava) drawLavaBubbles(ctx, x, y, T);
     ctx.restore();
   }
 
-  function renderCurve(ctx, x, y, T, corner, color, isWater, isSand) {
+  function renderCurve(ctx, x, y, T, corner, color, isWater, isSand, isLava) {
     const c = ARC[corner];
     const ax = x + c.ox * T, ay = y + c.oy * T;
     ctx.save();
@@ -82,10 +102,11 @@ const RenderShared = (function () {
     ctx.fillRect(x, y, T, T);
     if (isWater) drawWaterWaves(ctx, x, y, T);
     if (isSand) drawSandSpecks(ctx, x, y, T);
+    if (isLava) drawLavaBubbles(ctx, x, y, T);
     ctx.restore();
   }
 
-  function renderBump(ctx, x, y, T, corner, color, isWater, isSand) {
+  function renderBump(ctx, x, y, T, corner, color, isWater, isSand, isLava) {
     const c = ARC[corner];
     const ax = x + c.ox * T, ay = y + c.oy * T;
     ctx.save();
@@ -99,6 +120,7 @@ const RenderShared = (function () {
     ctx.fillRect(x, y, T, T);
     if (isWater) drawWaterWaves(ctx, x, y, T);
     if (isSand) drawSandSpecks(ctx, x, y, T);
+    if (isLava) drawLavaBubbles(ctx, x, y, T);
     ctx.restore();
   }
 

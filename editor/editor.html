@@ -534,11 +534,11 @@
       const BNCY_E = "#9a5c00"; // bouncy edge
       const STKY = "#3a4e7a"; // sticky face
       const STKY_E = "#1a2a4a"; // sticky edge
-      const LVA = "#b02000"; // lava
+      const LVA = "#c83500"; // lava
 
       function fill(color) {
         return (ctx, x, y) => {
-          RenderShared.renderFull(ctx, x, y, T, color, color === WTR, color === SND);
+          RenderShared.renderFull(ctx, x, y, T, color, color === WTR, color === SND, color === LVA);
         };
       }
 
@@ -587,7 +587,7 @@
         return (ctx, x, y) => {
           ctx.fillStyle = FW;
           ctx.fillRect(x, y, T, T);
-          RenderShared.renderDiag(ctx, x, y, T, tri, color, color === WTR, color === SND);
+          RenderShared.renderDiag(ctx, x, y, T, tri, color, color === WTR, color === SND, color === LVA);
         };
       }
 
@@ -595,7 +595,7 @@
         return (ctx, x, y) => {
           ctx.fillStyle = FW;
           ctx.fillRect(x, y, T, T);
-          RenderShared.renderCurve(ctx, x, y, T, corner, color, color === WTR, color === SND);
+          RenderShared.renderCurve(ctx, x, y, T, corner, color, color === WTR, color === SND, color === LVA);
         };
       }
 
@@ -603,7 +603,7 @@
         return (ctx, x, y) => {
           ctx.fillStyle = FW;
           ctx.fillRect(x, y, T, T);
-          RenderShared.renderBump(ctx, x, y, T, corner, color, false);
+          RenderShared.renderBump(ctx, x, y, T, corner, color, false, false, false);
         };
       }
 
@@ -734,7 +734,7 @@
           return                       [x,     y,     0, Math.PI * 0.5];
         }
         if (info.type === 'full') {
-          RenderShared.renderFull(ctx, x, y, T, info.color, info.color === WTR, info.color === SND);
+          RenderShared.renderFull(ctx, x, y, T, info.color, info.color === WTR, info.color === SND, info.color === LVA);
           return;
         }
         if (info.type === 'slope') {
@@ -744,7 +744,7 @@
         if (info.type === 'tri' || info.type === 'slope-tri') {
           const tri = info.tri;
           if (info.type === 'tri') {
-            RenderShared.renderDiag(ctx, x, y, T, tri, info.color, info.color === WTR, info.color === SND);
+            RenderShared.renderDiag(ctx, x, y, T, tri, info.color, info.color === WTR, info.color === SND, info.color === LVA);
           } else {
             ctx.save(); ctx.beginPath();
             if (tri==='UR') { ctx.moveTo(x,y);   ctx.lineTo(x+T,y);   ctx.lineTo(x+T,y+T); }
@@ -760,7 +760,7 @@
         }
         if (info.type === 'curve' || info.type === 'slope-curve') {
           if (info.type === 'curve') {
-            RenderShared.renderCurve(ctx, x, y, T, info.corner, info.color, info.color === WTR, info.color === SND);
+            RenderShared.renderCurve(ctx, x, y, T, info.corner, info.color, info.color === WTR, info.color === SND, info.color === LVA);
           } else {
             const [ax, ay, a0, a1] = arcParams(info.corner);
             ctx.save(); ctx.beginPath();
@@ -773,7 +773,7 @@
         }
         if (info.type === 'bump' || info.type === 'slope-bump') {
           if (info.type === 'bump') {
-            RenderShared.renderBump(ctx, x, y, T, info.corner, info.color, false);
+            RenderShared.renderBump(ctx, x, y, T, info.corner, info.color, false, false, false);
           } else {
             const [ax, ay, a0, a1] = arcParams(info.corner);
             ctx.save(); ctx.beginPath();
@@ -1830,11 +1830,11 @@
         { c: "?", l: "Swap", g: "Special", sg: "", d: swap() },
         { c: "Ū", l: "Black Hole", g: "Special", sg: "", d: blackHole() },
         // Lava
-        { c: "w", l: "Lava", g: "Lava", sg: "", d: lava() },
-        { c: "'", l: "Lava ↗", g: "Lava", sg: "diag", d: lavaDiag("LL") },
-        { c: ":", l: "Lava ↙", g: "Lava", sg: "diag", d: lavaDiag("UR") },
-        { c: "`", l: "Lava ↖", g: "Lava", sg: "diag", d: lavaDiag("LR") },
-        { c: '"', l: "Lava ↘", g: "Lava", sg: "diag", d: lavaDiag("UL") },
+        { c: "w", l: "Lava", g: "Lava", sg: "", d: fill(LVA) },
+        { c: "'", l: "Lava ↗", g: "Lava", sg: "diag", d: diag("LL", LVA) },
+        { c: ":", l: "Lava ↙", g: "Lava", sg: "diag", d: diag("UR", LVA) },
+        { c: "`", l: "Lava ↖", g: "Lava", sg: "diag", d: diag("LR", LVA) },
+        { c: '"', l: "Lava ↘", g: "Lava", sg: "diag", d: diag("UL", LVA) },
         {
           c: "Ā",
           l: "Lava curve ↖",
