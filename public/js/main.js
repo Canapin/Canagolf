@@ -180,6 +180,22 @@
     } catch { /* no-op */ }
   })();
 
+  // ── Editor play mode ──────────────────────────────────────────────────────
+
+  (function () {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("editor") !== "1") return;
+    const raw = sessionStorage.getItem("canagolf_editor_map");
+    if (!raw) return;
+    sessionStorage.removeItem("canagolf_editor_map");
+    try {
+      const map = Physics.parseMap(raw);
+      beginGame(map, ["Player 1", "Player 2", "Player 3", "Player 4"]);
+    } catch (e) {
+      console.error("Editor play failed:", e);
+    }
+  })();
+
   // ── Online setup screen ───────────────────────────────────────────────────
 
   const onlineNameEl  = document.getElementById('online-name');
