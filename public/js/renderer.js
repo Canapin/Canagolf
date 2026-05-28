@@ -117,6 +117,19 @@ const Renderer = (function () {
 
   const T = Physics.TILE_SIZE;
 
+  function drawWaterWaves(ctx, x, y) {
+    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.lineWidth = 1.5;
+    for (let row = 0; row < 2; row++) {
+      const yy = y + 10 + row * 16;
+      ctx.beginPath();
+      ctx.moveTo(x + 4, yy);
+      ctx.quadraticCurveTo(x + T * 0.3, yy - 4, x + T * 0.5, yy);
+      ctx.quadraticCurveTo(x + T * 0.7, yy + 4, x + T - 4, yy);
+      ctx.stroke();
+    }
+  }
+
   function wallFaceColors(tile) {
     if (Physics.BOUNCY_TILES.has(tile)) return [BOUNCY_FACE, BOUNCY_EDGE];
     if (Physics.STICKY_TILES.has(tile)) return [DRAG_FACE, DRAG_EDGE];
@@ -270,7 +283,7 @@ const Renderer = (function () {
 
     // Full solid tiles
     if (tile === Physics.TILE.SAND)  { ctx.fillStyle = SAND_COLOR;  ctx.fillRect(x, y, T, T); return; }
-    if (tile === Physics.TILE.WATER) { ctx.fillStyle = WATER_COLOR; ctx.fillRect(x, y, T, T); return; }
+    if (tile === Physics.TILE.WATER) { ctx.fillStyle = WATER_COLOR; ctx.fillRect(x, y, T, T); drawWaterWaves(ctx, x, y); return; }
     if (tile === Physics.TILE.LAVA)  { ctx.fillStyle = LAVA_COLOR;  ctx.fillRect(x, y, T, T); return; }
 
     if (SLOPE_FACE[tile]) {
@@ -294,6 +307,7 @@ const Renderer = (function () {
       ctx.save();
       ctx.beginPath(); drawTriPath(ctx, tri, x, y); ctx.clip();
       ctx.fillStyle = color; ctx.fillRect(x, y, T, T);
+      if (Physics.isWaterTile(tile)) drawWaterWaves(ctx, x, y);
       ctx.restore();
       return;
     }
@@ -322,6 +336,7 @@ const Renderer = (function () {
       ctx.save();
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath(); ctx.clip();
       ctx.fillStyle = MAT_CURVE[tile]; ctx.fillRect(x, y, T, T);
+      if (Physics.isWaterTile(tile)) drawWaterWaves(ctx, x, y);
       ctx.restore();
       return;
     }
@@ -356,6 +371,7 @@ const Renderer = (function () {
       ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath();
       ctx.clip("evenodd");
       ctx.fillStyle = MAT_BUMP[tile]; ctx.fillRect(x, y, T, T);
+      if (Physics.isWaterTile(tile)) drawWaterWaves(ctx, x, y);
       ctx.restore();
       return;
     }
@@ -733,28 +749,6 @@ const Renderer = (function () {
       ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a0), ay + T * Math.sin(a0));
       ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
       ctx.stroke();
-      if (Physics.BOUNCY_TILES.has(tile) || Physics.STICKY_TILES.has(tile)) {
-        // Place chevrons in the solid wall area — opposite side of arc from center
-        const midAngle = (a0 + a1) / 2 + Math.PI;
-        const spread = Math.PI / 8;
-        const a = T * 0.09;
-        ctx.strokeStyle = "rgba(255,255,255,0.5)";
-        ctx.lineWidth = 1.5;
-        ctx.lineJoin = "round";
-        [midAngle - spread, midAngle + spread].forEach((angle) => {
-          const pcx = ax + T * 0.52 * Math.cos(angle);
-          const pcy = ay + T * 0.52 * Math.sin(angle);
-          const nx = Math.cos(angle),
-            ny = Math.sin(angle);
-          const tx = -ny,
-            ty = nx;
-          ctx.beginPath();
-          ctx.moveTo(pcx - tx * a, pcy - ty * a);
-          ctx.lineTo(pcx + nx * a, pcy + ny * a);
-          ctx.lineTo(pcx + tx * a, pcy + ty * a);
-          ctx.stroke();
-        });
-      }
       return;
     }
 

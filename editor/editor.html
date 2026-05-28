@@ -526,6 +526,7 @@
         return (ctx, x, y) => {
           ctx.fillStyle = color;
           ctx.fillRect(x, y, T, T);
+          if (color === WTR) drawWaterWaves(ctx, x, y);
         };
       }
 
@@ -574,7 +575,7 @@
         return (ctx, x, y) => {
           ctx.fillStyle = FW;
           ctx.fillRect(x, y, T, T);
-          ctx.fillStyle = color;
+          ctx.save();
           ctx.beginPath();
           if (tri === "UR") {
             ctx.moveTo(x, y);
@@ -597,7 +598,11 @@
             ctx.lineTo(x + T, y + T);
           }
           ctx.closePath();
-          ctx.fill();
+          ctx.clip();
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y, T, T);
+          if (color === WTR) drawWaterWaves(ctx, x, y);
+          ctx.restore();
         };
       }
 
@@ -630,12 +635,16 @@
             a0 = 0;
             a1 = Math.PI * 0.5;
           }
-          ctx.fillStyle = color;
+          ctx.save();
           ctx.beginPath();
           ctx.moveTo(ax, ay);
           ctx.arc(ax, ay, T, a0, a1, false);
           ctx.closePath();
-          ctx.fill();
+          ctx.clip();
+          ctx.fillStyle = color;
+          ctx.fillRect(x, y, T, T);
+          if (color === WTR) drawWaterWaves(ctx, x, y);
+          ctx.restore();
         };
       }
 
@@ -674,7 +683,31 @@
           ctx.arc(ax, ay, T, a0, a1, false);
           ctx.closePath();
           ctx.fill();
+          if (color === WTR) {
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(x, y, T, T);
+            ctx.moveTo(ax, ay);
+            ctx.arc(ax, ay, T, a0, a1, false);
+            ctx.closePath();
+            ctx.clip('evenodd');
+            drawWaterWaves(ctx, x, y);
+            ctx.restore();
+          }
         };
+      }
+
+      function drawWaterWaves(ctx, x, y) {
+        ctx.strokeStyle = "rgba(255,255,255,0.3)";
+        ctx.lineWidth = 1.5;
+        for (let row = 0; row < 2; row++) {
+          const yy = y + 10 + row * 16;
+          ctx.beginPath();
+          ctx.moveTo(x + 4, yy);
+          ctx.quadraticCurveTo(x + T * 0.3, yy - 4, x + T * 0.5, yy);
+          ctx.quadraticCurveTo(x + T * 0.7, yy + 4, x + T - 4, yy);
+          ctx.stroke();
+        }
       }
 
       function slope(dir) {
@@ -804,7 +837,9 @@
           return                       [x,     y,     0, Math.PI * 0.5];
         }
         if (info.type === 'full') {
-          ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T); return;
+          ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T);
+          if (info.color === WTR) drawWaterWaves(ctx, x, y);
+          return;
         }
         if (info.type === 'slope') {
           ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T);
@@ -819,6 +854,7 @@
           if (tri==='LR') { ctx.moveTo(x+T,y); ctx.lineTo(x,y+T);   ctx.lineTo(x+T,y+T); }
           ctx.closePath(); ctx.clip();
           ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T);
+          if (info.color === WTR) drawWaterWaves(ctx, x, y);
           if (info.type === 'slope-tri') drawSlopeArrows(ctx, info.dir, x, y);
           ctx.restore(); return;
         }
@@ -827,6 +863,7 @@
           ctx.save(); ctx.beginPath();
           ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath(); ctx.clip();
           ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T);
+          if (info.color === WTR) drawWaterWaves(ctx, x, y);
           if (info.type === 'slope-curve') drawSlopeArrows(ctx, info.dir, x, y);
           ctx.restore(); return;
         }
@@ -837,6 +874,7 @@
           ctx.moveTo(ax, ay); ctx.arc(ax, ay, T, a0, a1, false); ctx.closePath();
           ctx.clip('evenodd');
           ctx.fillStyle = info.color; ctx.fillRect(x, y, T, T);
+          if (info.color === WTR) drawWaterWaves(ctx, x, y);
           if (info.type === 'slope-bump') drawSlopeArrows(ctx, info.dir, x, y);
           ctx.restore();
         }
