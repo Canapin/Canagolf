@@ -701,11 +701,11 @@
         ctx.strokeStyle = "rgba(255,255,255,0.3)";
         ctx.lineWidth = 1.5;
         for (let row = 0; row < 2; row++) {
-          const yy = y + 10 + row * 16;
+          const yy = y + T * (0.36 + row * 0.57);
           ctx.beginPath();
-          ctx.moveTo(x + 4, yy);
-          ctx.quadraticCurveTo(x + T * 0.3, yy - 4, x + T * 0.5, yy);
-          ctx.quadraticCurveTo(x + T * 0.7, yy + 4, x + T - 4, yy);
+          ctx.moveTo(x + T * 0.14, yy);
+          ctx.quadraticCurveTo(x + T * 0.3, yy - T * 0.14, x + T * 0.5, yy);
+          ctx.quadraticCurveTo(x + T * 0.7, yy + T * 0.14, x + T * 0.86, yy);
           ctx.stroke();
         }
       }
