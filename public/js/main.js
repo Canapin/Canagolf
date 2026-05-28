@@ -185,9 +185,9 @@
   (function () {
     const params = new URLSearchParams(window.location.search);
     if (params.get("editor") !== "1") return;
-    const raw = sessionStorage.getItem("canagolf_editor_map");
+    const raw = localStorage.getItem("canagolf_editor_map");
     if (!raw) return;
-    sessionStorage.removeItem("canagolf_editor_map");
+    localStorage.removeItem("canagolf_editor_map");
     try {
       const map = Physics.parseMap(raw);
       beginGame(map, ["Player 1", "Player 2", "Player 3", "Player 4"]);

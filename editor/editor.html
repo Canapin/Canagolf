@@ -2814,7 +2814,7 @@
         }
         if (Object.keys(swapOut).length > 0) data.swapRadii = swapOut;
         if (Object.keys(bhOut).length > 0) data.bhRadii = bhOut;
-        sessionStorage.setItem("canagolf_editor_map", JSON.stringify(data));
+        localStorage.setItem("canagolf_editor_map", JSON.stringify(data));
         window.open("/?editor=1", "canagolf_play");
       });
 
