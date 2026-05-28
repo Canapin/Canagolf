@@ -781,25 +781,31 @@
     if (isMyTurn) {
       const TT = Physics.TILE_SIZE;
       ctx.lineWidth = 1.5;
-      if (game.map.swapTiles && game.map.swapTiles.length > 0) {
-        ctx.strokeStyle = "rgba(192,128,0,0.5)";
-        for (const sw of game.map.swapTiles) {
-          const r = (sw.radius ?? Physics.SWAP_RADIUS_TILES) * TT;
-          ctx.beginPath();
-          ctx.arc(sw.col * TT + TT / 2, sw.row * TT + TT / 2, r, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
-      if (game.map.blackHoleTiles && game.map.blackHoleTiles.length > 0) {
-        ctx.strokeStyle = "rgba(170,80,255,0.5)";
-        for (const bh of game.map.blackHoleTiles) {
-          if (bh.dormant) continue;
-          const r = (bh.radius ?? Physics.BH_RADIUS_TILES) * TT;
-          ctx.beginPath();
-          ctx.arc(bh.col * TT + TT / 2, bh.row * TT + TT / 2, r, 0, Math.PI * 2);
-          ctx.stroke();
-        }
-      }
+      //ctx.save();
+      //ctx.beginPath();
+      //ctx.rect(0, 0, game.map.width * TT, game.map.height * TT);
+      //ctx.clip();
+      //if (game.map.swapTiles && game.map.swapTiles.length > 0) {
+      //  ctx.strokeStyle = "rgba(192,128,0,0.5)";
+      //  ctx.lineWidth = 2;
+      //  for (const sw of game.map.swapTiles) {
+      //    const r = (sw.radius ?? Physics.SWAP_RADIUS_TILES) * TT;
+      //    ctx.beginPath();
+      //    ctx.arc(sw.col * TT + TT / 2, sw.row * TT + TT / 2, r, 0, Math.PI * 2);
+      //    ctx.stroke();
+      //  }
+      //}
+      //if (game.map.blackHoleTiles && game.map.blackHoleTiles.length > 0) {
+      //  ctx.strokeStyle = "rgba(170,80,255,0.5)";
+      //  for (const bh of game.map.blackHoleTiles) {
+      //    if (bh.dormant) continue;
+      //    const r = (bh.radius ?? Physics.BH_RADIUS_TILES) * TT;
+      //    ctx.beginPath();
+      //    ctx.arc(bh.col * TT + TT / 2, bh.row * TT + TT / 2, r, 0, Math.PI * 2);
+      //    ctx.stroke();
+      //  }
+      //}
+      //ctx.restore();
     }
 
     Renderer.renderSwapDots(ctx, game.map, game.players);

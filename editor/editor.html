@@ -603,7 +603,7 @@
         return (ctx, x, y) => {
           ctx.fillStyle = FW;
           ctx.fillRect(x, y, T, T);
-          RenderShared.renderBump(ctx, x, y, T, corner, color, color === WTR);
+          RenderShared.renderBump(ctx, x, y, T, corner, color, false);
         };
       }
 
@@ -773,7 +773,7 @@
         }
         if (info.type === 'bump' || info.type === 'slope-bump') {
           if (info.type === 'bump') {
-            RenderShared.renderBump(ctx, x, y, T, info.corner, info.color, info.color === WTR);
+            RenderShared.renderBump(ctx, x, y, T, info.corner, info.color, false);
           } else {
             const [ax, ay, a0, a1] = arcParams(info.corner);
             ctx.save(); ctx.beginPath();

@@ -342,7 +342,7 @@ const Renderer = (function () {
     if (MAT_BUMP[tile]) {
       const meta = Physics.BUMP_META[tile];
       const corner = RenderShared.cornerFromMeta(meta.ox, meta.oy);
-      RenderShared.renderBump(ctx, x, y, T, corner, MAT_BUMP[tile], Physics.isWaterTile(tile));
+      RenderShared.renderBump(ctx, x, y, T, corner, MAT_BUMP[tile], false);
       return;
     }
 

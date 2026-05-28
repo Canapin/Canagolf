@@ -3,7 +3,7 @@ const RenderShared = (function () {
     ctx.strokeStyle = "rgba(255,255,255,0.3)";
     ctx.lineWidth = 1.5;
     for (let row = 0; row < 2; row++) {
-      const yy = y + T * (0.36 + row * 0.57);
+      const yy = y + T * (0.3 + row * 0.4);
       ctx.beginPath();
       ctx.moveTo(x + T * 0.14, yy);
       ctx.quadraticCurveTo(x + T * 0.3, yy - T * 0.14, x + T * 0.5, yy);
