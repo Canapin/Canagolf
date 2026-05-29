@@ -958,9 +958,7 @@ const Physics = (function () {
             for (const [nc, nr] of [[gCol-1,gRow-1],[gCol,gRow-1],[gCol-1,gRow],[gCol,gRow]]) {
               if (nc === col && nr === row) continue;
               const nbrTile = getTile(tiles, nc, nr);
-              const nbrMeta = DIAG_WALL_META[nbrTile];
-              const nbrIsUB = nbrMeta && (nbrMeta.shape === "UR" || nbrMeta.shape === "LL");
-              if ((nbrMeta && nbrIsUB === isUBGroup) || wallRestitution(nbrTile) !== undefined) {
+              if (isDiagHypAt(nbrTile, (gCol - nc) * TILE_SIZE, (gRow - nr) * TILE_SIZE) || wallRestitution(nbrTile) !== undefined) {
                 useHyp = true;
                 break;
               }
