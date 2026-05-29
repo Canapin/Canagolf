@@ -121,19 +121,25 @@
     if (playerListEl.children.length < 8) addPlayerRow('');
   });
 
+  function pickRandomVariationMode() {
+    const modes = ['none', 'h', 'v', 'b'];
+    return modes[Math.floor(Math.random() * 4)];
+  }
+
   startBtn.addEventListener('click', async () => {
     const names = Array.from(playerListEl.querySelectorAll('input'))
       .map(i => i.value.trim())
       .filter(n => n.length > 0);
     if (names.length === 0) return;
-    const mapVal  = document.getElementById('map-select-local').value || 'hole1';
-    const rounds  = parseInt(document.getElementById('rounds-input').value) || 10;
+    const mapVal   = document.getElementById('map-select-local').value || 'hole1';
+    const rounds   = parseInt(document.getElementById('rounds-input').value) || 10;
+    const variations = document.getElementById('map-variations').checked;
     if (mapVal === '__random') {
-      await startSession(names, rounds);
+      await startSession(names, rounds, variations);
     } else if (mapVal.startsWith('__camp_')) {
-      await startCampaign(names, parseInt(mapVal.slice(7)));
+      await startCampaign(names, parseInt(mapVal.slice(7)), variations);
     } else {
-      await startLocalGame(names, mapVal);
+      await startLocalGame(names, mapVal, variations);
     }
   });
 
@@ -189,7 +195,10 @@
     if (!raw) return;
     localStorage.removeItem("canagolf_editor_map");
     try {
-      const map = Physics.parseMap(raw);
+      const data = JSON.parse(raw);
+      const mode = data._mirror || 'none';
+      delete data._mirror;
+      const map = Physics.parseMap(JSON.stringify(data), mode);
       beginGame(map, ["Player 1", "Player 2", "Player 3", "Player 4"]);
     } catch (e) {
       console.error("Editor play failed:", e);
@@ -236,11 +245,13 @@
   const lobbyStartBtn  = document.getElementById('lobby-start');
   const lobbyWaitingEl = document.getElementById('lobby-waiting');
   const lobbyMapRowEl  = document.getElementById('lobby-map-row');
+  const lobbyVarRowEl  = document.getElementById('lobby-variations-row');
 
   lobbyStartBtn.addEventListener('click', () => {
     const mapName = document.getElementById('map-select-lobby').value || 'hole1';
     const rounds  = parseInt(document.getElementById('rounds-input-lobby').value) || 10;
-    socket.emit('c:start', { map: mapName, rounds });
+    const mapVariation = document.getElementById('map-variations-lobby').checked;
+    socket.emit('c:start', { map: mapName, rounds, mapVariation });
   });
 
   function showLobby(code, isHost) {
@@ -250,6 +261,7 @@
     lobbyStartBtn.hidden     = !isHost;
     lobbyWaitingEl.hidden    = isHost;
     lobbyMapRowEl.hidden     = !isHost;
+    lobbyVarRowEl.hidden     = !isHost;
   }
 
   // ── Socket events ─────────────────────────────────────────────────────────
@@ -283,8 +295,8 @@
       }
     });
 
-    socket.on('s:start', ({ mapText, players, currentPlayerIndex = 0 }) => {
-      const map = Physics.parseMap(mapText);
+    socket.on('s:start', ({ mapText, players, currentPlayerIndex = 0, variationMode }) => {
+      const map = Physics.parseMap(mapText, variationMode);
       localPlayerIndex = players.findIndex(p => p.id === localPlayerId);
       lobbyEl.hidden = true;
       scoreboardEl.hidden = true;
@@ -381,19 +393,20 @@
 
   // ── Game start ────────────────────────────────────────────────────────────
 
-  async function loadAndStartMap(mapName, playerNames) {
+  async function loadAndStartMap(mapName, playerNames, variationMode) {
     let resp = await fetch(`/maps/${mapName}.json`);
     if (!resp.ok) resp = await fetch(`/maps/${mapName}.txt`);
     if (!resp.ok) { alert('Failed to load map: ' + mapName); return; }
-    const map = Physics.parseMap(await resp.text());
+    const map = Physics.parseMap(await resp.text(), variationMode);
     beginGame(map, playerNames);
   }
 
-  async function startLocalGame(playerNames, mapName = 'hole1') {
-    await loadAndStartMap(mapName, playerNames);
+  async function startLocalGame(playerNames, mapName = 'hole1', variationsEnabled) {
+    const mode = variationsEnabled ? pickRandomVariationMode() : undefined;
+    await loadAndStartMap(mapName, playerNames, mode);
   }
 
-  async function startSession(playerNames, rounds) {
+  async function startSession(playerNames, rounds, variationsEnabled) {
     let maps = [];
     try { maps = await (await fetch('/api/maps')).json(); } catch {}
     const pool = maps.filter(m => !m.startsWith('_'));
@@ -403,27 +416,34 @@
     }
     const mapList = pool.slice(0, rounds);
     if (!mapList.length) { alert('No maps found for this mode.'); return; }
+    const variationModes = variationsEnabled
+      ? mapList.map(() => pickRandomVariationMode()) : undefined;
     gameSession = {
       mapList, mapIndex: 0, playerNames,
       scores: Object.fromEntries(playerNames.map(n => [n, 0])),
       holeScores: [],
       startingPlayerOffset: Math.floor(Math.random() * playerNames.length),
+      variationModes,
     };
-    await loadAndStartMap(mapList[0], playerNames);
+    await loadAndStartMap(mapList[0], playerNames, variationModes?.[0]);
   }
 
-  async function startCampaign(playerNames, campIndex) {
+  async function startCampaign(playerNames, campIndex, variationsEnabled) {
     let campaigns = [];
     try { campaigns = await fetch('/api/campaigns').then(r => r.json()); } catch {}
     const camp = campaigns[campIndex];
     if (!camp?.maps?.length) { alert('Campaign not found.'); return; }
+    const mapList = camp.maps;
+    const variationModes = variationsEnabled
+      ? mapList.map(() => pickRandomVariationMode()) : undefined;
     gameSession = {
-      mapList: camp.maps, mapIndex: 0, playerNames,
+      mapList, mapIndex: 0, playerNames,
       scores: Object.fromEntries(playerNames.map(n => [n, 0])),
       holeScores: [],
       startingPlayerOffset: Math.floor(Math.random() * playerNames.length),
+      variationModes,
     };
-    await loadAndStartMap(camp.maps[0], playerNames);
+    await loadAndStartMap(mapList[0], playerNames, variationModes?.[0]);
   }
 
   function beginGame(map, playerNames, startPlayerIndex = 0) {
@@ -937,7 +957,8 @@
         location.reload();
       } else {
         gameSession.mapIndex++;
-        loadAndStartMap(gameSession.mapList[gameSession.mapIndex], gameSession.playerNames);
+        const nextMode = gameSession.variationModes?.[gameSession.mapIndex];
+        loadAndStartMap(gameSession.mapList[gameSession.mapIndex], gameSession.playerNames, nextMode);
       }
     } else {
       location.reload();

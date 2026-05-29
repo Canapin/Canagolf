@@ -110,6 +110,11 @@ function loadMapText(mapName) {
   return fs.readFileSync(path.join(__dirname, "maps", "hole1.txt"), "utf8");
 }
 
+function pickVariationMode() {
+  const modes = ['none', 'h', 'v', 'b'];
+  return modes[Math.floor(Math.random() * 4)];
+}
+
 function emitStartMap(room, roomCode) {
   const mapName = room.session.mapList[room.session.mapIndex];
   const mapText = loadMapText(mapName).replace(/^﻿/, '');
@@ -119,10 +124,12 @@ function emitStartMap(room, roomCode) {
     p.sunk = false;
     p.strokes = 0;
   });
+  const variationMode = room.session.mapVariationModes?.[room.session.mapIndex];
   io.to(roomCode).emit("s:start", {
     mapText,
     players: room.players.map((p) => ({ id: p.id, name: p.name })),
     currentPlayerIndex: startIdx,
+    variationMode,
   });
 }
 
@@ -173,7 +180,7 @@ io.on("connection", (socket) => {
     broadcastLobby(room);
   });
 
-  socket.on("c:start", ({ map, rounds = 1 } = {}) => {
+  socket.on("c:start", ({ map, rounds = 1, mapVariation } = {}) => {
     const room = rooms.get(roomCode);
     if (!room || room.hostId !== socket.id || room.started) return;
     room.started = true;
@@ -212,11 +219,15 @@ io.on("connection", (socket) => {
     }
     if (!mapList.length) mapList = ["hole1"];
 
+    const mapVariationModes = mapVariation
+      ? mapList.map(() => pickVariationMode()) : undefined;
+
     room.session = {
       mapList,
       mapIndex: 0,
       scores: Object.fromEntries(room.players.map((p) => [p.name, 0])),
       holeScores: [],
+      mapVariationModes,
     };
     room.startingPlayerOffset = Math.floor(Math.random() * room.players.length);
 

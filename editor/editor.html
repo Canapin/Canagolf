@@ -66,6 +66,18 @@
       #btn-play:hover {
         background: #3a9f3a;
       }
+      .mirror-label {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        font-size: 12px;
+        cursor: pointer;
+        user-select: none;
+      }
+      .mirror-label input {
+        margin: 0;
+        cursor: pointer;
+      }
       .sep {
         width: 1px;
         height: 22px;
@@ -284,10 +296,23 @@
         display: flex;
         align-items: flex-start;
         justify-content: flex-start;
+        position: relative;
       }
       #canvas {
         display: block;
         cursor: crosshair;
+      }
+      #coord-display {
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        background: rgba(0,0,0,0.7);
+        color: #ccc;
+        font-size: 12px;
+        padding: 2px 6px;
+        pointer-events: none;
+        font-family: monospace;
+        z-index: 10;
       }
 
       /* ── Map Browser ── */
@@ -393,13 +418,18 @@
       <button id="btn-browse">📂 Browse</button>
       <label>Name <input type="text" id="iname" value="hole1" /></label>
       <button class="primary" id="btn-save">Save ▼</button>
+      <label class="mirror-label"><input type="checkbox" id="mirror-x" /> X</label>
+      <label class="mirror-label"><input type="checkbox" id="mirror-y" /> Y</label>
       <button id="btn-play">Play ▶</button>
       <span id="status"></span>
     </div>
 
     <div id="main">
       <div id="palette"></div>
-      <div id="canvas-wrap"><canvas id="canvas"></canvas></div>
+      <div id="canvas-wrap">
+        <canvas id="canvas"></canvas>
+        <div id="coord-display"></div>
+      </div>
     </div>
 
     <div id="map-browser" hidden>
@@ -2488,6 +2518,13 @@
       });
       canvas.addEventListener("mousemove", (e) => {
         lastMouseEvt = e;
+        const coordEl = document.getElementById("coord-display");
+        const cell = cellAt(e);
+        if (cell.col >= 0 && cell.col < mapW && cell.row >= 0 && cell.row < mapH) {
+          coordEl.textContent = cell.col + "," + cell.row;
+        } else {
+          coordEl.textContent = "";
+        }
         if (selMode) {
           onSelMousemove(e);
           return;
@@ -2795,11 +2832,19 @@
         });
 
       document.getElementById("btn-play").addEventListener("click", () => {
+        const mx = document.getElementById("mirror-x").checked;
+        const my = document.getElementById("mirror-y").checked;
+        let mode;
+        if (mx && my) mode = 'b';
+        else if (mx) mode = 'h';
+        else if (my) mode = 'v';
+        else mode = 'none';
         const data = {
           width: mapW,
           height: mapH,
           ground: groundGrid.map(r => r.join("")),
           walls: wallGrid.map(r => r.join("")),
+          _mirror: mode,
         };
         if (groundLayersGrid.length > 0) {
           data.groundLayers = groundLayersGrid.map(layer => layer.map(r => r.join("")));

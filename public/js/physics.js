@@ -284,9 +284,160 @@ const Physics = (function () {
     return SLOPE_SET.has(t);
   }
 
+  // ── Map variation transformations ────────────────────────────────────────
+
+  const XFORM = { h: {}, v: {}, b: {} };
+  const H = XFORM.h, V = XFORM.v, B = XFORM.b;
+
+  // Helper: define a 4-tuple TL/TR/BL/BR corner mapping
+  function _corner4(tl, tr, bl, br) {
+    H[tl]=tr; H[tr]=tl; H[bl]=br; H[br]=bl;
+    V[tl]=bl; V[tr]=br; V[bl]=tl; V[br]=tr;
+    B[tl]=br; B[tr]=bl; B[bl]=tr; B[br]=tl;
+  }
+
+  // Helper: define a 4-tuple diagonal mapping (UR/LL/UL/LR)
+  function _diag4(ur, ll, ul, lr) {
+    H[ur]=ul; H[ul]=ur; H[ll]=lr; H[lr]=ll;
+    V[ur]=lr; V[lr]=ur; V[ll]=ul; V[ul]=ll;
+    B[ur]=ll; B[ll]=ur; B[ul]=lr; B[lr]=ul;
+  }
+
+  // Wall diagonals (wall fills complement)
+  _diag4('i',  'j',  'k',  'l');
+  _diag4('N',  'P',  'Q',  'R');
+  _diag4('(',  ')',  '[',  ']');
+  // Wall curves (convex arc sector)
+  _corner4('1', '2', '3', '4');
+  _corner4('T', 'U', 'V', 'X');
+  _corner4('{', '}', '@', '$');
+  // Wall bumps (concave, tile minus arc)
+  _corner4('5', '6', '7', '8');
+  _corner4('Y', 'Z', '0', '9');
+  _corner4('%', '&', '*', '_');
+  // Sand diagonals
+  _diag4('a', 'b', 'c', 'd');
+  // Water diagonals
+  _diag4('e', 'f', 'g', 'h');
+  // Lava diagonals (renderer draws inverted vs tile name)
+  _diag4("'", ':', '"', '`');
+  // Sand curves
+  _corner4('m', 'n', 'o', 'p');
+  // Water curves
+  _corner4('u', 'x', 'y', 'z');
+  // Lava curves
+  _corner4('Ā', 'ā', 'Ă', 'ă');
+  // Sand bumps
+  _corner4('q', 'r', 's', 't');
+  // Water bumps
+  _corner4('B', 'C', 'D', 'E');
+  // Lava bumps
+  _corner4('Ą', 'ą', 'Ć', 'ć');
+  // Full slopes — cardinal
+  H['<']='>'; H['>']='<';
+  V['^']='v'; V['v']='^';
+  B['^']='v'; B['v']='^'; B['<']='>'; B['>']='<';
+  // Full slopes — diagonal
+  H['F']='G'; H['G']='F'; H['H']='I'; H['I']='H';
+  V['F']='H'; V['G']='I'; V['H']='F'; V['I']='G';
+  B['F']='I'; B['G']='H'; B['H']='G'; B['I']='F';
+  // Natural diagonal slopes
+  _diag4('Ĉ','ĉ','Ċ','ċ');
+  // Natural curve slopes
+  _corner4('Č','č','Ď','ď');
+  // Natural bump slopes
+  _corner4('Đ','đ','Ē','ē');
+  // Cardinal U-slope partials
+  _corner4('Ę','ę','Ě','ě');
+  _corner4('Ĝ','ĝ','Ğ','ğ');
+  _diag4('Ĕ','ĕ','Ė','ė');
+  // U→D on vertical/both flip (shape V-flip: TL↔BL, TR↔BR, UR↔LR, LL↔UL)
+  V['Ĕ']='ģ'; V['Ė']='ġ'; V['ĕ']='Ģ'; V['ė']='Ġ';
+  V['Ę']='Ħ'; V['ę']='ħ'; V['Ě']='Ĥ'; V['ě']='ĥ';
+  V['Ĝ']='Ī'; V['ĝ']='ī'; V['Ğ']='Ĩ'; V['ğ']='ĩ';
+  B['Ĕ']='ġ'; B['Ė']='ģ'; B['ĕ']='Ġ'; B['ė']='Ģ';
+  B['Ę']='ħ'; B['ę']='Ħ'; B['Ě']='ĥ'; B['ě']='Ĥ';
+  B['Ĝ']='ī'; B['ĝ']='Ī'; B['Ğ']='ĩ'; B['ğ']='Ĩ';
+  // Cardinal D-slope partials
+  _corner4('Ĥ','ĥ','Ħ','ħ');
+  _corner4('Ĩ','ĩ','Ī','ī');
+  _diag4('Ġ','ġ','Ģ','ģ');
+  // D→U on vertical/both flip
+  V['Ġ']='ė'; V['Ģ']='ĕ'; V['ġ']='Ė'; V['ģ']='Ĕ';
+  V['Ĥ']='Ě'; V['ĥ']='ě'; V['Ħ']='Ę'; V['ħ']='ę';
+  V['Ĩ']='Ğ'; V['ĩ']='ğ'; V['Ī']='Ĝ'; V['ī']='ĝ';
+  B['Ġ']='ĕ'; B['Ģ']='ė'; B['ġ']='Ĕ'; B['ģ']='Ė';
+  B['Ĥ']='ě'; B['ĥ']='Ě'; B['Ħ']='ę'; B['ħ']='Ę';
+  B['Ĩ']='ğ'; B['ĩ']='Ğ'; B['Ī']='ĝ'; B['ī']='Ĝ';
+  // Cardinal L-slope partials
+  _corner4('İ','ı','Ũ','ũ');
+  _corner4('Ĵ','ĵ','Ķ','ķ');
+  _diag4('Ĭ','ĭ','Į','į');
+  // L→R on horizontal/both flip
+  H['Ĭ']='ĺ'; H['Į']='ĸ'; H['ĭ']='Ļ'; H['į']='Ĺ';
+  H['İ']='Ľ'; H['ı']='ļ'; H['Ũ']='Ŀ'; H['ũ']='ľ';
+  H['Ĵ']='Ł'; H['ĵ']='ŀ'; H['Ķ']='Ń'; H['ķ']='ł';
+  B['Ĭ']='Ĺ'; B['Į']='Ļ'; B['ĭ']='ĸ'; B['į']='ĺ';
+  B['İ']='Ŀ'; B['ı']='ľ'; B['Ũ']='Ľ'; B['ũ']='ļ';
+  B['Ĵ']='Ń'; B['ĵ']='ł'; B['Ķ']='Ł'; B['ķ']='ŀ';
+  // Cardinal R-slope partials
+  _corner4('ļ','Ľ','ľ','Ŀ');
+  _corner4('ŀ','Ł','ł','Ń');
+  _diag4('ĸ','Ĺ','ĺ','Ļ');
+  // R→L on horizontal/both flip
+  H['ĸ']='Į'; H['ĺ']='Ĭ'; H['Ĺ']='į'; H['Ļ']='ĭ';
+  H['ļ']='ı'; H['Ľ']='İ'; H['ľ']='ũ'; H['Ŀ']='Ũ';
+  H['ŀ']='ĵ'; H['Ł']='Ĵ'; H['ł']='ķ'; H['Ń']='Ķ';
+  B['ĸ']='ĭ'; B['ĺ']='į'; B['Ĺ']='Ĭ'; B['Ļ']='Į';
+  B['ļ']='ũ'; B['Ľ']='Ũ'; B['ľ']='ı'; B['Ŀ']='İ';
+  B['ŀ']='ķ'; B['Ł']='Ķ'; B['ł']='ĵ'; B['Ń']='Ĵ';
+  // ── UL/UR/DL/DR cross-group overrides — generated from (dir,shape) table ──
+  // UL → UR (H), UL → DL (V), UL → DR (B)
+  H['ń']='Ŏ'; H['Ņ']='ŏ'; H['ņ']='ō'; H['Ň']='Ő'; H['ň']='Œ'; H['ŉ']='ő'; H['Ŋ']='œ'; H['ŋ']='ŕ'; H['Ō']='Ŕ';
+  V['ń']='Ř'; V['Ņ']='ŗ'; V['ņ']='Ŗ'; V['Ň']='ś'; V['ň']='ř'; V['ŉ']='Ś'; V['Ŋ']='Ş'; V['ŋ']='Ŝ'; V['Ō']='ŝ';
+  B['ń']='Š'; B['Ņ']='ş'; B['ņ']='š'; B['Ň']='Ť'; B['ň']='ţ'; B['ŉ']='Ţ'; B['Ŋ']='ŧ'; B['ŋ']='Ŧ'; B['Ō']='ť';
+  // UR → UL (H), UR → DR (V), UR → DL (B)
+  H['ō']='ņ'; H['Ŏ']='ń'; H['ŏ']='Ņ'; H['Ő']='Ň'; H['ő']='ŉ'; H['Œ']='ň'; H['œ']='Ŋ'; H['Ŕ']='Ō'; H['ŕ']='ŋ';
+  V['ō']='š'; V['Ŏ']='Š'; V['ŏ']='ş'; V['Ő']='Ť'; V['ő']='Ţ'; V['Œ']='ţ'; V['œ']='ŧ'; V['Ŕ']='ť'; V['ŕ']='Ŧ';
+  B['ō']='Ŗ'; B['Ŏ']='Ř'; B['ŏ']='ŗ'; B['Ő']='ś'; B['ő']='Ś'; B['Œ']='ř'; B['œ']='Ş'; B['Ŕ']='ŝ'; B['ŕ']='Ŝ';
+  // DL → DR (H), DL → UL (V), DL → UR (B)
+  H['Ŗ']='š'; H['ŗ']='ş'; H['Ř']='Š'; H['ř']='ţ'; H['Ś']='Ţ'; H['ś']='Ť'; H['Ŝ']='Ŧ'; H['ŝ']='ť'; H['Ş']='ŧ';
+  V['Ŗ']='ņ'; V['ŗ']='Ņ'; V['Ř']='ń'; V['ř']='ň'; V['Ś']='ŉ'; V['ś']='Ň'; V['Ŝ']='ŋ'; V['ŝ']='Ō'; V['Ş']='Ŋ';
+  B['Ŗ']='ō'; B['ŗ']='ŏ'; B['Ř']='Ŏ'; B['ř']='Œ'; B['Ś']='ő'; B['ś']='Ő'; B['Ŝ']='ŕ'; B['ŝ']='Ŕ'; B['Ş']='œ';
+  // DR → DL (H), DR → UR (V), DR → UL (B)
+  H['ş']='ŗ'; H['Š']='Ř'; H['š']='Ŗ'; H['Ţ']='Ś'; H['ţ']='ř'; H['Ť']='ś'; H['ť']='ŝ'; H['Ŧ']='Ŝ'; H['ŧ']='Ş';
+  V['ş']='ŏ'; V['Š']='Ŏ'; V['š']='ō'; V['Ţ']='ő'; V['ţ']='Œ'; V['Ť']='Ő'; V['ť']='Ŕ'; V['Ŧ']='ŕ'; V['ŧ']='œ';
+  B['ş']='Ņ'; B['Š']='ń'; B['š']='ņ'; B['Ţ']='ŉ'; B['ţ']='ň'; B['Ť']='Ň'; B['ť']='Ō'; B['Ŧ']='ŋ'; B['ŧ']='Ŋ';
+  // Ghost walls (cardinal one-way)
+  H['J']='K'; H['K']='J';
+  V['L']='M'; V['M']='L';
+  B['J']='K'; B['K']='J'; B['L']='M'; B['M']='L';
+  // Phantom walls (diagonal one-way)
+  H['-']='!'; H['!']='-'; H[',']=';'; H[';']=',';
+  V['-']=','; V[',']='-'; V['!']=';'; V[';']='!';
+  B['-']=';'; B[';']='-'; B['!']=','; B[',']='!';
+
+  function transformLayer(layer, mode) {
+    const h = layer.length, w = layer[0].length;
+    const xf = XFORM[mode];
+    const result = [];
+    for (let r = 0; r < h; r++) {
+      result[r] = [];
+      for (let c = 0; c < w; c++) {
+        let sr = r, sc = c;
+        if (mode === 'h') sc = w - 1 - c;
+        else if (mode === 'v') sr = h - 1 - r;
+        else { sc = w - 1 - c; sr = h - 1 - r; }
+        const ch = layer[sr][sc];
+        result[r][c] = xf[ch] || ch;
+      }
+    }
+    return result;
+  }
+
   // ── Map parsing ───────────────────────────────────────────────────────────
 
-  function parseMap(input) {
+  function parseMap(input, variationMode) {
     let ground, walls, groundLayers = [];
     let swapRadiiData = {}, bhRadiiData = {};
     let legacySwapRadius, legacyBhRadius;
@@ -313,6 +464,31 @@ const Physics = (function () {
       walls = rows.map((row) =>
         row.map((ch) => (WALL_CHARS_SET.has(ch) ? ch : ".")),
       );
+    }
+
+    // Apply map variation transformation before extracting special tiles
+    if (variationMode && variationMode !== 'none') {
+      const h = ground.length, w = ground[0].length;
+      ground = transformLayer(ground, variationMode);
+      walls = transformLayer(walls, variationMode);
+      if (groundLayers.length) {
+        groundLayers = groundLayers.map(layer => transformLayer(layer, variationMode));
+      }
+      // Remap swapRadii/bhRadii coordinate keys
+      function remapRadii(data) {
+        const result = {};
+        for (const key of Object.keys(data)) {
+          const [c, r] = key.split(',').map(Number);
+          let nc = c, nr = r;
+          if (variationMode === 'h') nc = w - 1 - c;
+          else if (variationMode === 'v') nr = h - 1 - r;
+          else { nc = w - 1 - c; nr = h - 1 - r; }
+          result[nc + ',' + nr] = data[key];
+        }
+        return result;
+      }
+      if (Object.keys(swapRadiiData).length) swapRadiiData = remapRadii(swapRadiiData);
+      if (Object.keys(bhRadiiData).length) bhRadiiData = remapRadii(bhRadiiData);
     }
 
     let startX = null,
@@ -1516,6 +1692,7 @@ const Physics = (function () {
     isLavaTile,
     isSwapTile,
     parseMap,
+    transformLayer,
     createBall,
     launchBall,
     isMoving,

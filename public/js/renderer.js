@@ -720,21 +720,23 @@ const Renderer = (function () {
       return;
     }
 
-    // Curves — open arc uses openColor; chevrons in solid area for bouncy/sticky
+    // Curves — open arc lets ground show through; chevrons in solid area for bouncy/sticky
     const curveMeta = Physics.CURVE_META[tile];
     if (curveMeta) {
       const ax = x + curveMeta.ox * T,
         ay = y + curveMeta.oy * T;
       const [a0, a1] = metaArcs(curveMeta);
       const [face, edge] = wallFaceColors(tile);
-      ctx.fillStyle = face;
-      ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = openColor;
+      ctx.save();
       ctx.beginPath();
+      ctx.rect(x, y, T, T);
       ctx.moveTo(ax, ay);
       ctx.arc(ax, ay, T, a0, a1, false);
       ctx.closePath();
-      ctx.fill();
+      ctx.clip("evenodd");
+      ctx.fillStyle = face;
+      ctx.fillRect(x, y, T, T);
+      ctx.restore();
       ctx.strokeStyle = edge;
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -769,21 +771,22 @@ const Renderer = (function () {
       return;
     }
 
-    // Bumps — solid arc, open area uses openColor; 3 chevrons in solid arc area
+    // Bumps — solid arc, ground shows through open area; 3 chevrons in solid arc area
     const bumpMeta = Physics.BUMP_META[tile];
     if (bumpMeta) {
       const bax = x + bumpMeta.ox * T,
         bay = y + bumpMeta.oy * T;
       const [ba0, ba1] = metaArcs(bumpMeta);
       const [face, edge] = wallFaceColors(tile);
-      ctx.fillStyle = openColor;
-      ctx.fillRect(x, y, T, T);
-      ctx.fillStyle = face;
+      ctx.save();
       ctx.beginPath();
       ctx.moveTo(bax, bay);
       ctx.arc(bax, bay, T, ba0, ba1, false);
       ctx.closePath();
-      ctx.fill();
+      ctx.clip();
+      ctx.fillStyle = face;
+      ctx.fillRect(x, y, T, T);
+      ctx.restore();
       ctx.strokeStyle = edge;
       ctx.lineWidth = 1;
       ctx.beginPath();
