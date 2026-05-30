@@ -654,3 +654,22 @@ button:hover {
   color: #ffe44e;
   font-size: 11px;
 }
+
+#debug-panel input.debug-edit {
+  width: 100%;
+  box-sizing: border-box;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 3px;
+  color: #ffe44e;
+  font-family: monospace;
+  font-size: 11px;
+  padding: 2px 4px;
+  text-align: center;
+}
+
+#debug-panel input.debug-edit:focus {
+  outline: none;
+  border-color: #5cba47;
+  background: rgba(255,255,255,0.15);
+}

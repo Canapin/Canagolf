@@ -45,30 +45,50 @@
 
   (function () {
     const sliders = [
-      { id: 'sl-ball-rest', val: 'val-ball-rest', prop: 'BALL_RESTITUTION',   fmt: v => v.toFixed(2) },
-      { id: 'sl-power',     val: 'val-power',     prop: 'MAX_POWER',          fmt: v => v.toFixed(1) },
-      { id: 'sl-scale',     val: 'val-scale',     prop: 'POWER_SCALE',        fmt: v => v.toFixed(3) },
-      { id: 'sl-friction',  val: 'val-friction',  prop: 'FRICTION',           fmt: v => v.toFixed(3) },
-      { id: 'sl-sand',      val: 'val-sand',      prop: 'SAND_FRICTION',      fmt: v => v.toFixed(3) },
-      { id: 'sl-bouncy',    val: 'val-bouncy',    prop: 'BOUNCY_RESTITUTION', fmt: v => v.toFixed(2) },
-      { id: 'sl-sticky',    val: 'val-sticky',    prop: 'STICKY_RESTITUTION', fmt: v => v.toFixed(2) },
-      { id: 'sl-slope',     val: 'val-slope',     prop: 'SLOPE_FORCE',        fmt: v => v.toFixed(3) },
-      { id: 'sl-slope-rf',  val: 'val-slope-rf',  prop: 'SLOPE_ROLL_FRICTION',fmt: v => v.toFixed(4) },
-      { id: 'sl-bh-impulse',  val: 'val-bh-impulse',  prop: 'BH_IMPULSE_FACTOR',  fmt: v => v.toFixed(2) },
-      { id: 'sl-bh-radius',   val: 'val-bh-radius',   prop: 'BH_RADIUS_TILES',    fmt: v => v.toFixed(0) },
-      { id: 'sl-swap-radius', val: 'val-swap-radius', prop: 'SWAP_RADIUS_TILES',  fmt: v => v.toFixed(0) },
+      { id: 'sl-ball-rest', val: 'val-ball-rest', edit: 'edit-ball-rest', prop: 'BALL_RESTITUTION',   fmt: v => v.toFixed(2) },
+      { id: 'sl-power',     val: 'val-power',     edit: 'edit-power',     prop: 'MAX_POWER',          fmt: v => v.toFixed(1) },
+      { id: 'sl-scale',     val: 'val-scale',     edit: 'edit-scale',     prop: 'POWER_SCALE',        fmt: v => v.toFixed(3) },
+      { id: 'sl-friction',  val: 'val-friction',  edit: 'edit-friction',  prop: 'FRICTION',           fmt: v => v.toFixed(3) },
+      { id: 'sl-sand',      val: 'val-sand',      edit: 'edit-sand',      prop: 'SAND_FRICTION',      fmt: v => v.toFixed(3) },
+      { id: 'sl-bouncy',    val: 'val-bouncy',    edit: 'edit-bouncy',    prop: 'BOUNCY_RESTITUTION', fmt: v => v.toFixed(2) },
+      { id: 'sl-sticky',    val: 'val-sticky',    edit: 'edit-sticky',    prop: 'STICKY_RESTITUTION', fmt: v => v.toFixed(2) },
+      { id: 'sl-slope',     val: 'val-slope',     edit: 'edit-slope',     prop: 'SLOPE_FORCE',        fmt: v => v.toFixed(3) },
+      { id: 'sl-slope-rf',  val: 'val-slope-rf',  edit: 'edit-slope-rf',  prop: 'SLOPE_ROLL_FRICTION',fmt: v => v.toFixed(4) },
+      { id: 'sl-bh-impulse',  val: 'val-bh-impulse',  edit: 'edit-bh-impulse',  prop: 'BH_IMPULSE_FACTOR',  fmt: v => v.toFixed(2) },
+      { id: 'sl-bh-radius',   val: 'val-bh-radius',   edit: 'edit-bh-radius',   prop: 'BH_RADIUS_TILES',    fmt: v => v.toFixed(0) },
+      { id: 'sl-swap-radius', val: 'val-swap-radius', edit: 'edit-swap-radius', prop: 'SWAP_RADIUS_TILES',  fmt: v => v.toFixed(0) },
     ];
-    sliders.forEach(({ id, val, prop, fmt }) => {
-      const input = document.getElementById(id);
-      const label = document.getElementById(val);
-      input.addEventListener('input', () => {
-        const v = parseFloat(input.value);
+    sliders.forEach(({ id, val, edit, prop, fmt }) => {
+      const slider = document.getElementById(id);
+      const display = document.getElementById(val);
+      const editor = document.getElementById(edit);
+
+      slider.addEventListener('input', () => {
+        const v = parseFloat(slider.value);
         Physics[prop] = v;
-        label.textContent = fmt(v);
+        display.textContent = fmt(v);
+        editor.value = fmt(v);
       });
+
+      editor.addEventListener('change', () => {
+        const v = parseFloat(editor.value);
+        if (!isNaN(v)) {
+          const min = parseFloat(slider.min);
+          const max = parseFloat(slider.max);
+          const clamped = Math.min(max, Math.max(min, v));
+          editor.value = fmt(clamped);
+          display.textContent = fmt(clamped);
+          Physics[prop] = clamped;
+          slider.value = clamped;
+        } else {
+          editor.value = fmt(Physics[prop]);
+        }
+      });
+
       const current = Physics[prop];
-      input.value = current;
-      label.textContent = fmt(current);
+      slider.value = current;
+      display.textContent = fmt(current);
+      editor.value = fmt(current);
     });
 
     document.getElementById('debug-toggle').addEventListener('click', () => {

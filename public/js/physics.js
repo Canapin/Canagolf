@@ -179,7 +179,7 @@ const Physics = (function () {
   };
 
   let SAND_FRICTION = 0.96;
-  let SLOPE_FORCE = 0.018;
+  let SLOPE_FORCE = 0.013;
   let SLOPE_ROLL_FRICTION = 0.99; // no rolling resistance on slopes — force accumulates each frame
   let BALL_RESTITUTION = 0.5; // ball-to-ball CoR: 0=inelastic (merge), 1=elastic (full exchange)
   let BALL_FRICTION = 0.3; // ball-to-ball tangential friction (Coulomb μ)
