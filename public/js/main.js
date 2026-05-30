@@ -18,6 +18,7 @@
   const canvas       = document.getElementById('canvas');
   const ctx          = canvas.getContext('2d');
   const hudEl        = document.getElementById('hud');
+  const giveUpBtn    = document.getElementById('btn-giveup');
   const debugPanelEl = document.getElementById('debug-panel');
 
   const MARGIN = Physics.TILE_SIZE * 4; // rough border around the course
@@ -409,6 +410,16 @@
     socket.on('s:close', () => {
       location.reload();
     });
+
+    socket.on('s:playereliminated', ({ playerIndex, strokes }) => {
+      if (!game) return;
+      const p = game.players[playerIndex];
+      if (!p) return;
+      p.eliminated = true;
+      p.ball.vx = 0; p.ball.vy = 0;
+      if (strokes !== undefined) p.strokes = strokes;
+      updateHUD();
+    });
   }
 
   // ── Game start ────────────────────────────────────────────────────────────
@@ -492,6 +503,7 @@
       }
       document.addEventListener('mousemove', onMouseMove);
       canvas.addEventListener('click', onCanvasClick);
+      giveUpBtn.addEventListener('click', onGiveUpClick);
     }
 
     updateHUD();
@@ -524,6 +536,21 @@
 
     if (isOnlineMode) socket.emit('c:shot', { vx: ball.vx, vy: ball.vy });
     updateHUD();
+  }
+
+  function onGiveUpClick() {
+    if (game.over) return;
+    const p = Game.getCurrentPlayer(game);
+    if (p.sunk || p.eliminated) return;
+    if (!confirm(`${p.name}: Give up? You'll be eliminated for this course.`)) return;
+
+    if (isOnlineMode) {
+      socket.emit('c:giveup', { playerIndex: game.currentPlayerIndex });
+    } else {
+      Game.onEliminated(game);
+      updateHUD();
+      if (game.over && !gameSession) showEndScreen();
+    }
   }
 
   // ── Game loop ─────────────────────────────────────────────────────────────
@@ -560,45 +587,36 @@
     // Hazard checks run unconditionally — ball may have been stopped by MIN_SPEED inside hazard
     const curTile = Physics.getSurfaceAt(game.map.ground, ball.x, ball.y, game.map.groundLayers);
 
-    // Lava — player eliminated, no respawn
+    // Lava — respawn at map start
     if (!turnEnded && Physics.isLavaTile(curTile)) {
-      if (!isOnlineMode) {
-        Game.onEliminated(game);
-        updateHUD();
-        if (game.over) return 'over';
-      } else {
-        const p = Game.getCurrentPlayer(game);
-        p.eliminated = true; p.ball.vx = 0; p.ball.vy = 0;
-        if (game.players.every(pl => pl.sunk || pl.eliminated)) game.over = true;
-        updateHUD();
-        if (localPlayerIndex === game.currentPlayerIndex) {
-          const playerStates = game.players.map(p => ({
-            x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
-            y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
-            sunk: p.sunk, eliminated: p.eliminated,
-          }));
-          waitingForTurnSwitch = true;
-          socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: true, playerStates });
-        }
+      ball.x = game.map.startX; ball.y = game.map.startY; ball.vx = 0; ball.vy = 0;
+      if (isOnlineMode && localPlayerIndex === game.currentPlayerIndex) {
+        const playerStates = game.players.map(p => ({
+          x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
+          y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
+          sunk: p.sunk, eliminated: p.eliminated,
+        }));
+        waitingForTurnSwitch = true;
+        socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
+        turnEnded = true;
       }
-      turnEnded = true;
     }
 
-    // Water — reset to stroke origin; turn advances via all-stopped check
+    // Water — ball disappears, reappears at safePos on next player's turn
     if (!turnEnded && Physics.isWaterTile(curTile)) {
-      const origin = Game.getCurrentPlayer(game).strokeOrigin;
-      if (origin) {
-        ball.x = origin.x; ball.y = origin.y; ball.vx = 0; ball.vy = 0;
-        if (isOnlineMode && localPlayerIndex === game.currentPlayerIndex) {
-          const playerStates = game.players.map(p => ({
-            x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
-            y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
-            sunk: p.sunk, eliminated: p.eliminated,
-          }));
-          waitingForTurnSwitch = true;
-          socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
-          turnEnded = true;
-        }
+      const p = Game.getCurrentPlayer(game);
+      p.waterRespawnPos = p.safePos ? { x: p.safePos.x, y: p.safePos.y } : { x: ball.x, y: ball.y };
+      p.waterPending = true;
+      ball.vx = 0; ball.vy = 0;
+      if (isOnlineMode && localPlayerIndex === game.currentPlayerIndex) {
+        const playerStates = game.players.map(p => ({
+          x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
+          y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
+          sunk: p.sunk, eliminated: p.eliminated,
+        }));
+        waitingForTurnSwitch = true;
+        socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
+        turnEnded = true;
       }
     }
 
@@ -719,9 +737,9 @@
         p.ball.vx = 0; p.ball.vy = 0;
         nonCurStateChanged = true;
       } else if (Physics.isLavaTile(gt)) {
+        p.waterRespawnPos = { x: game.map.startX, y: game.map.startY };
+        p.waterPending = true;
         p.ball.vx = 0; p.ball.vy = 0;
-        p.eliminated = true;
-        if (game.players.every(pl => pl.sunk || pl.eliminated)) game.over = true;
         nonCurStateChanged = true;
       } else if (Physics.isMoving(p.ball)) {
         const hole = Physics.checkHole(p.ball, game.map.holes);
@@ -885,6 +903,11 @@
       return `<span class="${classes.join(' ')}">${dot}${p.name}: ${p.strokes}${suffix}</span>`;
     }).join('<span class="sep">|</span>');
     hudEl.innerHTML = roundHtml + `<div class="hud-scores">${scoresHtml}</div>`;
+
+    const anyMoving = game.players.some(p => !p.sunk && !p.eliminated && Physics.isMoving(p.ball));
+    const cp = Game.getCurrentPlayer(game);
+    giveUpBtn.hidden = game.over || anyMoving || cp.sunk || cp.eliminated
+      || (isOnlineMode && localPlayerIndex !== game.currentPlayerIndex);
   }
 
   // ── Scoreboard ────────────────────────────────────────────────────────────
@@ -988,10 +1011,10 @@
   // ── End screen (local) ────────────────────────────────────────────────────
 
   function showEndScreen() {
-    // Lava penalty: eliminated players get worst-alive score + 3
+    // Give-up penalty: eliminated players get worst-alive score + 5
     const alivePlayers = game.players.filter(p => !p.eliminated);
     const maxStrokes = alivePlayers.length > 0 ? Math.max(...alivePlayers.map(p => p.strokes)) : 0;
-    game.players.forEach(p => { if (p.eliminated) p.strokes = maxStrokes + 3; });
+    game.players.forEach(p => { if (p.eliminated) p.strokes = maxStrokes + 5; });
 
     if (gameSession) {
       gameSession.holeScores.push(game.players.map(p => ({ name: p.name, strokes: p.strokes })));

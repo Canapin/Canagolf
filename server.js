@@ -141,7 +141,7 @@ io.on("connection", (socket) => {
     const room = {
       code,
       hostId: socket.id,
-      players: [{ id: socket.id, name, strokes: 0, sunk: false, isSpectator }],
+      players: [{ id: socket.id, name, strokes: 0, sunk: false, gaveUp: false, isSpectator }],
       started: false,
       over: false,
       currentPlayerIndex: 0,
@@ -173,7 +173,7 @@ io.on("connection", (socket) => {
       return;
     }
 
-    room.players.push({ id: socket.id, name, strokes: 0, sunk: false, isSpectator });
+    room.players.push({ id: socket.id, name, strokes: 0, sunk: false, gaveUp: false, isSpectator });
     roomCode = code.toUpperCase();
     socket.join(roomCode);
     socket.emit("s:joined", { code: roomCode, playerId: socket.id });
@@ -280,10 +280,14 @@ io.on("connection", (socket) => {
     }
 
     if (room.players.every((p) => p.sunk)) {
+      const alive = room.players.filter(p => !p.gaveUp);
+      const maxS = alive.length > 0 ? Math.max(...alive.map(p => p.strokes)) : 0;
       const session = room.session;
-      session.holeScores.push(room.players.map((p) => ({ name: p.name, strokes: p.strokes })));
+      session.holeScores.push(room.players.map((p) => ({
+        name: p.name, strokes: p.gaveUp ? maxS + 5 : p.strokes,
+      })));
       room.players.forEach((p) => {
-        session.scores[p.name] = (session.scores[p.name] ?? 0) + p.strokes;
+        session.scores[p.name] = (session.scores[p.name] ?? 0) + (p.gaveUp ? maxS + 5 : p.strokes);
       });
       const cumPlayers = room.players.map((p) => ({
         name: p.name,
@@ -316,6 +320,55 @@ io.on("connection", (socket) => {
       currentPlayerIndex: room.currentPlayerIndex,
       playerStates: Array.isArray(playerStates) ? playerStates : undefined,
     });
+  });
+
+  socket.on("c:giveup", ({ playerIndex }) => {
+    const room = rooms.get(roomCode);
+    if (!room || !room.started) return;
+    const p = room.players[playerIndex];
+    if (!p || p.id !== socket.id || p.sunk) return;
+    p.gaveUp = true;
+    p.sunk = true;
+    io.to(roomCode).emit("s:playereliminated", { playerIndex, strokes: p.strokes });
+
+    if (room.players.every(p2 => p2.sunk)) {
+      const alive = room.players.filter(p2 => !p2.gaveUp);
+      const maxS = alive.length > 0 ? Math.max(...alive.map(p2 => p2.strokes)) : 0;
+      const session = room.session;
+      session.holeScores.push(room.players.map(p2 => ({
+        name: p2.name, strokes: p2.gaveUp ? maxS + 5 : p2.strokes,
+      })));
+      room.players.forEach(p2 => {
+        session.scores[p2.name] = (session.scores[p2.name] ?? 0) + (p2.gaveUp ? maxS + 5 : p2.strokes);
+      });
+      const cumPlayers = room.players.map(p2 => ({
+        name: p2.name, strokes: session.scores[p2.name],
+      }));
+      const isLast = session.mapIndex >= session.mapList.length - 1;
+      if (isLast) {
+        room.over = true;
+        io.to(roomCode).emit("s:gameover", { players: cumPlayers, holeScores: session.holeScores });
+      } else {
+        io.to(roomCode).emit("s:holeover", {
+          players: cumPlayers,
+          holeIndex: session.mapIndex,
+          totalHoles: session.mapList.length,
+        });
+      }
+      return;
+    }
+
+    if (room.currentPlayerIndex === playerIndex) {
+      const n = room.players.length;
+      let idx = (room.currentPlayerIndex + 1) % n;
+      let tries = 0;
+      while (room.players[idx].sunk && tries < n) {
+        idx = (idx + 1) % n;
+        tries++;
+      }
+      room.currentPlayerIndex = idx;
+      io.to(roomCode).emit("s:turn", { currentPlayerIndex: room.currentPlayerIndex });
+    }
   });
 
   socket.on("c:nexthole", () => {

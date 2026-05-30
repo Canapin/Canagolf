@@ -509,6 +509,12 @@ button:hover {
   gap: 10px;
 }
 
+.hud-row {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
 #hud {
   font-size: 14px;
   padding: 8px 20px;
@@ -518,6 +524,7 @@ button:hover {
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  flex: 1;
 }
 
 .hud-round {
@@ -561,6 +568,23 @@ button:hover {
 .sep {
   color: #444;
   padding: 0 4px;
+}
+
+#btn-giveup {
+  font-size: 0.75em;
+  padding: 4px 10px;
+  background: rgba(200, 50, 50, 0.15);
+  border: 1px solid rgba(200, 50, 50, 0.3);
+  border-radius: 4px;
+  color: #a55;
+  cursor: pointer;
+  font-family: monospace;
+  flex-shrink: 0;
+}
+
+#btn-giveup:hover {
+  background: rgba(200, 50, 50, 0.3);
+  color: #e74c3c;
 }
 
 #canvas {
