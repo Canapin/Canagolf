@@ -123,6 +123,7 @@ function emitStartMap(room, roomCode) {
   room.players.forEach((p) => {
     p.sunk = false;
     p.strokes = 0;
+    p.ready = false;
   });
   const variationMode = room.session.mapVariationModes?.[room.session.mapIndex];
   io.to(roomCode).emit("s:start", {
@@ -141,7 +142,7 @@ io.on("connection", (socket) => {
     const room = {
       code,
       hostId: socket.id,
-      players: [{ id: socket.id, name, strokes: 0, sunk: false, gaveUp: false, isSpectator }],
+      players: [{ id: socket.id, name, strokes: 0, sunk: false, gaveUp: false, isSpectator, ready: false }],
       started: false,
       over: false,
       currentPlayerIndex: 0,
@@ -150,7 +151,7 @@ io.on("connection", (socket) => {
     rooms.set(code, room);
     roomCode = code;
     socket.join(code);
-    socket.emit("s:created", { code, playerId: socket.id });
+    socket.emit("s:created", { code, playerId: socket.id, isSpectator });
     broadcastLobby(room);
   });
 
@@ -173,10 +174,10 @@ io.on("connection", (socket) => {
       return;
     }
 
-    room.players.push({ id: socket.id, name, strokes: 0, sunk: false, gaveUp: false, isSpectator });
+    room.players.push({ id: socket.id, name, strokes: 0, sunk: false, gaveUp: false, isSpectator, ready: false });
     roomCode = code.toUpperCase();
     socket.join(roomCode);
-    socket.emit("s:joined", { code: roomCode, playerId: socket.id });
+    socket.emit("s:joined", { code: roomCode, playerId: socket.id, isSpectator });
     broadcastLobby(room);
   });
 
@@ -300,12 +301,14 @@ io.on("connection", (socket) => {
       const cumPlayers = room.players.map((p) => ({
         name: p.name,
         strokes: session.scores[p.name],
+        id: p.id,
       }));
       const isLast = session.mapIndex >= session.mapList.length - 1;
       if (isLast) {
         room.over = true;
         io.to(roomCode).emit("s:gameover", { players: cumPlayers, holeScores: session.holeScores });
       } else {
+        room.players.forEach(p => p.ready = false);
         io.to(roomCode).emit("s:holeover", {
           players: cumPlayers,
           holeIndex: session.mapIndex,
@@ -350,13 +353,14 @@ io.on("connection", (socket) => {
         session.scores[p2.name] = (session.scores[p2.name] ?? 0) + (p2.gaveUp ? maxS + 5 : p2.strokes);
       });
       const cumPlayers = room.players.map(p2 => ({
-        name: p2.name, strokes: session.scores[p2.name],
+        name: p2.name, strokes: session.scores[p2.name], id: p2.id,
       }));
       const isLast = session.mapIndex >= session.mapList.length - 1;
       if (isLast) {
         room.over = true;
         io.to(roomCode).emit("s:gameover", { players: cumPlayers, holeScores: session.holeScores });
       } else {
+        room.players.forEach(p2 => p2.ready = false);
         io.to(roomCode).emit("s:holeover", {
           players: cumPlayers,
           holeIndex: session.mapIndex,
@@ -379,10 +383,24 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("c:ready", () => {
+    const room = rooms.get(roomCode);
+    if (!room || !room.started || room.over) return;
+    const p = room.players.find(p => p.id === socket.id);
+    if (!p || p.ready) return;
+    p.ready = true;
+    io.to(roomCode).emit("s:playerready", { playerId: socket.id });
+    if (room.players.every(p => p.ready)) {
+      room.session.mapIndex++;
+      emitStartMap(room, roomCode);
+    }
+  });
+
   socket.on("c:nexthole", () => {
     const room = rooms.get(roomCode);
     if (!room || room.hostId !== socket.id) return;
     room.session.mapIndex++;
+    room.players.forEach(p => p.ready = false);
     emitStartMap(room, roomCode);
   });
 

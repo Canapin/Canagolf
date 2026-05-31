@@ -105,7 +105,12 @@
       <div class="scoreboard-card">
         <h2 id="scoreboard-title" class="scoreboard-title">Hole Complete!</h2>
         <ol id="scoreboard-list"></ol>
-        <button id="scoreboard-close" class="btn-primary">Play Again</button>
+        <div id="scoreboard-ready-row" hidden>
+          <button id="scoreboard-ready-btn" class="btn-primary">Ready</button>
+          <button id="scoreboard-force-btn" class="btn-secondary">Force Next ▶</button>
+          <p id="scoreboard-status" class="lobby-hint"></p>
+        </div>
+        <button id="scoreboard-close" class="btn-primary" hidden>Play Again</button>
         <p id="scoreboard-waiting" hidden class="lobby-hint">
           Waiting for host to close…
         </p>

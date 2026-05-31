@@ -5,6 +5,10 @@
   const scoreboardEl = document.getElementById('scoreboard');
   const sbListEl     = document.getElementById('scoreboard-list');
   const sbCloseBtn   = document.getElementById('scoreboard-close');
+  const sbReadyRow   = document.getElementById('scoreboard-ready-row');
+  const sbReadyBtn   = document.getElementById('scoreboard-ready-btn');
+  const sbForceBtn   = document.getElementById('scoreboard-force-btn');
+  const sbStatus     = document.getElementById('scoreboard-status');
   const sbWaitingEl  = document.getElementById('scoreboard-waiting');
   const resultsEl    = document.getElementById('results-screen');
   const resultsWinnerEl = document.getElementById('results-winner');
@@ -41,6 +45,10 @@
   let isLocalHost      = false;
   let isOnlineHoleOver = false;
   let waitingForTurnSwitch = false;
+  let isSpectator = false;
+  let readyPlayers = new Set();
+  let localReady = false;
+  let onlineHolePlayers = null;
 
   // ── Debug panel ───────────────────────────────────────────────────────────
 
@@ -292,16 +300,18 @@
       onlineErrorEl.textContent = msg;
     });
 
-    socket.on('s:created', ({ code, playerId }) => {
+    socket.on('s:created', ({ code, playerId, isSpectator: spec }) => {
       localPlayerId = playerId;
       isOnlineMode  = true;
       isLocalHost   = true;
+      isSpectator   = !!spec;
       showLobby(code, true);
     });
 
-    socket.on('s:joined', ({ code, playerId }) => {
+    socket.on('s:joined', ({ code, playerId, isSpectator: spec }) => {
       localPlayerId = playerId;
       isOnlineMode  = true;
+      isSpectator   = !!spec;
       showLobby(code, false);
     });
 
@@ -323,6 +333,9 @@
       scoreboardEl.hidden = true;
       isOnlineHoleOver = false;
       waitingForTurnSwitch = false;
+      readyPlayers.clear();
+      localReady = false;
+      onlineHolePlayers = null;
       beginGame(map, players.map(p => p.name), currentPlayerIndex);
     });
 
@@ -386,18 +399,33 @@
     });
 
     socket.on('s:holeover', ({ players, holeIndex, totalHoles }) => {
-      if (!game || isOnlineHoleOver) return;
+      if (!game || isOnlineHoleOver || isSpectator) return;
       isOnlineHoleOver = true;
       game.over = true;
       render();
       setTimeout(() => {
         if (!isOnlineHoleOver) return;
-        showScoreboard(
-          players, isLocalHost,
-          `Hole ${holeIndex + 1} / ${totalHoles}`,
-          'Next Hole ▶'
-        );
+        onlineHolePlayers = players;
+        readyPlayers.clear();
+        localReady = false;
+        document.getElementById('scoreboard-title').textContent =
+          `Hole ${holeIndex + 1} / ${totalHoles}`;
+        sbCloseBtn.hidden = true;
+        sbWaitingEl.hidden = true;
+        sbReadyRow.hidden = false;
+        sbReadyBtn.hidden = false;
+        sbReadyBtn.disabled = false;
+        sbForceBtn.hidden = !isLocalHost;
+        sbStatus.textContent = '';
+        renderScoreboardReady();
+        scoreboardEl.hidden = false;
       }, 400);
+    });
+
+    socket.on('s:playerready', ({ playerId }) => {
+      readyPlayers.add(playerId);
+      if (playerId === localPlayerId) localReady = true;
+      renderScoreboardReady();
     });
 
     socket.on('s:gameover', ({ players, holeScores }) => {
@@ -941,7 +969,19 @@
 
   // ── Scoreboard ────────────────────────────────────────────────────────────
 
+  function renderScoreboardReady() {
+    if (!onlineHolePlayers) return;
+    const sorted = [...onlineHolePlayers].sort((a, b) => a.strokes - b.strokes);
+    sbListEl.innerHTML = sorted.map(p => {
+      const isReady = readyPlayers.has(p.id);
+      return `<li><span class="score-name">${p.name}</span><span class="score-strokes">${p.strokes} stroke${p.strokes !== 1 ? 's' : ''}</span>${isReady ? '<span class="ready-badge">✓ Ready</span>' : ''}</li>`;
+    }).join('');
+    sbReadyBtn.hidden = localReady;
+    sbStatus.textContent = localReady ? 'Waiting for other players…' : '';
+  }
+
   function showScoreboard(players, isHost, title = 'Hole Complete!', closeLabel = 'Play Again') {
+    if (isOnlineMode && isOnlineHoleOver) return;
     const sorted = [...players].sort((a, b) => a.strokes - b.strokes);
     sbListEl.innerHTML = sorted.map(p =>
       `<li><span class="score-name">${p.name}</span><span class="score-strokes">${p.strokes} stroke${p.strokes !== 1 ? 's' : ''}</span></li>`
@@ -1013,7 +1053,22 @@
     }
   });
 
+  sbReadyBtn.addEventListener('click', () => {
+    if (localReady || isSpectator) return;
+    localReady = true;
+    sbReadyBtn.hidden = true;
+    sbStatus.textContent = 'Waiting for other players…';
+    socket.emit('c:ready');
+  });
+
+  sbForceBtn.addEventListener('click', () => {
+    isOnlineHoleOver = false;
+    scoreboardEl.hidden = true;
+    socket.emit('c:nexthole');
+  });
+
   sbCloseBtn.addEventListener('click', () => {
+    if (isOnlineMode && isOnlineHoleOver) return;
     if (isOnlineMode) {
       if (isOnlineHoleOver) {
         isOnlineHoleOver = false;
@@ -1040,6 +1095,7 @@
   // ── End screen (local) ────────────────────────────────────────────────────
 
   function showEndScreen() {
+    if (isOnlineMode) return;
     // Give-up penalty: eliminated players get worst-alive score + 5
     const alivePlayers = game.players.filter(p => !p.eliminated);
     const maxStrokes = alivePlayers.length > 0 ? Math.max(...alivePlayers.map(p => p.strokes)) : 0;
