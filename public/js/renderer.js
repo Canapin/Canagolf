@@ -616,21 +616,25 @@ const Renderer = (function () {
       ctx.lineWidth = 1;
       ctx.beginPath();
       if (fw === "LL") {
-        ctx.moveTo(x, y);       ctx.lineTo(x + T, y);
-        ctx.moveTo(x + T, y);   ctx.lineTo(x + T, y + T);
-        ctx.moveTo(x, y);       ctx.lineTo(x + T, y + T);
+        ctx.moveTo(x + 0.5, y + 0.5);
+        ctx.lineTo(x + T - 0.5, y + 0.5);
+        ctx.lineTo(x + T - 0.5, y + T - 0.5);
+        ctx.closePath();
       } else if (fw === "UR") {
-        ctx.moveTo(x, y);       ctx.lineTo(x, y + T);
-        ctx.moveTo(x, y + T);   ctx.lineTo(x + T, y + T);
-        ctx.moveTo(x, y);       ctx.lineTo(x + T, y + T);
+        ctx.moveTo(x + 0.5, y + 0.5);
+        ctx.lineTo(x + 0.5, y + T - 0.5);
+        ctx.lineTo(x + T - 0.5, y + T - 0.5);
+        ctx.closePath();
       } else if (fw === "LR") {
-        ctx.moveTo(x, y);       ctx.lineTo(x + T, y);
-        ctx.moveTo(x, y);       ctx.lineTo(x, y + T);
-        ctx.moveTo(x + T, y);   ctx.lineTo(x, y + T);
+        ctx.moveTo(x + 0.5, y + 0.5);
+        ctx.lineTo(x + T - 0.5, y + 0.5);
+        ctx.lineTo(x + 0.5, y + T - 0.5);
+        ctx.closePath();
       } else {
-        ctx.moveTo(x + T, y);   ctx.lineTo(x + T, y + T);
-        ctx.moveTo(x, y + T);   ctx.lineTo(x + T, y + T);
-        ctx.moveTo(x + T, y);   ctx.lineTo(x, y + T);
+        ctx.moveTo(x + T - 0.5, y + 0.5);
+        ctx.lineTo(x + T - 0.5, y + T - 0.5);
+        ctx.lineTo(x + 0.5, y + T - 0.5);
+        ctx.closePath();
       }
       ctx.stroke();
       // 2 chevrons in solid wall area — only for bouncy/sticky variants
@@ -746,28 +750,6 @@ const Renderer = (function () {
       ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a0), ay + T * Math.sin(a0));
       ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
       ctx.stroke();
-      if (Physics.BOUNCY_TILES.has(tile) || Physics.STICKY_TILES.has(tile)) {
-        const isSticky = Physics.STICKY_TILES.has(tile);
-        const midAngle = (a0 + a1) / 2 + Math.PI;
-        const spread = Math.PI / 8;
-        const a = T * 0.09;
-        ctx.strokeStyle = "rgba(255,255,255,0.55)";
-        ctx.lineWidth = 1.5;
-        ctx.lineJoin = "round";
-        [midAngle - spread, midAngle + spread].forEach((angle) => {
-          const pcx = ax + T * 0.52 * Math.cos(angle);
-          const pcy = ay + T * 0.52 * Math.sin(angle);
-          const nx = Math.cos(angle),
-            ny = Math.sin(angle);
-          const tx = -ny,
-            ty = nx;
-          ctx.beginPath();
-          ctx.moveTo(pcx - tx * a, pcy - ty * a);
-          ctx.lineTo(pcx + (isSticky ? -nx : nx) * a, pcy + (isSticky ? -ny : ny) * a);
-          ctx.lineTo(pcx + tx * a, pcy + ty * a);
-          ctx.stroke();
-        });
-      }
       return;
     }
 
