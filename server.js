@@ -298,19 +298,24 @@ io.on("connection", (socket) => {
       room.players.forEach((p) => {
         session.scores[p.name] = (session.scores[p.name] ?? 0) + (p.gaveUp ? maxS + 5 : p.strokes);
       });
-      const cumPlayers = room.players.map((p) => ({
+      const totalPlayers = room.players.map((p) => ({
         name: p.name,
         strokes: session.scores[p.name],
+        id: p.id,
+      }));
+      const holePlayers = room.players.map((p) => ({
+        name: p.name,
+        strokes: p.gaveUp ? maxS + 5 : p.strokes,
         id: p.id,
       }));
       const isLast = session.mapIndex >= session.mapList.length - 1;
       if (isLast) {
         room.over = true;
-        io.to(roomCode).emit("s:gameover", { players: cumPlayers, holeScores: session.holeScores });
+        io.to(roomCode).emit("s:gameover", { players: totalPlayers, holeScores: session.holeScores });
       } else {
         room.players.forEach(p => p.ready = false);
         io.to(roomCode).emit("s:holeover", {
-          players: cumPlayers,
+          players: holePlayers,
           holeIndex: session.mapIndex,
           totalHoles: session.mapList.length,
         });
@@ -352,17 +357,20 @@ io.on("connection", (socket) => {
       room.players.forEach(p2 => {
         session.scores[p2.name] = (session.scores[p2.name] ?? 0) + (p2.gaveUp ? maxS + 5 : p2.strokes);
       });
-      const cumPlayers = room.players.map(p2 => ({
+      const totalPlayers = room.players.map(p2 => ({
         name: p2.name, strokes: session.scores[p2.name], id: p2.id,
+      }));
+      const holePlayers = room.players.map(p2 => ({
+        name: p2.name, strokes: p2.gaveUp ? maxS + 5 : p2.strokes, id: p2.id,
       }));
       const isLast = session.mapIndex >= session.mapList.length - 1;
       if (isLast) {
         room.over = true;
-        io.to(roomCode).emit("s:gameover", { players: cumPlayers, holeScores: session.holeScores });
+        io.to(roomCode).emit("s:gameover", { players: totalPlayers, holeScores: session.holeScores });
       } else {
         room.players.forEach(p2 => p2.ready = false);
         io.to(roomCode).emit("s:holeover", {
-          players: cumPlayers,
+          players: holePlayers,
           holeIndex: session.mapIndex,
           totalHoles: session.mapList.length,
         });
