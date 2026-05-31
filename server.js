@@ -249,6 +249,14 @@ io.on("connection", (socket) => {
     });
   });
 
+  socket.on("c:hazard", ({ type, playerIndex, respawnX, respawnY }) => {
+    const room = rooms.get(roomCode);
+    if (!room || !room.started) return;
+    const current = room.players[room.currentPlayerIndex];
+    if (current.id !== socket.id) return;
+    io.to(roomCode).emit("s:hazard", { type, playerIndex, respawnX, respawnY });
+  });
+
   socket.on("c:stopped", ({ x, y, sunk, playerStates }) => {
     const room = rooms.get(roomCode);
     if (!room || !room.started) return;

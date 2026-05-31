@@ -411,6 +411,23 @@
       location.reload();
     });
 
+    socket.on('s:hazard', ({ type, playerIndex, respawnX, respawnY }) => {
+      if (!game) return;
+      const p = game.players[playerIndex];
+      if (!p) return;
+      p.ball.vx = 0; p.ball.vy = 0;
+      if (type === 'lava') {
+        p.ball.x = respawnX; p.ball.y = respawnY;
+      } else if (type === 'water') {
+        p.waterPending = true;
+        p.waterRespawnPos = { x: respawnX, y: respawnY };
+      } else if (type === 'hole') {
+        p.ball.x = respawnX; p.ball.y = respawnY;
+        p.sunk = true;
+      }
+      updateHUD();
+    });
+
     socket.on('s:playereliminated', ({ playerIndex, strokes }) => {
       if (!game) return;
       const p = game.players[playerIndex];
@@ -584,39 +601,43 @@
 
     let turnEnded = false;
 
-    // Hazard checks run unconditionally — ball may have been stopped by MIN_SPEED inside hazard
-    const curTile = Physics.getSurfaceAt(game.map.ground, ball.x, ball.y, game.map.groundLayers);
+    // Hazard checks — only the active player's client is authoritative
+    if (!isOnlineMode || localPlayerIndex === game.currentPlayerIndex) {
+      const curTile = Physics.getSurfaceAt(game.map.ground, ball.x, ball.y, game.map.groundLayers);
 
-    // Lava — respawn at map start
-    if (!turnEnded && Physics.isLavaTile(curTile)) {
-      ball.x = game.map.startX; ball.y = game.map.startY; ball.vx = 0; ball.vy = 0;
-      if (isOnlineMode && localPlayerIndex === game.currentPlayerIndex) {
-        const playerStates = game.players.map(p => ({
-          x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
-          y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
-          sunk: p.sunk, eliminated: p.eliminated,
-        }));
-        waitingForTurnSwitch = true;
-        socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
-        turnEnded = true;
+      // Lava — respawn at map start
+      if (!turnEnded && Physics.isLavaTile(curTile)) {
+        ball.x = game.map.startX; ball.y = game.map.startY; ball.vx = 0; ball.vy = 0;
+        if (isOnlineMode) {
+          socket.emit('c:hazard', { type: 'lava', playerIndex: game.currentPlayerIndex, respawnX: ball.x, respawnY: ball.y });
+          const playerStates = game.players.map(p => ({
+            x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
+            y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
+            sunk: p.sunk, eliminated: p.eliminated,
+          }));
+          waitingForTurnSwitch = true;
+          socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
+          turnEnded = true;
+        }
       }
-    }
 
-    // Water — ball disappears, reappears at safePos on next player's turn
-    if (!turnEnded && Physics.isWaterTile(curTile)) {
-      const p = Game.getCurrentPlayer(game);
-      p.waterRespawnPos = p.safePos ? { x: p.safePos.x, y: p.safePos.y } : { x: ball.x, y: ball.y };
-      p.waterPending = true;
-      ball.vx = 0; ball.vy = 0;
-      if (isOnlineMode && localPlayerIndex === game.currentPlayerIndex) {
-        const playerStates = game.players.map(p => ({
-          x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
-          y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
-          sunk: p.sunk, eliminated: p.eliminated,
-        }));
-        waitingForTurnSwitch = true;
-        socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
-        turnEnded = true;
+      // Water — ball disappears, reappears at safePos on next player's turn
+      if (!turnEnded && Physics.isWaterTile(curTile)) {
+        const p = Game.getCurrentPlayer(game);
+        p.waterRespawnPos = p.safePos ? { x: p.safePos.x, y: p.safePos.y } : { x: ball.x, y: ball.y };
+        p.waterPending = true;
+        ball.vx = 0; ball.vy = 0;
+        if (isOnlineMode) {
+          socket.emit('c:hazard', { type: 'water', playerIndex: game.currentPlayerIndex, respawnX: p.waterRespawnPos.x, respawnY: p.waterRespawnPos.y });
+          const playerStates = game.players.map(p => ({
+            x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
+            y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
+            sunk: p.sunk, eliminated: p.eliminated,
+          }));
+          waitingForTurnSwitch = true;
+          socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
+          turnEnded = true;
+        }
       }
     }
 
@@ -730,24 +751,32 @@
           nonCurStateChanged = true;
         }
       }
-      const gt = Physics.getSurfaceAt(game.map.ground, p.ball.x, p.ball.y, game.map.groundLayers);
-      if (Physics.isWaterTile(gt)) {
-        p.waterRespawnPos = p.safePos ? { x: p.safePos.x, y: p.safePos.y } : { x: p.ball.x, y: p.ball.y };
-        p.waterPending = true;
-        p.ball.vx = 0; p.ball.vy = 0;
-        nonCurStateChanged = true;
-      } else if (Physics.isLavaTile(gt)) {
-        p.waterRespawnPos = { x: game.map.startX, y: game.map.startY };
-        p.waterPending = true;
-        p.ball.vx = 0; p.ball.vy = 0;
-        nonCurStateChanged = true;
-      } else if (Physics.isMoving(p.ball)) {
-        const hole = Physics.checkHole(p.ball, game.map.holes);
-        if (hole) {
-          p.ball.x = hole.x; p.ball.y = hole.y; p.ball.vx = 0; p.ball.vy = 0;
-          p.sunk = true;
-          if (game.players.every(pl => pl.sunk || pl.eliminated)) game.over = true;
+      // Hazard detection for non-current balls — only active client is authoritative
+      if (!isOnlineMode || localPlayerIndex === game.currentPlayerIndex) {
+        const gt = Physics.getSurfaceAt(game.map.ground, p.ball.x, p.ball.y, game.map.groundLayers);
+        if (Physics.isWaterTile(gt)) {
+          const rx = p.safePos ? p.safePos.x : p.ball.x;
+          const ry = p.safePos ? p.safePos.y : p.ball.y;
+          p.waterRespawnPos = { x: rx, y: ry };
+          p.waterPending = true;
+          p.ball.vx = 0; p.ball.vy = 0;
           nonCurStateChanged = true;
+          if (isOnlineMode) socket.emit('c:hazard', { type: 'water', playerIndex: i, respawnX: rx, respawnY: ry });
+        } else if (Physics.isLavaTile(gt)) {
+          p.waterRespawnPos = { x: game.map.startX, y: game.map.startY };
+          p.waterPending = true;
+          p.ball.vx = 0; p.ball.vy = 0;
+          nonCurStateChanged = true;
+          if (isOnlineMode) socket.emit('c:hazard', { type: 'lava', playerIndex: i, respawnX: game.map.startX, respawnY: game.map.startY });
+        } else if (Physics.isMoving(p.ball)) {
+          const hole = Physics.checkHole(p.ball, game.map.holes);
+          if (hole) {
+            p.ball.x = hole.x; p.ball.y = hole.y; p.ball.vx = 0; p.ball.vy = 0;
+            p.sunk = true;
+            if (game.players.every(pl => pl.sunk || pl.eliminated)) game.over = true;
+            nonCurStateChanged = true;
+            if (isOnlineMode) socket.emit('c:hazard', { type: 'hole', playerIndex: i, respawnX: hole.x, respawnY: hole.y });
+          }
         }
       }
     });
