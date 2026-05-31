@@ -745,10 +745,19 @@ const Renderer = (function () {
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(ax, ay, T, a0, a1, false);
-      const ocx = ax + T * (Math.cos(a0) + Math.cos(a1));
-      const ocy = ay + T * (Math.sin(a0) + Math.sin(a1));
-      ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a0), ay + T * Math.sin(a0));
-      ctx.moveTo(ocx, ocy); ctx.lineTo(ax + T * Math.cos(a1), ay + T * Math.sin(a1));
+      if (curveMeta.ox === 0 && curveMeta.oy === 0) {
+        ctx.moveTo(x + T - 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + T - 0.5);
+        ctx.moveTo(x + 0.5, y + T - 0.5); ctx.lineTo(x + T - 0.5, y + T - 0.5);
+      } else if (curveMeta.ox === 1 && curveMeta.oy === 0) {
+        ctx.moveTo(x + T - 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + T - 0.5);
+        ctx.moveTo(x + 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + 0.5);
+      } else if (curveMeta.ox === 0 && curveMeta.oy === 1) {
+        ctx.moveTo(x + 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + 0.5);
+        ctx.moveTo(x + T - 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + T - 0.5);
+      } else {
+        ctx.moveTo(x + 0.5, y + 0.5); ctx.lineTo(x + 0.5, y + T - 0.5);
+        ctx.moveTo(x + 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + 0.5);
+      }
       ctx.stroke();
       return;
     }
@@ -773,8 +782,19 @@ const Renderer = (function () {
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.arc(bax, bay, T, ba0, ba1, false);
-      ctx.moveTo(bax, bay); ctx.lineTo(bax + T * Math.cos(ba0), bay + T * Math.sin(ba0));
-      ctx.moveTo(bax, bay); ctx.lineTo(bax + T * Math.cos(ba1), bay + T * Math.sin(ba1));
+      if (bumpMeta.ox === 0 && bumpMeta.oy === 0) {
+        ctx.moveTo(x + 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + 0.5);
+        ctx.moveTo(x + 0.5, y + 0.5); ctx.lineTo(x + 0.5, y + T - 0.5);
+      } else if (bumpMeta.ox === 1 && bumpMeta.oy === 0) {
+        ctx.moveTo(x + T - 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + T - 0.5);
+        ctx.moveTo(x + 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + 0.5);
+      } else if (bumpMeta.ox === 0 && bumpMeta.oy === 1) {
+        ctx.moveTo(x + 0.5, y + 0.5); ctx.lineTo(x + 0.5, y + T - 0.5);
+        ctx.moveTo(x + 0.5, y + T - 0.5); ctx.lineTo(x + T - 0.5, y + T - 0.5);
+      } else {
+        ctx.moveTo(x + 0.5, y + T - 0.5); ctx.lineTo(x + T - 0.5, y + T - 0.5);
+        ctx.moveTo(x + T - 0.5, y + 0.5); ctx.lineTo(x + T - 0.5, y + T - 0.5);
+      }
       ctx.stroke();
       if (Physics.BOUNCY_TILES.has(tile) || Physics.STICKY_TILES.has(tile)) {
         const isSticky = Physics.STICKY_TILES.has(tile);
