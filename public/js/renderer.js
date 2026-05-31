@@ -16,10 +16,6 @@ const Renderer = (function () {
   const SAND_COLOR = "#c8a84b";
   const WATER_COLOR = "#2a7fd4";
   const LAVA_COLOR = "#c83500";
-  // Archived mid-compression palette (keep for reference):
-  // U: "#63ad4c", UL: "#59a744", UR: "#4e983a",
-  // L: "#4e9a39", R: "#3c802e",
-  // DL: "#317323", DR: "#2d6820", D: "#2f6e24",
   const SLOPE_COLORS = {
     U: "#72c45a", UL: "#65bc52", UR: "#509e40",
     L: "#50a03c", R: "#2d6228",
@@ -141,16 +137,11 @@ const Renderer = (function () {
     return [0, Math.PI * 0.5];
   }
 
-  function darken(hex) {
-    const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
-    return `rgb(${Math.round(r * 0.65)},${Math.round(g * 0.65)},${Math.round(b * 0.65)})`;
-  }
   function drawSlopeArrows(ctx, tile, x, y) {
     const dir = TILE_TO_SLOPE_DIR[tile];
     if (!dir) return;
     const a = T * 0.1;
-    const chevronColor = darken(SLOPE_COLORS[dir]);
-    ctx.strokeStyle = chevronColor;
+    ctx.strokeStyle = FAIRWAY;
     ctx.lineWidth = 1.5;
     ctx.lineJoin = "round";
     for (let qx = 1; qx <= 3; qx += 2) {
