@@ -1,6 +1,8 @@
-# Room / ready system server-side tests
+# Room / ready system server-side tests ✅ DONE
 
 Add to `tests/simulate.js` or new `tests/room.js`.
+
+Tested in `tests/room.js` — 39 tests, all passing.
 
 ## Approach
 
