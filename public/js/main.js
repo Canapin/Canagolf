@@ -399,27 +399,28 @@
     });
 
     socket.on('s:holeover', ({ players, holeIndex, totalHoles }) => {
-      if (!game || isOnlineHoleOver || isSpectator) return;
+      if (!game || isOnlineHoleOver) return;
       isOnlineHoleOver = true;
       game.over = true;
-      render();
-      setTimeout(() => {
-        if (!isOnlineHoleOver) return;
-        onlineHolePlayers = players;
-        readyPlayers.clear();
-        localReady = false;
-        document.getElementById('scoreboard-title').textContent =
-          `Hole ${holeIndex + 1} / ${totalHoles}`;
-        sbCloseBtn.hidden = true;
-        sbWaitingEl.hidden = true;
-        sbReadyRow.hidden = false;
-        sbReadyBtn.hidden = false;
-        sbReadyBtn.disabled = false;
-        sbForceBtn.hidden = !isLocalHost;
-        sbStatus.textContent = '';
-        renderScoreboardReady();
-        scoreboardEl.hidden = false;
-      }, 400);
+      onlineHolePlayers = players;
+      readyPlayers.clear();
+      localReady = false;
+      document.getElementById('scoreboard-title').textContent =
+        `Hole ${holeIndex + 1} / ${totalHoles}`;
+      sbCloseBtn.hidden = true;
+      sbWaitingEl.hidden = true;
+      sbReadyRow.hidden = false;
+      sbReadyBtn.hidden = false;
+      sbReadyBtn.disabled = false;
+      sbForceBtn.hidden = !isLocalHost;
+      sbStatus.textContent = '';
+      if (isSpectator) {
+        localReady = true;
+        sbReadyBtn.hidden = true;
+        sbStatus.textContent = 'Waiting for other players…';
+      }
+      renderScoreboardReady();
+      scoreboardEl.hidden = false;
     });
 
     socket.on('s:playerready', ({ playerId }) => {
@@ -1054,7 +1055,7 @@
   });
 
   sbReadyBtn.addEventListener('click', () => {
-    if (localReady || isSpectator) return;
+    if (localReady) return;
     localReady = true;
     sbReadyBtn.hidden = true;
     sbStatus.textContent = 'Waiting for other players…';
