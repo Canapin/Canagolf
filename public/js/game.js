@@ -1,15 +1,20 @@
 const Game = (function () {
 
   function createGame(map, playerNames, startPlayerIndex = 0) {
-    const players = playerNames.map((name, i) => ({
-      name,
-      strokes: 0,
-      ball: Physics.createBall(map.startX, map.startY),
-      sunk: false,
-      eliminated: false,
-      started: i === startPlayerIndex,
-      strokeOrigin: { x: map.startX, y: map.startY },
-    }));
+    const starts = map.starts || [{ x: map.startX, y: map.startY }];
+    const players = playerNames.map((name, i) => {
+      const s = starts[i % starts.length];
+      return {
+        name,
+        strokes: 0,
+        ball: Physics.createBall(s.x, s.y),
+        sunk: false,
+        eliminated: false,
+        started: i === startPlayerIndex,
+        strokeOrigin: { x: s.x, y: s.y },
+        spawn: { x: s.x, y: s.y },
+      };
+    });
     return { map, players, currentPlayerIndex: startPlayerIndex, over: false, turnActive: false };
   }
 

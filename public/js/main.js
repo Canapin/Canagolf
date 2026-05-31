@@ -634,9 +634,10 @@
     if (!isOnlineMode || localPlayerIndex === game.currentPlayerIndex) {
       const curTile = Physics.getSurfaceAt(game.map.ground, ball.x, ball.y, game.map.groundLayers);
 
-      // Lava — respawn at map start
+      // Lava — respawn at player's spawn point
       if (!turnEnded && Physics.isLavaTile(curTile)) {
-        ball.x = game.map.startX; ball.y = game.map.startY; ball.vx = 0; ball.vy = 0;
+        const cp = Game.getCurrentPlayer(game);
+        ball.x = cp.spawn.x; ball.y = cp.spawn.y; ball.vx = 0; ball.vy = 0;
         if (isOnlineMode) {
           socket.emit('c:hazard', { type: 'lava', playerIndex: game.currentPlayerIndex, respawnX: ball.x, respawnY: ball.y });
           const playerStates = game.players.map(p => ({
@@ -792,11 +793,11 @@
           nonCurStateChanged = true;
           if (isOnlineMode) socket.emit('c:hazard', { type: 'water', playerIndex: i, respawnX: rx, respawnY: ry });
         } else if (Physics.isLavaTile(gt)) {
-          p.waterRespawnPos = { x: game.map.startX, y: game.map.startY };
+          p.waterRespawnPos = { x: p.spawn.x, y: p.spawn.y };
           p.waterPending = true;
           p.ball.vx = 0; p.ball.vy = 0;
           nonCurStateChanged = true;
-          if (isOnlineMode) socket.emit('c:hazard', { type: 'lava', playerIndex: i, respawnX: game.map.startX, respawnY: game.map.startY });
+          if (isOnlineMode) socket.emit('c:hazard', { type: 'lava', playerIndex: i, respawnX: p.spawn.x, respawnY: p.spawn.y });
         } else if (Physics.isMoving(p.ball)) {
           const hole = Physics.checkHole(p.ball, game.map.holes);
           if (hole) {

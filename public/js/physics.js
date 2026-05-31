@@ -493,6 +493,7 @@ const Physics = (function () {
 
     let startX = null,
       startY = null;
+    const starts = [];
     const holes = [];
     const tpByType = {};
     const blackHoleTiles = [];
@@ -507,8 +508,10 @@ const Physics = (function () {
       for (let col = 0; col < ground[row].length; col++) {
         const ch = ground[row][col];
         if (ch === "S") {
-          startX = col * TILE_SIZE + TILE_SIZE / 2;
-          startY = row * TILE_SIZE + TILE_SIZE / 2;
+          const sx = col * TILE_SIZE + TILE_SIZE / 2;
+          const sy = row * TILE_SIZE + TILE_SIZE / 2;
+          if (startX === null) { startX = sx; startY = sy; }
+          starts.push({ x: sx, y: sy });
           ground[row][col] = ".";
         } else if (ch === TILE.HOLE) {
           holes.push({
@@ -554,6 +557,7 @@ const Physics = (function () {
       height: ground.length,
       startX,
       startY,
+      starts,
       holes,
       teleporterPairs,
       blackHoleTiles,
