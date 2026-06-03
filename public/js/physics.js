@@ -16,6 +16,9 @@
  *   8 = convex bump, solid quarter bottom-right(arc center at tile top-left)
  *   Place 5,6 / 7,8 in a 2×2 block to form a solid circle obstacle.
  */
+const VERSION = "2026-06-03";
+if (typeof console !== "undefined") console.log("Physics v" + VERSION);
+
 const Physics = (function () {
   const TILE_SIZE = 28;
   const BALL_RADIUS = (TILE_SIZE * 3) / 8; // diameter = 3/4 tile
@@ -176,9 +179,11 @@ const Physics = (function () {
     PHANTOM_DR: ",", // passes if ball moves down-right
     PHANTOM_DL: ";", // passes if ball moves down-left
     CIRCLE_WALL: "\\", // circular wall obstacle (full circle, radius = half tile)
+    WOOD: "þ", // wood surface (lower friction than regular)
   };
 
-  let SAND_FRICTION = 0.96;
+  let WOOD_FRICTION = 0.992;
+  let SAND_FRICTION = 0.955;
   let SLOPE_FORCE = 0.013;
   let SLOPE_ROLL_FRICTION = 0.99; // no rolling resistance on slopes — force accumulates each frame
   let BALL_RESTITUTION = 0.5; // ball-to-ball CoR: 0=inelastic (merge), 1=elastic (full exchange)
@@ -189,6 +194,7 @@ const Physics = (function () {
   let BH_RADIUS_TILES = 10;
   let SWAP_RADIUS_TILES = 8;
 
+  const WOOD_SET = new Set([TILE.WOOD]);
   const SAND_SET = new Set([
     TILE.SAND, TILE.SAND_UR, TILE.SAND_LL, TILE.SAND_UL, TILE.SAND_LR,
     TILE.SAND_CURVE_TL, TILE.SAND_CURVE_TR, TILE.SAND_CURVE_BL, TILE.SAND_CURVE_BR,
@@ -279,6 +285,9 @@ const Physics = (function () {
   }
   function isSwapTile(t) {
     return t === TILE.SWAP;
+  }
+  function isWoodTile(t) {
+    return WOOD_SET.has(t);
   }
   function isSlopeTile(t) {
     return SLOPE_SET.has(t);
@@ -504,6 +513,8 @@ const Physics = (function () {
       TILE.TELEPORTER_C,
     ]);
 
+    const foundSpawnHole = new Set();
+
     for (let row = 0; row < ground.length; row++) {
       for (let col = 0; col < ground[row].length; col++) {
         const ch = ground[row][col];
@@ -512,12 +523,15 @@ const Physics = (function () {
           const sy = row * TILE_SIZE + TILE_SIZE / 2;
           if (startX === null) { startX = sx; startY = sy; }
           starts.push({ x: sx, y: sy });
+          foundSpawnHole.add(col + ',' + row);
           ground[row][col] = ".";
         } else if (ch === TILE.HOLE) {
           holes.push({
             x: col * TILE_SIZE + TILE_SIZE / 2,
             y: row * TILE_SIZE + TILE_SIZE / 2,
           });
+          foundSpawnHole.add(col + ',' + row);
+          ground[row][col] = ".";
         } else if (TP_CHARS.has(ch)) {
           const tp = {
             col,
@@ -539,6 +553,39 @@ const Physics = (function () {
         }
       }
     }
+    // Scan ground layers for spawn/hole objects placed on any surface
+    if (groundLayers) {
+      for (let li = 0; li < groundLayers.length; li++) {
+        const layer = groundLayers[li];
+        for (let row = 0; row < layer.length; row++) {
+          for (let col = 0; col < layer[row].length; col++) {
+            const ch = layer[row][col];
+            if (ch === "S") {
+              const key = col + ',' + row;
+              if (!foundSpawnHole.has(key)) {
+                foundSpawnHole.add(key);
+                const sx = col * TILE_SIZE + TILE_SIZE / 2;
+                const sy = row * TILE_SIZE + TILE_SIZE / 2;
+                if (startX === null) { startX = sx; startY = sy; }
+                starts.push({ x: sx, y: sy });
+              }
+              layer[row][col] = ".";
+            } else if (ch === TILE.HOLE) {
+              const key = col + ',' + row;
+              if (!foundSpawnHole.has(key)) {
+                foundSpawnHole.add(key);
+                holes.push({
+                  x: col * TILE_SIZE + TILE_SIZE / 2,
+                  y: row * TILE_SIZE + TILE_SIZE / 2,
+                });
+              }
+              layer[row][col] = ".";
+            }
+          }
+        }
+      }
+    }
+
     const teleporterPairs = [];
     Object.values(tpByType).forEach((tiles) => {
       for (let i = 0; i + 1 < tiles.length; i += 2) {
@@ -1192,11 +1239,13 @@ const Physics = (function () {
     }
 
     const curTile = gt ? getSurfaceAt(gt, ball.x, ball.y, groundLayers) : null;
-    const f = isSandTile(curTile)
-      ? FRICTION * SAND_FRICTION
-      : isSlopeTile(curTile)
-        ? SLOPE_ROLL_FRICTION
-        : FRICTION;
+    const f = isWoodTile(curTile)
+      ? WOOD_FRICTION
+      : isSandTile(curTile)
+        ? SAND_FRICTION
+        : isSlopeTile(curTile)
+          ? SLOPE_ROLL_FRICTION
+          : FRICTION;
     ball.vx *= f;
     ball.vy *= f;
 
@@ -1277,7 +1326,7 @@ const Physics = (function () {
       ball.vx *= scale;
       ball.vy *= scale;
     }
-    if (speed < MIN_SPEED && !isSlopeTile(curTile)) {
+    if (speed < MIN_SPEED && !isSlopeTile(curTile) && !isWoodTile(curTile)) {
       ball.vx = 0;
       ball.vy = 0;
     }
@@ -1614,6 +1663,12 @@ const Physics = (function () {
     set SAND_FRICTION(v) {
       SAND_FRICTION = v;
     },
+    get WOOD_FRICTION() {
+      return WOOD_FRICTION;
+    },
+    set WOOD_FRICTION(v) {
+      WOOD_FRICTION = v;
+    },
     get BALL_RESTITUTION() {
       return BALL_RESTITUTION;
     },
@@ -1686,11 +1741,13 @@ const Physics = (function () {
     set SWAP_RADIUS_TILES(v) {
       SWAP_RADIUS_TILES = v;
     },
+    VERSION,
     TILE_SIZE,
     POWER_EXP,
     TILE,
     WALL_CHARS_SET,
     isSandTile,
+    isWoodTile,
     isWaterTile,
     isSlopeTile,
     isLavaTile,

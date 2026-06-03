@@ -58,6 +58,7 @@
       { id: 'sl-power',     val: 'val-power',     edit: 'edit-power',     prop: 'MAX_POWER',          fmt: v => v.toFixed(1) },
       { id: 'sl-scale',     val: 'val-scale',     edit: 'edit-scale',     prop: 'POWER_SCALE',        fmt: v => v.toFixed(3) },
       { id: 'sl-friction',  val: 'val-friction',  edit: 'edit-friction',  prop: 'FRICTION',           fmt: v => v.toFixed(3) },
+      { id: 'sl-wood',      val: 'val-wood',      edit: 'edit-wood',      prop: 'WOOD_FRICTION',      fmt: v => v.toFixed(3) },
       { id: 'sl-sand',      val: 'val-sand',      edit: 'edit-sand',      prop: 'SAND_FRICTION',      fmt: v => v.toFixed(3) },
       { id: 'sl-bouncy',    val: 'val-bouncy',    edit: 'edit-bouncy',    prop: 'BOUNCY_RESTITUTION', fmt: v => v.toFixed(2) },
       { id: 'sl-sticky',    val: 'val-sticky',    edit: 'edit-sticky',    prop: 'STICKY_RESTITUTION', fmt: v => v.toFixed(2) },

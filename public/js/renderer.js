@@ -14,6 +14,7 @@ const Renderer = (function () {
   const WALL_EDGE = "#898989";
   const HOLE_COLOR = "#0a0a0a";
   const SAND_COLOR = "#c8a84b";
+  const WOOD_COLOR = "#a67c52";
   const WATER_COLOR = "#2a7fd4";
   const LAVA_COLOR = "#c83500";
   const SLOPE_COLORS = {
@@ -205,6 +206,15 @@ const Renderer = (function () {
         ctx.fill();
       }
     }
+    if (map.holes) {
+      const BR = Physics.BALL_RADIUS;
+      for (const hole of map.holes) {
+        ctx.fillStyle = HOLE_COLOR;
+        ctx.beginPath();
+        ctx.arc(hole.x, hole.y, BR, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   }
 
   // ── Ground tile ───────────────────────────────────────────────────────────
@@ -270,6 +280,7 @@ const Renderer = (function () {
 
     // Full solid tiles
     if (tile === Physics.TILE.SAND)  { RenderShared.renderFull(ctx, x, y, T, SAND_COLOR, false, true, false); return; }
+    if (tile === Physics.TILE.WOOD)  { RenderShared.renderFull(ctx, x, y, T, WOOD_COLOR, false, false, false); return; }
     if (tile === Physics.TILE.WATER) { RenderShared.renderFull(ctx, x, y, T, WATER_COLOR, true, false, false); return; }
     if (tile === Physics.TILE.LAVA)  { RenderShared.renderFull(ctx, x, y, T, LAVA_COLOR, false, false, true); return; }
 

@@ -545,10 +545,12 @@
         "Ć",
         "ć",
       ]);
+      const _WOOD_G = new Set(["þ"]);
       function getOpenColor(tile) {
         if (tile === "A") return SND;
         if (tile === "W") return WTR;
         if (tile === "w") return LVA;
+        if (tile === "þ") return WOOD;
         return FW;
       }
 
@@ -565,6 +567,7 @@
       const STKY = "#3a4e7a"; // sticky face
       const STKY_E = "#1a2a4a"; // sticky edge
       const LVA = "#c83500"; // lava
+      const WOOD = "#a67c52"; // wood
 
       function fill(color) {
         return (ctx, x, y) => {
@@ -679,7 +682,7 @@
         if (LAYER_SHAPE_INFO) return LAYER_SHAPE_INFO;
         LAYER_SHAPE_INFO = {};
         // Full terrain tiles
-        [['A',SND],['W',WTR],['w',LVA]].forEach(([c,col]) =>
+        [['A',SND],['W',WTR],['w',LVA],['þ',WOOD]].forEach(([c,col]) =>
           LAYER_SHAPE_INFO[c] = { type:'full', color:col });
         // Slope full tiles
         Object.entries({U:'^',D:'v',L:'<',R:'>',UL:'F',UR:'G',DL:'H',DR:'I'}).forEach(([dir,c]) =>
@@ -755,6 +758,22 @@
       }
 
       function drawTileShapeOnly(ctx, x, y, ch) {
+        // Object markers: draw transparent overlay on any ground tile
+        if (ch === 'S') {
+          ctx.fillStyle = "#fff";
+          ctx.font = `bold ${T * 0.55}px monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("S", x + T / 2, y + T / 2);
+          return;
+        }
+        if (ch === 'O') {
+          ctx.fillStyle = "#0a0a0a";
+          ctx.beginPath();
+          ctx.arc(x + T / 2, y + T / 2, (T * 3) / 8, 0, Math.PI * 2);
+          ctx.fill();
+          return;
+        }
         const info = getLayerShapeInfo()[ch];
         if (!info) return;
         function arcParams(corner) {
@@ -899,6 +918,7 @@
         if (selected === "A") return SND;
         if (selected === "W") return WTR;
         if (selected === "w") return LVA;
+        if (selected === "þ") return WOOD;
         if (selected === "^") return SLOPE_FACE["U"];
         if (selected === "v") return SLOPE_FACE["D"];
         if (selected === "<") return SLOPE_FACE["L"];
@@ -1408,8 +1428,6 @@
       const TILES = [
         // Basic
         { c: ".", l: "Fairway", g: "Basic", sg: "", d: fill(FW) },
-        { c: "S", l: "Start", g: "Basic", sg: "", d: drawStart },
-        { c: "O", l: "Hole", g: "Basic", sg: "", d: drawHole },
         // Wall (normal)
         { c: "#", l: "Wall", g: "Wall", sg: "full", d: drawWall },
         { c: "\\", l: "Circle Wall", g: "Wall", sg: "full", d: circleWall() },
@@ -1753,6 +1771,8 @@
           sg: "bump",
           d: matBump("BR", SND),
         },
+        // Wood
+        { c: "þ", l: "Wood", g: "Wood", sg: "full", d: fill(WOOD) },
         // Water
         { c: "W", l: "Water", g: "Water", sg: "full", d: fill(WTR) },
         { c: "e", l: "Water ↗", g: "Water", sg: "diag", d: diag("UR", WTR) },
@@ -1859,6 +1879,8 @@
         },
         { c: "?", l: "Swap", g: "Special", sg: "", d: swap() },
         { c: "Ū", l: "Black Hole", g: "Special", sg: "", d: blackHole() },
+        { c: "S", l: "Start", g: "Special", sg: "", d: drawStart },
+        { c: "O", l: "Hole", g: "Special", sg: "", d: drawHole },
         // Lava
         { c: "w", l: "Lava", g: "Lava", sg: "", d: fill(LVA) },
         { c: "'", l: "Lava ↗", g: "Lava", sg: "diag", d: diag("LL", LVA) },
@@ -1960,6 +1982,9 @@
           "full":"w",  "diag-UR":":",  "diag-LL":"'",  "diag-UL":'"',  "diag-LR":"`",
           "curve-TL":"Ā","curve-TR":"ā","curve-BL":"Ă","curve-BR":"ă",
           "bump-TL":"Ą", "bump-TR":"ą", "bump-BL":"Ć", "bump-BR":"ć",
+        },
+        "þ": {
+          "full":"þ",
         },
         // Cardinal slopes — shape variants for all orientations
         "^": { "full":"^","diag-UR":"Ĕ","diag-LL":"ĕ","diag-UL":"Ė","diag-LR":"ė","curve-TL":"Ę","curve-TR":"ę","curve-BL":"Ě","curve-BR":"ě","bump-TL":"Ĝ","bump-TR":"ĝ","bump-BL":"Ğ","bump-BR":"ğ" },
@@ -2562,7 +2587,7 @@
 
       // Column assignment: which material groups go in each column
       const COL_WALL   = ["Wall", "Bouncy", "Sticky", "Ghost"];
-      const COL_GROUND = ["Basic", "Sand", "Water", "Slope", "Lava"];
+      const COL_GROUND = ["Basic", "Sand", "Water", "Slope", "Lava", "Wood"];
       const COL_OBJECT = ["Special"];
 
       function buildPalette() {

@@ -22,7 +22,7 @@ app.use(
 
 app.use(express.static(path.join(__dirname, "public")));
 app.use("/maps", express.static(path.join(__dirname, "maps")));
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
 
 function localOnly(req, res, next) {
   const ip = req.ip;
