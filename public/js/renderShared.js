@@ -37,27 +37,41 @@ const RenderShared = (function () {
       ctx.arc(x + T * fx, y + T * fy, T * 0.025, 0, Math.PI * 2);
       ctx.fill();
     }
-    ctx.strokeStyle = "rgba(255,255,255,0.2)";
-    ctx.lineWidth = 0.5;
-    const rays = [[0.3,0.2,0.5,0.15],[0.7,0.3,0.85,0.25],[0.25,0.65,0.4,0.55]];
-    for (const [x1,y1,x2,y2] of rays) {
+    ctx.strokeStyle = "rgba(255,255,255,0.18)";
+    ctx.lineWidth = 1;
+    const diags = [[0.1,0.9,0.5,0.1],[0.3,0.9,0.7,0.1],[0.5,0.9,0.9,0.1],[0.15,0.5,0.55,-0.3],[0.35,0.5,0.75,-0.3]];
+    for (const [fx1,fy1,fx2,fy2] of diags) {
       ctx.beginPath();
-      ctx.moveTo(x + T * x1, y + T * y1);
-      ctx.lineTo(x + T * x2, y + T * y2);
+      ctx.moveTo(x + T * fx1, y + T * fy1);
+      ctx.lineTo(x + T * (fx1 + fx2), y + T * (fy1 + fy2));
       ctx.stroke();
     }
   }
 
   function drawSnowFlakes(ctx, x, y, T) {
-    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+    ctx.lineWidth = 1;
+    const flakes = [[0.2,0.2],[0.7,0.15],[0.5,0.5],[0.3,0.7],[0.8,0.7],[0.5,0.85]];
+    for (const [fx, fy] of flakes) {
+      const cx = x + T * fx, cy = y + T * fy;
+      const r = T * 0.05;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3 - Math.PI / 2;
+        if (i === 0) ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+        else ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
     const dots = [
-      [0.15, 0.15], [0.5, 0.1], [0.85, 0.2], [0.3, 0.3],
-      [0.7, 0.35], [0.2, 0.55], [0.45, 0.5], [0.6, 0.6],
-      [0.8, 0.55], [0.15, 0.8], [0.5, 0.75], [0.85, 0.7],
+      [0.15, 0.3], [0.85, 0.3], [0.4, 0.4], [0.65, 0.35],
+      [0.2, 0.6], [0.7, 0.55], [0.15, 0.85], [0.85, 0.85],
     ];
     for (const [fx, fy] of dots) {
       ctx.beginPath();
-      ctx.arc(x + T * fx, y + T * fy, T * 0.035, 0, Math.PI * 2);
+      ctx.arc(x + T * fx, y + T * fy, T * 0.025, 0, Math.PI * 2);
       ctx.fill();
     }
   }
