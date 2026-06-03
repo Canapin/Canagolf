@@ -16,7 +16,7 @@
  *   8 = convex bump, solid quarter bottom-right(arc center at tile top-left)
  *   Place 5,6 / 7,8 in a 2×2 block to form a solid circle obstacle.
  */
-const VERSION = "2026-06-03";
+const VERSION = "2026-06-04";
 if (typeof console !== "undefined") console.log("Physics v" + VERSION);
 
 const Physics = (function () {
@@ -179,10 +179,18 @@ const Physics = (function () {
     PHANTOM_DR: ",", // passes if ball moves down-right
     PHANTOM_DL: ";", // passes if ball moves down-left
     CIRCLE_WALL: "\\", // circular wall obstacle (full circle, radius = half tile)
-    WOOD: "þ", // wood surface (lower friction than regular)
+    ICE: "þ", // ice surface (lower friction than regular)
+    ICE_UR: "Þ", ICE_LL: "ß", ICE_UL: "à", ICE_LR: "á",
+    ICE_CURVE_TL: "â", ICE_CURVE_TR: "ã", ICE_CURVE_BL: "ä", ICE_CURVE_BR: "å",
+    ICE_BUMP_TL: "æ", ICE_BUMP_TR: "ç", ICE_BUMP_BL: "è", ICE_BUMP_BR: "é",
+    SNOW: "ê",
+    SNOW_UR: "ë", SNOW_LL: "ì", SNOW_UL: "í", SNOW_LR: "î",
+    SNOW_CURVE_TL: "ï", SNOW_CURVE_TR: "ð", SNOW_CURVE_BL: "ñ", SNOW_CURVE_BR: "ò",
+    SNOW_BUMP_TL: "ó", SNOW_BUMP_TR: "ô", SNOW_BUMP_BL: "õ", SNOW_BUMP_BR: "ö",
   };
 
-  let WOOD_FRICTION = 0.992;
+  let ICE_FRICTION = 0.998;
+  let SNOW_FRICTION = 0.975;
   let SAND_FRICTION = 0.955;
   let SLOPE_FORCE = 0.013;
   let SLOPE_ROLL_FRICTION = 0.99; // no rolling resistance on slopes — force accumulates each frame
@@ -194,7 +202,16 @@ const Physics = (function () {
   let BH_RADIUS_TILES = 10;
   let SWAP_RADIUS_TILES = 8;
 
-  const WOOD_SET = new Set([TILE.WOOD]);
+  const ICE_SET = new Set([
+    TILE.ICE, TILE.ICE_UR, TILE.ICE_LL, TILE.ICE_UL, TILE.ICE_LR,
+    TILE.ICE_CURVE_TL, TILE.ICE_CURVE_TR, TILE.ICE_CURVE_BL, TILE.ICE_CURVE_BR,
+    TILE.ICE_BUMP_TL, TILE.ICE_BUMP_TR, TILE.ICE_BUMP_BL, TILE.ICE_BUMP_BR,
+  ]);
+  const SNOW_SET = new Set([
+    TILE.SNOW, TILE.SNOW_UR, TILE.SNOW_LL, TILE.SNOW_UL, TILE.SNOW_LR,
+    TILE.SNOW_CURVE_TL, TILE.SNOW_CURVE_TR, TILE.SNOW_CURVE_BL, TILE.SNOW_CURVE_BR,
+    TILE.SNOW_BUMP_TL, TILE.SNOW_BUMP_TR, TILE.SNOW_BUMP_BL, TILE.SNOW_BUMP_BR,
+  ]);
   const SAND_SET = new Set([
     TILE.SAND, TILE.SAND_UR, TILE.SAND_LL, TILE.SAND_UL, TILE.SAND_LR,
     TILE.SAND_CURVE_TL, TILE.SAND_CURVE_TR, TILE.SAND_CURVE_BL, TILE.SAND_CURVE_BR,
@@ -286,8 +303,11 @@ const Physics = (function () {
   function isSwapTile(t) {
     return t === TILE.SWAP;
   }
-  function isWoodTile(t) {
-    return WOOD_SET.has(t);
+  function isIceTile(t) {
+    return ICE_SET.has(t);
+  }
+  function isSnowTile(t) {
+    return SNOW_SET.has(t);
   }
   function isSlopeTile(t) {
     return SLOPE_SET.has(t);
@@ -342,6 +362,18 @@ const Physics = (function () {
   _corner4('B', 'C', 'D', 'E');
   // Lava bumps
   _corner4('Ą', 'ą', 'Ć', 'ć');
+  // Ice diagonals
+  _diag4('Þ', 'ß', 'à', 'á');
+  // Ice curves
+  _corner4('â', 'ã', 'ä', 'å');
+  // Ice bumps
+  _corner4('æ', 'ç', 'è', 'é');
+  // Snow diagonals
+  _diag4('ë', 'ì', 'í', 'î');
+  // Snow curves
+  _corner4('ï', 'ð', 'ñ', 'ò');
+  // Snow bumps
+  _corner4('ó', 'ô', 'õ', 'ö');
   // Full slopes — cardinal
   H['<']='>'; H['>']='<';
   V['^']='v'; V['v']='^';
@@ -817,25 +849,29 @@ const Physics = (function () {
      TILE.BOUNCY_BUMP_TL, TILE.STICKY_BUMP_TL,
      TILE.SLOPE_CURVE_TL,
      TILE.SLOPE_U_CURVE_TL, TILE.SLOPE_D_CURVE_TL, TILE.SLOPE_L_CURVE_TL, TILE.SLOPE_R_CURVE_TL,
-     TILE.SLOPE_UR_CURVE_TL, TILE.SLOPE_DL_CURVE_TL, TILE.SLOPE_DR_CURVE_TL],
+      TILE.SLOPE_UR_CURVE_TL, TILE.SLOPE_DL_CURVE_TL, TILE.SLOPE_DR_CURVE_TL,
+      TILE.ICE_CURVE_TL, TILE.SNOW_CURVE_TL],
     [TILE.BUMP_TR,
-     TILE.SAND_CURVE_TR, TILE.WATER_CURVE_TR, TILE.LAVA_CURVE_TR,
-     TILE.BOUNCY_BUMP_TR, TILE.STICKY_BUMP_TR,
-     TILE.SLOPE_CURVE_TR,
-     TILE.SLOPE_U_CURVE_TR, TILE.SLOPE_D_CURVE_TR, TILE.SLOPE_L_CURVE_TR, TILE.SLOPE_R_CURVE_TR,
-     TILE.SLOPE_UL_CURVE_TR, TILE.SLOPE_DL_CURVE_TR, TILE.SLOPE_DR_CURVE_TR],
+      TILE.SAND_CURVE_TR, TILE.WATER_CURVE_TR, TILE.LAVA_CURVE_TR,
+      TILE.BOUNCY_BUMP_TR, TILE.STICKY_BUMP_TR,
+      TILE.SLOPE_CURVE_TR,
+      TILE.SLOPE_U_CURVE_TR, TILE.SLOPE_D_CURVE_TR, TILE.SLOPE_L_CURVE_TR, TILE.SLOPE_R_CURVE_TR,
+      TILE.SLOPE_UL_CURVE_TR, TILE.SLOPE_DL_CURVE_TR, TILE.SLOPE_DR_CURVE_TR,
+      TILE.ICE_CURVE_TR, TILE.SNOW_CURVE_TR],
     [TILE.BUMP_BL,
-     TILE.SAND_CURVE_BL, TILE.WATER_CURVE_BL, TILE.LAVA_CURVE_BL,
-     TILE.BOUNCY_BUMP_BL, TILE.STICKY_BUMP_BL,
-     TILE.SLOPE_CURVE_BL,
-     TILE.SLOPE_U_CURVE_BL, TILE.SLOPE_D_CURVE_BL, TILE.SLOPE_L_CURVE_BL, TILE.SLOPE_R_CURVE_BL,
-     TILE.SLOPE_UL_CURVE_BL, TILE.SLOPE_UR_CURVE_BL, TILE.SLOPE_DR_CURVE_BL],
+      TILE.SAND_CURVE_BL, TILE.WATER_CURVE_BL, TILE.LAVA_CURVE_BL,
+      TILE.BOUNCY_BUMP_BL, TILE.STICKY_BUMP_BL,
+      TILE.SLOPE_CURVE_BL,
+      TILE.SLOPE_U_CURVE_BL, TILE.SLOPE_D_CURVE_BL, TILE.SLOPE_L_CURVE_BL, TILE.SLOPE_R_CURVE_BL,
+      TILE.SLOPE_UL_CURVE_BL, TILE.SLOPE_UR_CURVE_BL, TILE.SLOPE_DR_CURVE_BL,
+      TILE.ICE_CURVE_BL, TILE.SNOW_CURVE_BL],
     [TILE.BUMP_BR,
-     TILE.SAND_CURVE_BR, TILE.WATER_CURVE_BR, TILE.LAVA_CURVE_BR,
-     TILE.BOUNCY_BUMP_BR, TILE.STICKY_BUMP_BR,
-     TILE.SLOPE_CURVE_BR,
-     TILE.SLOPE_U_CURVE_BR, TILE.SLOPE_D_CURVE_BR, TILE.SLOPE_L_CURVE_BR, TILE.SLOPE_R_CURVE_BR,
-     TILE.SLOPE_UL_CURVE_BR, TILE.SLOPE_UR_CURVE_BR, TILE.SLOPE_DL_CURVE_BR],
+      TILE.SAND_CURVE_BR, TILE.WATER_CURVE_BR, TILE.LAVA_CURVE_BR,
+      TILE.BOUNCY_BUMP_BR, TILE.STICKY_BUMP_BR,
+      TILE.SLOPE_CURVE_BR,
+      TILE.SLOPE_U_CURVE_BR, TILE.SLOPE_D_CURVE_BR, TILE.SLOPE_L_CURVE_BR, TILE.SLOPE_R_CURVE_BR,
+      TILE.SLOPE_UL_CURVE_BR, TILE.SLOPE_UR_CURVE_BR, TILE.SLOPE_DL_CURVE_BR,
+      TILE.ICE_CURVE_BR, TILE.SNOW_CURVE_BR],
   ].forEach((group, i) => {
     const geo = CORNER_GEO[["TL", "TR", "BL", "BR"][i]];
     group.forEach(t => { CURVE_META[t] = geo; });
@@ -863,25 +899,29 @@ const Physics = (function () {
      TILE.BOUNCY_CURVE_TL, TILE.STICKY_CURVE_TL,
      TILE.SLOPE_BUMP_TL,
      TILE.SLOPE_U_BUMP_TL, TILE.SLOPE_D_BUMP_TL, TILE.SLOPE_L_BUMP_TL, TILE.SLOPE_R_BUMP_TL,
-     TILE.SLOPE_UR_BUMP_TL, TILE.SLOPE_DL_BUMP_TL, TILE.SLOPE_DR_BUMP_TL],
+      TILE.SLOPE_UR_BUMP_TL, TILE.SLOPE_DL_BUMP_TL, TILE.SLOPE_DR_BUMP_TL,
+      TILE.ICE_BUMP_TL, TILE.SNOW_BUMP_TL],
     [TILE.CURVE_TR,
-     TILE.SAND_BUMP_TR, TILE.WATER_BUMP_TR, TILE.LAVA_BUMP_TR,
-     TILE.BOUNCY_CURVE_TR, TILE.STICKY_CURVE_TR,
-     TILE.SLOPE_BUMP_TR,
-     TILE.SLOPE_U_BUMP_TR, TILE.SLOPE_D_BUMP_TR, TILE.SLOPE_L_BUMP_TR, TILE.SLOPE_R_BUMP_TR,
-     TILE.SLOPE_UL_BUMP_TR, TILE.SLOPE_DL_BUMP_TR, TILE.SLOPE_DR_BUMP_TR],
+      TILE.SAND_BUMP_TR, TILE.WATER_BUMP_TR, TILE.LAVA_BUMP_TR,
+      TILE.BOUNCY_CURVE_TR, TILE.STICKY_CURVE_TR,
+      TILE.SLOPE_BUMP_TR,
+      TILE.SLOPE_U_BUMP_TR, TILE.SLOPE_D_BUMP_TR, TILE.SLOPE_L_BUMP_TR, TILE.SLOPE_R_BUMP_TR,
+      TILE.SLOPE_UL_BUMP_TR, TILE.SLOPE_DL_BUMP_TR, TILE.SLOPE_DR_BUMP_TR,
+      TILE.ICE_BUMP_TR, TILE.SNOW_BUMP_TR],
     [TILE.CURVE_BL,
-     TILE.SAND_BUMP_BL, TILE.WATER_BUMP_BL, TILE.LAVA_BUMP_BL,
-     TILE.BOUNCY_CURVE_BL, TILE.STICKY_CURVE_BL,
-     TILE.SLOPE_BUMP_BL,
-     TILE.SLOPE_U_BUMP_BL, TILE.SLOPE_D_BUMP_BL, TILE.SLOPE_L_BUMP_BL, TILE.SLOPE_R_BUMP_BL,
-     TILE.SLOPE_UL_BUMP_BL, TILE.SLOPE_UR_BUMP_BL, TILE.SLOPE_DR_BUMP_BL],
+      TILE.SAND_BUMP_BL, TILE.WATER_BUMP_BL, TILE.LAVA_BUMP_BL,
+      TILE.BOUNCY_CURVE_BL, TILE.STICKY_CURVE_BL,
+      TILE.SLOPE_BUMP_BL,
+      TILE.SLOPE_U_BUMP_BL, TILE.SLOPE_D_BUMP_BL, TILE.SLOPE_L_BUMP_BL, TILE.SLOPE_R_BUMP_BL,
+      TILE.SLOPE_UL_BUMP_BL, TILE.SLOPE_UR_BUMP_BL, TILE.SLOPE_DR_BUMP_BL,
+      TILE.ICE_BUMP_BL, TILE.SNOW_BUMP_BL],
     [TILE.CURVE_BR,
-     TILE.SAND_BUMP_BR, TILE.WATER_BUMP_BR, TILE.LAVA_BUMP_BR,
-     TILE.BOUNCY_CURVE_BR, TILE.STICKY_CURVE_BR,
-     TILE.SLOPE_BUMP_BR,
-     TILE.SLOPE_U_BUMP_BR, TILE.SLOPE_D_BUMP_BR, TILE.SLOPE_L_BUMP_BR, TILE.SLOPE_R_BUMP_BR,
-     TILE.SLOPE_UL_BUMP_BR, TILE.SLOPE_UR_BUMP_BR, TILE.SLOPE_DL_BUMP_BR],
+      TILE.SAND_BUMP_BR, TILE.WATER_BUMP_BR, TILE.LAVA_BUMP_BR,
+      TILE.BOUNCY_CURVE_BR, TILE.STICKY_CURVE_BR,
+      TILE.SLOPE_BUMP_BR,
+      TILE.SLOPE_U_BUMP_BR, TILE.SLOPE_D_BUMP_BR, TILE.SLOPE_L_BUMP_BR, TILE.SLOPE_R_BUMP_BR,
+      TILE.SLOPE_UL_BUMP_BR, TILE.SLOPE_UR_BUMP_BR, TILE.SLOPE_DL_BUMP_BR,
+      TILE.ICE_BUMP_BR, TILE.SNOW_BUMP_BR],
   ].forEach((group, i) => {
     const geo = CORNER_GEO[["TL", "TR", "BL", "BR"][i]];
     group.forEach(t => { BUMP_META[t] = geo; });
@@ -1239,13 +1279,15 @@ const Physics = (function () {
     }
 
     const curTile = gt ? getSurfaceAt(gt, ball.x, ball.y, groundLayers) : null;
-    const f = isWoodTile(curTile)
-      ? WOOD_FRICTION
-      : isSandTile(curTile)
-        ? SAND_FRICTION
-        : isSlopeTile(curTile)
-          ? SLOPE_ROLL_FRICTION
-          : FRICTION;
+    const f = isIceTile(curTile)
+      ? ICE_FRICTION
+      : isSnowTile(curTile)
+        ? SNOW_FRICTION
+        : isSandTile(curTile)
+          ? SAND_FRICTION
+          : isSlopeTile(curTile)
+            ? SLOPE_ROLL_FRICTION
+            : FRICTION;
     ball.vx *= f;
     ball.vy *= f;
 
@@ -1326,7 +1368,7 @@ const Physics = (function () {
       ball.vx *= scale;
       ball.vy *= scale;
     }
-    if (speed < MIN_SPEED && !isSlopeTile(curTile) && !isWoodTile(curTile)) {
+    if (speed < MIN_SPEED && !isSlopeTile(curTile) && !isIceTile(curTile)) {
       ball.vx = 0;
       ball.vy = 0;
     }
@@ -1584,6 +1626,18 @@ const Physics = (function () {
     if (tile === TILE.LAVA_DIAG_UL) return bx + by > T ? tile : TILE.EMPTY;
     if (tile === TILE.LAVA_DIAG_LR) return bx + by < T ? tile : TILE.EMPTY;
 
+    // Diagonal ice (same shapes as sand)
+    if (tile === TILE.ICE_UR) return bx > by ? tile : TILE.EMPTY;
+    if (tile === TILE.ICE_LL) return by > bx ? tile : TILE.EMPTY;
+    if (tile === TILE.ICE_UL) return bx + by < T ? tile : TILE.EMPTY;
+    if (tile === TILE.ICE_LR) return bx + by > T ? tile : TILE.EMPTY;
+
+    // Diagonal snow (same shapes as sand)
+    if (tile === TILE.SNOW_UR) return bx > by ? tile : TILE.EMPTY;
+    if (tile === TILE.SNOW_LL) return by > bx ? tile : TILE.EMPTY;
+    if (tile === TILE.SNOW_UL) return bx + by < T ? tile : TILE.EMPTY;
+    if (tile === TILE.SNOW_LR) return bx + by > T ? tile : TILE.EMPTY;
+
     // Diagonal slope variants (all shapes, all force directions)
     const diagSlopeShape = DIAG_SLOPE_META[tile];
     if (diagSlopeShape !== undefined) {
@@ -1597,7 +1651,7 @@ const Physics = (function () {
     const curveMeta = CURVE_META[tile];
     if (
       curveMeta &&
-      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile) || isSlopeTile(tile))
+      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile) || isSlopeTile(tile) || isIceTile(tile) || isSnowTile(tile))
     ) {
       const ax = col * T + curveMeta.ox * T;
       const ay = row * T + curveMeta.oy * T;
@@ -1610,7 +1664,7 @@ const Physics = (function () {
     const bumpMeta = BUMP_META[tile];
     if (
       bumpMeta &&
-      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile) || isSlopeTile(tile))
+      (isSandTile(tile) || isWaterTile(tile) || isLavaTile(tile) || isSlopeTile(tile) || isIceTile(tile) || isSnowTile(tile))
     ) {
       const ax = col * T + bumpMeta.ox * T;
       const ay = row * T + bumpMeta.oy * T;
@@ -1663,11 +1717,17 @@ const Physics = (function () {
     set SAND_FRICTION(v) {
       SAND_FRICTION = v;
     },
-    get WOOD_FRICTION() {
-      return WOOD_FRICTION;
+    get ICE_FRICTION() {
+      return ICE_FRICTION;
     },
-    set WOOD_FRICTION(v) {
-      WOOD_FRICTION = v;
+    set ICE_FRICTION(v) {
+      ICE_FRICTION = v;
+    },
+    get SNOW_FRICTION() {
+      return SNOW_FRICTION;
+    },
+    set SNOW_FRICTION(v) {
+      SNOW_FRICTION = v;
     },
     get BALL_RESTITUTION() {
       return BALL_RESTITUTION;
@@ -1746,8 +1806,11 @@ const Physics = (function () {
     POWER_EXP,
     TILE,
     WALL_CHARS_SET,
+    ICE_SET,
+    SNOW_SET,
     isSandTile,
-    isWoodTile,
+    isIceTile,
+    isSnowTile,
     isWaterTile,
     isSlopeTile,
     isLavaTile,

@@ -26,6 +26,42 @@ const RenderShared = (function () {
     }
   }
 
+  function drawIceSparkles(ctx, x, y, T) {
+    ctx.fillStyle = "rgba(255,255,255,0.5)";
+    const dots = [
+      [0.2, 0.2], [0.7, 0.15], [0.5, 0.35], [0.3, 0.5],
+      [0.8, 0.45], [0.15, 0.7], [0.6, 0.7], [0.85, 0.8],
+    ];
+    for (const [fx, fy] of dots) {
+      ctx.beginPath();
+      ctx.arc(x + T * fx, y + T * fy, T * 0.025, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.lineWidth = 0.5;
+    const rays = [[0.3,0.2,0.5,0.15],[0.7,0.3,0.85,0.25],[0.25,0.65,0.4,0.55]];
+    for (const [x1,y1,x2,y2] of rays) {
+      ctx.beginPath();
+      ctx.moveTo(x + T * x1, y + T * y1);
+      ctx.lineTo(x + T * x2, y + T * y2);
+      ctx.stroke();
+    }
+  }
+
+  function drawSnowFlakes(ctx, x, y, T) {
+    ctx.fillStyle = "rgba(255,255,255,0.6)";
+    const dots = [
+      [0.15, 0.15], [0.5, 0.1], [0.85, 0.2], [0.3, 0.3],
+      [0.7, 0.35], [0.2, 0.55], [0.45, 0.5], [0.6, 0.6],
+      [0.8, 0.55], [0.15, 0.8], [0.5, 0.75], [0.85, 0.7],
+    ];
+    for (const [fx, fy] of dots) {
+      ctx.beginPath();
+      ctx.arc(x + T * fx, y + T * fy, T * 0.035, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
   function drawLavaBubbles(ctx, x, y, T) {
     ctx.lineWidth = 1.5;
     const bubbles = [
@@ -67,15 +103,17 @@ const RenderShared = (function () {
     }
   }
 
-  function renderFull(ctx, x, y, T, color, isWater, isSand, isLava) {
+  function renderFull(ctx, x, y, T, color, isWater, isSand, isLava, isIce, isSnow) {
     ctx.fillStyle = color;
     ctx.fillRect(x, y, T, T);
     if (isWater) drawWaterWaves(ctx, x, y, T);
     if (isSand) drawSandSpecks(ctx, x, y, T);
     if (isLava) drawLavaBubbles(ctx, x, y, T);
+    if (isIce) drawIceSparkles(ctx, x, y, T);
+    if (isSnow) drawSnowFlakes(ctx, x, y, T);
   }
 
-  function renderDiag(ctx, x, y, T, tri, color, isWater, isSand, isLava) {
+  function renderDiag(ctx, x, y, T, tri, color, isWater, isSand, isLava, isIce, isSnow) {
     ctx.save();
     ctx.beginPath();
     triPath(ctx, x, y, T, tri);
@@ -86,10 +124,12 @@ const RenderShared = (function () {
     if (isWater) drawWaterWaves(ctx, x, y, T);
     if (isSand) drawSandSpecks(ctx, x, y, T);
     if (isLava) drawLavaBubbles(ctx, x, y, T);
+    if (isIce) drawIceSparkles(ctx, x, y, T);
+    if (isSnow) drawSnowFlakes(ctx, x, y, T);
     ctx.restore();
   }
 
-  function renderCurve(ctx, x, y, T, corner, color, isWater, isSand, isLava) {
+  function renderCurve(ctx, x, y, T, corner, color, isWater, isSand, isLava, isIce, isSnow) {
     const c = ARC[corner];
     const ax = x + c.ox * T, ay = y + c.oy * T;
     ctx.save();
@@ -103,10 +143,12 @@ const RenderShared = (function () {
     if (isWater) drawWaterWaves(ctx, x, y, T);
     if (isSand) drawSandSpecks(ctx, x, y, T);
     if (isLava) drawLavaBubbles(ctx, x, y, T);
+    if (isIce) drawIceSparkles(ctx, x, y, T);
+    if (isSnow) drawSnowFlakes(ctx, x, y, T);
     ctx.restore();
   }
 
-  function renderBump(ctx, x, y, T, corner, color, isWater, isSand, isLava) {
+  function renderBump(ctx, x, y, T, corner, color, isWater, isSand, isLava, isIce, isSnow) {
     const c = ARC[corner];
     const ax = x + c.ox * T, ay = y + c.oy * T;
     ctx.save();
@@ -121,6 +163,8 @@ const RenderShared = (function () {
     if (isWater) drawWaterWaves(ctx, x, y, T);
     if (isSand) drawSandSpecks(ctx, x, y, T);
     if (isLava) drawLavaBubbles(ctx, x, y, T);
+    if (isIce) drawIceSparkles(ctx, x, y, T);
+    if (isSnow) drawSnowFlakes(ctx, x, y, T);
     ctx.restore();
   }
 

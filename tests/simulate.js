@@ -54,7 +54,7 @@ function runShot(label, startX, startY, targetX, targetY, maxFrames = 3000) {
 
 // ── Load map ──────────────────────────────────────────────────────────────
 
-const mapText = fs.readFileSync(path.join(__dirname, '../maps/hole1.txt'), 'utf-8');
+const mapText = fs.readFileSync(path.join(__dirname, '../maps/hole1.json'), 'utf-8');
 const map = Physics.parseMap(mapText);
 
 console.log('════════════════════════════════════════');

@@ -545,12 +545,24 @@
         "Ć",
         "ć",
       ]);
-      const _WOOD_G = new Set(["þ"]);
+      const _ICE_G = new Set([
+        "þ",
+        "Þ","ß","à","á",
+        "â","ã","ä","å",
+        "æ","ç","è","é",
+      ]);
+      const _SNOW_G = new Set([
+        "ê",
+        "ë","ì","í","î",
+        "ï","ð","ñ","ò",
+        "ó","ô","õ","ö",
+      ]);
       function getOpenColor(tile) {
         if (tile === "A") return SND;
         if (tile === "W") return WTR;
         if (tile === "w") return LVA;
-        if (tile === "þ") return WOOD;
+        if (tile === "þ") return ICE;
+        if (tile === "ê") return SNOW;
         return FW;
       }
 
@@ -567,7 +579,8 @@
       const STKY = "#3a4e7a"; // sticky face
       const STKY_E = "#1a2a4a"; // sticky edge
       const LVA = "#c83500"; // lava
-      const WOOD = "#a67c52"; // wood
+      const ICE = "#88ddff"; // ice
+      const SNOW = "#f0f8ff"; // snow
 
       function fill(color) {
         return (ctx, x, y) => {
@@ -682,25 +695,31 @@
         if (LAYER_SHAPE_INFO) return LAYER_SHAPE_INFO;
         LAYER_SHAPE_INFO = {};
         // Full terrain tiles
-        [['A',SND],['W',WTR],['w',LVA],['þ',WOOD]].forEach(([c,col]) =>
+        [['A',SND],['W',WTR],['w',LVA],['þ',ICE],['ê',SNOW]].forEach(([c,col]) =>
           LAYER_SHAPE_INFO[c] = { type:'full', color:col });
         // Slope full tiles
         Object.entries({U:'^',D:'v',L:'<',R:'>',UL:'F',UR:'G',DL:'H',DR:'I'}).forEach(([dir,c]) =>
           LAYER_SHAPE_INFO[c] = { type:'slope', color:SLOPE_FACE[dir], dir });
-        // Diagonal sand/water/lava
+        // Diagonal sand/water/lava/ice/snow
         [['a','UR',SND],['b','LL',SND],['c','UL',SND],['d','LR',SND],
          ['e','UR',WTR],['f','LL',WTR],['g','UL',WTR],['h','LR',WTR],
-         ["'",'LL',LVA],[':','UR',LVA],['`','LR',LVA],['"','UL',LVA]].forEach(([c,tri,col]) =>
+         ["'",'LL',LVA],[':','UR',LVA],['`','LR',LVA],['"','UL',LVA],
+         ['Þ','UR',ICE],['ß','LL',ICE],['à','UL',ICE],['á','LR',ICE],
+         ['ë','UR',SNOW],['ì','LL',SNOW],['í','UL',SNOW],['î','LR',SNOW]].forEach(([c,tri,col]) =>
           LAYER_SHAPE_INFO[c] = { type:'tri', color:col, tri });
-        // Curves sand/water/lava
+        // Curves sand/water/lava/ice/snow
         [['m','TL',SND],['n','TR',SND],['o','BL',SND],['p','BR',SND],
          ['u','TL',WTR],['x','TR',WTR],['y','BL',WTR],['z','BR',WTR],
-         ['Ā','TL',LVA],['ā','TR',LVA],['Ă','BL',LVA],['ă','BR',LVA]].forEach(([c,corner,col]) =>
+         ['Ā','TL',LVA],['ā','TR',LVA],['Ă','BL',LVA],['ă','BR',LVA],
+         ['â','TL',ICE],['ã','TR',ICE],['ä','BL',ICE],['å','BR',ICE],
+         ['ï','TL',SNOW],['ð','TR',SNOW],['ñ','BL',SNOW],['ò','BR',SNOW]].forEach(([c,corner,col]) =>
           LAYER_SHAPE_INFO[c] = { type:'curve', color:col, corner });
-        // Bumps sand/water/lava
+        // Bumps sand/water/lava/ice/snow
         [['q','TL',SND],['r','TR',SND],['s','BL',SND],['t','BR',SND],
          ['B','TL',WTR],['C','TR',WTR],['D','BL',WTR],['E','BR',WTR],
-         ['Ą','TL',LVA],['ą','TR',LVA],['Ć','BL',LVA],['ć','BR',LVA]].forEach(([c,corner,col]) =>
+         ['Ą','TL',LVA],['ą','TR',LVA],['Ć','BL',LVA],['ć','BR',LVA],
+         ['æ','TL',ICE],['ç','TR',ICE],['è','BL',ICE],['é','BR',ICE],
+         ['ó','TL',SNOW],['ô','TR',SNOW],['õ','BL',SNOW],['ö','BR',SNOW]].forEach(([c,corner,col]) =>
           LAYER_SHAPE_INFO[c] = { type:'bump', color:col, corner });
         // Slope diagonals
         [['Ĉ','UR','UR'],['ĉ','DL','LL'],['Ċ','UL','UL'],['ċ','DR','LR'],
@@ -918,7 +937,8 @@
         if (selected === "A") return SND;
         if (selected === "W") return WTR;
         if (selected === "w") return LVA;
-        if (selected === "þ") return WOOD;
+        if (selected === "þ") return ICE;
+        if (selected === "ê") return SNOW;
         if (selected === "^") return SLOPE_FACE["U"];
         if (selected === "v") return SLOPE_FACE["D"];
         if (selected === "<") return SLOPE_FACE["L"];
@@ -1771,8 +1791,34 @@
           sg: "bump",
           d: matBump("BR", SND),
         },
-        // Wood
-        { c: "þ", l: "Wood", g: "Wood", sg: "full", d: fill(WOOD) },
+        // Ice
+        { c: "þ", l: "Ice", g: "Ice", sg: "full", d: fill(ICE) },
+        { c: "Þ", l: "Ice ↗", g: "Ice", sg: "diag", d: diag("UR", ICE) },
+        { c: "ß", l: "Ice ↙", g: "Ice", sg: "diag", d: diag("LL", ICE) },
+        { c: "à", l: "Ice ↖", g: "Ice", sg: "diag", d: diag("UL", ICE) },
+        { c: "á", l: "Ice ↘", g: "Ice", sg: "diag", d: diag("LR", ICE) },
+        { c: "â", l: "Ice curve ↖", g: "Ice", sg: "curve", d: matCurve("TL", ICE) },
+        { c: "ã", l: "Ice curve ↗", g: "Ice", sg: "curve", d: matCurve("TR", ICE) },
+        { c: "ä", l: "Ice curve ↙", g: "Ice", sg: "curve", d: matCurve("BL", ICE) },
+        { c: "å", l: "Ice curve ↘", g: "Ice", sg: "curve", d: matCurve("BR", ICE) },
+        { c: "æ", l: "Ice bump ↖", g: "Ice", sg: "bump", d: matBump("TL", ICE) },
+        { c: "ç", l: "Ice bump ↗", g: "Ice", sg: "bump", d: matBump("TR", ICE) },
+        { c: "è", l: "Ice bump ↙", g: "Ice", sg: "bump", d: matBump("BL", ICE) },
+        { c: "é", l: "Ice bump ↘", g: "Ice", sg: "bump", d: matBump("BR", ICE) },
+        // Snow
+        { c: "ê", l: "Snow", g: "Snow", sg: "full", d: fill(SNOW) },
+        { c: "ë", l: "Snow ↗", g: "Snow", sg: "diag", d: diag("UR", SNOW) },
+        { c: "ì", l: "Snow ↙", g: "Snow", sg: "diag", d: diag("LL", SNOW) },
+        { c: "í", l: "Snow ↖", g: "Snow", sg: "diag", d: diag("UL", SNOW) },
+        { c: "î", l: "Snow ↘", g: "Snow", sg: "diag", d: diag("LR", SNOW) },
+        { c: "ï", l: "Snow curve ↖", g: "Snow", sg: "curve", d: matCurve("TL", SNOW) },
+        { c: "ð", l: "Snow curve ↗", g: "Snow", sg: "curve", d: matCurve("TR", SNOW) },
+        { c: "ñ", l: "Snow curve ↙", g: "Snow", sg: "curve", d: matCurve("BL", SNOW) },
+        { c: "ò", l: "Snow curve ↘", g: "Snow", sg: "curve", d: matCurve("BR", SNOW) },
+        { c: "ó", l: "Snow bump ↖", g: "Snow", sg: "bump", d: matBump("TL", SNOW) },
+        { c: "ô", l: "Snow bump ↗", g: "Snow", sg: "bump", d: matBump("TR", SNOW) },
+        { c: "õ", l: "Snow bump ↙", g: "Snow", sg: "bump", d: matBump("BL", SNOW) },
+        { c: "ö", l: "Snow bump ↘", g: "Snow", sg: "bump", d: matBump("BR", SNOW) },
         // Water
         { c: "W", l: "Water", g: "Water", sg: "full", d: fill(WTR) },
         { c: "e", l: "Water ↗", g: "Water", sg: "diag", d: diag("UR", WTR) },
@@ -1984,7 +2030,14 @@
           "bump-TL":"Ą", "bump-TR":"ą", "bump-BL":"Ć", "bump-BR":"ć",
         },
         "þ": {
-          "full":"þ",
+          "full":"þ","diag-UR":"Þ","diag-LL":"ß","diag-UL":"à","diag-LR":"á",
+          "curve-TL":"â","curve-TR":"ã","curve-BL":"ä","curve-BR":"å",
+          "bump-TL":"æ","bump-TR":"ç","bump-BL":"è","bump-BR":"é",
+        },
+        "ê": {
+          "full":"ê","diag-UR":"ë","diag-LL":"ì","diag-UL":"í","diag-LR":"î",
+          "curve-TL":"ï","curve-TR":"ð","curve-BL":"ñ","curve-BR":"ò",
+          "bump-TL":"ó","bump-TR":"ô","bump-BL":"õ","bump-BR":"ö",
         },
         // Cardinal slopes — shape variants for all orientations
         "^": { "full":"^","diag-UR":"Ĕ","diag-LL":"ĕ","diag-UL":"Ė","diag-LR":"ė","curve-TL":"Ę","curve-TR":"ę","curve-BL":"Ě","curve-BR":"ě","bump-TL":"Ĝ","bump-TR":"ĝ","bump-BL":"Ğ","bump-BR":"ğ" },
@@ -2587,7 +2640,7 @@
 
       // Column assignment: which material groups go in each column
       const COL_WALL   = ["Wall", "Bouncy", "Sticky", "Ghost"];
-      const COL_GROUND = ["Basic", "Sand", "Water", "Slope", "Lava", "Wood"];
+      const COL_GROUND = ["Basic", "Sand", "Water", "Slope", "Lava", "Ice", "Snow"];
       const COL_OBJECT = ["Special"];
 
       function buildPalette() {

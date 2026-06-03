@@ -14,7 +14,8 @@ const Renderer = (function () {
   const WALL_EDGE = "#898989";
   const HOLE_COLOR = "#0a0a0a";
   const SAND_COLOR = "#c8a84b";
-  const WOOD_COLOR = "#a67c52";
+  const ICE_COLOR = "#88ddff";
+  const SNOW_COLOR = "#f0f8ff";
   const WATER_COLOR = "#2a7fd4";
   const LAVA_COLOR = "#c83500";
   const SLOPE_COLORS = {
@@ -125,6 +126,8 @@ const Renderer = (function () {
   }
 
   function groundColor(tile) {
+    if (Physics.isIceTile(tile)) return ICE_COLOR;
+    if (Physics.isSnowTile(tile)) return SNOW_COLOR;
     if (Physics.isSandTile(tile)) return SAND_COLOR;
     if (Physics.isWaterTile(tile)) return WATER_COLOR;
     if (Physics.isLavaTile(tile)) return LAVA_COLOR;
@@ -279,10 +282,11 @@ const Renderer = (function () {
     }
 
     // Full solid tiles
-    if (tile === Physics.TILE.SAND)  { RenderShared.renderFull(ctx, x, y, T, SAND_COLOR, false, true, false); return; }
-    if (tile === Physics.TILE.WOOD)  { RenderShared.renderFull(ctx, x, y, T, WOOD_COLOR, false, false, false); return; }
-    if (tile === Physics.TILE.WATER) { RenderShared.renderFull(ctx, x, y, T, WATER_COLOR, true, false, false); return; }
-    if (tile === Physics.TILE.LAVA)  { RenderShared.renderFull(ctx, x, y, T, LAVA_COLOR, false, false, true); return; }
+    if (tile === Physics.TILE.SAND)  { RenderShared.renderFull(ctx, x, y, T, SAND_COLOR, false, true, false, false, false); return; }
+    if (tile === Physics.TILE.ICE)   { RenderShared.renderFull(ctx, x, y, T, ICE_COLOR, false, false, false, true, false); return; }
+    if (tile === Physics.TILE.SNOW)  { RenderShared.renderFull(ctx, x, y, T, SNOW_COLOR, false, false, false, false, true); return; }
+    if (tile === Physics.TILE.WATER) { RenderShared.renderFull(ctx, x, y, T, WATER_COLOR, true, false, false, false, false); return; }
+    if (tile === Physics.TILE.LAVA)  { RenderShared.renderFull(ctx, x, y, T, LAVA_COLOR, false, false, true, false, false); return; }
 
     if (SLOPE_FACE[tile]) {
       ctx.fillStyle = SLOPE_FACE[tile];
@@ -299,10 +303,14 @@ const Renderer = (function () {
       [Physics.TILE.LAVA_DIAG_LL]: [LAVA_COLOR, "UR"],
       [Physics.TILE.LAVA_DIAG_UL]: [LAVA_COLOR, "LR"],
       [Physics.TILE.LAVA_DIAG_LR]: [LAVA_COLOR, "UL"],
+      [Physics.TILE.ICE_UR]: [ICE_COLOR, "UR"], [Physics.TILE.ICE_LL]: [ICE_COLOR, "LL"],
+      [Physics.TILE.ICE_UL]: [ICE_COLOR, "UL"], [Physics.TILE.ICE_LR]: [ICE_COLOR, "LR"],
+      [Physics.TILE.SNOW_UR]: [SNOW_COLOR, "UR"], [Physics.TILE.SNOW_LL]: [SNOW_COLOR, "LL"],
+      [Physics.TILE.SNOW_UL]: [SNOW_COLOR, "UL"], [Physics.TILE.SNOW_LR]: [SNOW_COLOR, "LR"],
     };
     if (DIAG[tile]) {
       const [color, tri] = DIAG[tile];
-      RenderShared.renderDiag(ctx, x, y, T, tri, color, Physics.isWaterTile(tile), Physics.isSandTile(tile), Physics.isLavaTile(tile));
+      RenderShared.renderDiag(ctx, x, y, T, tri, color, Physics.isWaterTile(tile), Physics.isSandTile(tile), Physics.isLavaTile(tile), Physics.isIceTile(tile), Physics.isSnowTile(tile));
       return;
     }
 
@@ -322,11 +330,15 @@ const Renderer = (function () {
       u: WATER_COLOR, x: WATER_COLOR, y: WATER_COLOR, z: WATER_COLOR,
       [Physics.TILE.LAVA_CURVE_TL]: LAVA_COLOR, [Physics.TILE.LAVA_CURVE_TR]: LAVA_COLOR,
       [Physics.TILE.LAVA_CURVE_BL]: LAVA_COLOR, [Physics.TILE.LAVA_CURVE_BR]: LAVA_COLOR,
+      [Physics.TILE.ICE_CURVE_TL]: ICE_COLOR, [Physics.TILE.ICE_CURVE_TR]: ICE_COLOR,
+      [Physics.TILE.ICE_CURVE_BL]: ICE_COLOR, [Physics.TILE.ICE_CURVE_BR]: ICE_COLOR,
+      [Physics.TILE.SNOW_CURVE_TL]: SNOW_COLOR, [Physics.TILE.SNOW_CURVE_TR]: SNOW_COLOR,
+      [Physics.TILE.SNOW_CURVE_BL]: SNOW_COLOR, [Physics.TILE.SNOW_CURVE_BR]: SNOW_COLOR,
     };
     if (MAT_CURVE[tile]) {
       const meta = Physics.CURVE_META[tile];
       const corner = RenderShared.cornerFromMeta(meta.ox, meta.oy);
-      RenderShared.renderCurve(ctx, x, y, T, corner, MAT_CURVE[tile], Physics.isWaterTile(tile), Physics.isSandTile(tile), Physics.isLavaTile(tile));
+      RenderShared.renderCurve(ctx, x, y, T, corner, MAT_CURVE[tile], Physics.isWaterTile(tile), Physics.isSandTile(tile), Physics.isLavaTile(tile), Physics.isIceTile(tile), Physics.isSnowTile(tile));
       return;
     }
 
@@ -349,11 +361,15 @@ const Renderer = (function () {
       B: WATER_COLOR, C: WATER_COLOR, D: WATER_COLOR, E: WATER_COLOR,
       [Physics.TILE.LAVA_BUMP_TL]: LAVA_COLOR, [Physics.TILE.LAVA_BUMP_TR]: LAVA_COLOR,
       [Physics.TILE.LAVA_BUMP_BL]: LAVA_COLOR, [Physics.TILE.LAVA_BUMP_BR]: LAVA_COLOR,
+      [Physics.TILE.ICE_BUMP_TL]: ICE_COLOR, [Physics.TILE.ICE_BUMP_TR]: ICE_COLOR,
+      [Physics.TILE.ICE_BUMP_BL]: ICE_COLOR, [Physics.TILE.ICE_BUMP_BR]: ICE_COLOR,
+      [Physics.TILE.SNOW_BUMP_TL]: SNOW_COLOR, [Physics.TILE.SNOW_BUMP_TR]: SNOW_COLOR,
+      [Physics.TILE.SNOW_BUMP_BL]: SNOW_COLOR, [Physics.TILE.SNOW_BUMP_BR]: SNOW_COLOR,
     };
     if (MAT_BUMP[tile]) {
       const meta = Physics.BUMP_META[tile];
       const corner = RenderShared.cornerFromMeta(meta.ox, meta.oy);
-      RenderShared.renderBump(ctx, x, y, T, corner, MAT_BUMP[tile], false, false, false);
+      RenderShared.renderBump(ctx, x, y, T, corner, MAT_BUMP[tile], false, false, false, Physics.isIceTile(tile), Physics.isSnowTile(tile));
       return;
     }
 
