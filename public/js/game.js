@@ -1,7 +1,11 @@
 const Game = (function () {
 
   function createGame(map, playerNames, startPlayerIndex = 0) {
-    const starts = map.starts || [{ x: map.startX, y: map.startY }];
+    const starts = (map.starts && map.starts.length)
+      ? map.starts
+      : (map.startX != null)
+        ? [{ x: map.startX, y: map.startY }]
+        : [{ x: 32, y: 32 }];
     const players = playerNames.map((name, i) => {
       const s = starts[i % starts.length];
       return {

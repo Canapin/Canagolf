@@ -27,19 +27,9 @@ const RenderShared = (function () {
   }
 
   function drawIceSparkles(ctx, x, y, T) {
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    const dots = [
-      [0.2, 0.2], [0.7, 0.15], [0.5, 0.35], [0.3, 0.5],
-      [0.8, 0.45], [0.15, 0.7], [0.6, 0.7], [0.85, 0.8],
-    ];
-    for (const [fx, fy] of dots) {
-      ctx.beginPath();
-      ctx.arc(x + T * fx, y + T * fy, T * 0.025, 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.strokeStyle = "rgba(255,255,255,0.18)";
-    ctx.lineWidth = 1;
-    const diags = [[0.1,0.9,0.5,0.1],[0.3,0.9,0.7,0.1],[0.5,0.9,0.9,0.1],[0.15,0.5,0.55,-0.3],[0.35,0.5,0.75,-0.3]];
+    ctx.strokeStyle = "rgba(255,255,255,0.35)";
+    ctx.lineWidth = 1.2;
+    const diags = [[0.1,0.9,0.4,0.2],[0.3,0.9,0.4,0.2],[0.5,0.9,0.4,0.2],[0.15,0.5,0.4,0.2],[0.35,0.5,0.4,0.2]];
     for (const [fx1,fy1,fx2,fy2] of diags) {
       ctx.beginPath();
       ctx.moveTo(x + T * fx1, y + T * fy1);
@@ -49,7 +39,7 @@ const RenderShared = (function () {
   }
 
   function drawSnowFlakes(ctx, x, y, T) {
-    ctx.strokeStyle = "rgba(255,255,255,0.5)";
+    ctx.strokeStyle = "rgba(200, 210, 220, 0.35)";
     ctx.lineWidth = 1;
     const flakes = [[0.2,0.2],[0.7,0.15],[0.5,0.5],[0.3,0.7],[0.8,0.7],[0.5,0.85]];
     for (const [fx, fy] of flakes) {
@@ -64,14 +54,20 @@ const RenderShared = (function () {
       ctx.closePath();
       ctx.stroke();
     }
-    ctx.fillStyle = "rgba(255,255,255,0.5)";
-    const dots = [
-      [0.15, 0.3], [0.85, 0.3], [0.4, 0.4], [0.65, 0.35],
-      [0.2, 0.6], [0.7, 0.55], [0.15, 0.85], [0.85, 0.85],
+    ctx.fillStyle = "rgba(210, 220, 230, 0.3)";
+    const patches = [
+      [0.12, 0.28], [0.82, 0.25], [0.38, 0.42], [0.68, 0.32],
+      [0.18, 0.62], [0.72, 0.58], [0.12, 0.82], [0.88, 0.88],
     ];
-    for (const [fx, fy] of dots) {
+    for (const [fx, fy] of patches) {
+      const px = x + T * fx, py = y + T * fy;
+      const s = T * 0.045;
       ctx.beginPath();
-      ctx.arc(x + T * fx, y + T * fy, T * 0.025, 0, Math.PI * 2);
+      ctx.moveTo(px - s * 0.4, py - s * 0.6);
+      ctx.quadraticCurveTo(px + s * 0.7, py - s * 0.8, px + s * 0.6, py + s * 0.1);
+      ctx.quadraticCurveTo(px + s * 0.9, py + s * 0.7, px + s * 0.1, py + s * 0.8);
+      ctx.quadraticCurveTo(px - s * 0.6, py + s * 0.6, px - s * 0.5, py + s * 0.1);
+      ctx.closePath();
       ctx.fill();
     }
   }

@@ -15,7 +15,7 @@ const Renderer = (function () {
   const HOLE_COLOR = "#0a0a0a";
   const SAND_COLOR = "#c8a84b";
   const ICE_COLOR = "#88ddff";
-  const SNOW_COLOR = "#f0f8ff";
+  const SNOW_COLOR = "#f5f6fa";
   const WATER_COLOR = "#2a7fd4";
   const LAVA_COLOR = "#c83500";
   const SLOPE_COLORS = {
@@ -389,14 +389,21 @@ const Renderer = (function () {
     }
   }
 
+  function isSpecialTile(tile) {
+    return tile === "=" || tile === "|" || tile === "/" || tile === "?" || tile === Physics.TILE.BLACKHOLE;
+  }
+
   function renderGroundTile(ctx, col, row, baseTile, layerTiles) {
     const x = col * T, y = row * T;
     ctx.fillStyle = FAIRWAY;
     ctx.fillRect(x, y, T, T);
-    renderTileShapeOnly(ctx, x, y, baseTile);
-    if (layerTiles) {
-      for (const lt of layerTiles) renderTileShapeOnly(ctx, x, y, lt);
+    const allTiles = [baseTile, ...(layerTiles || [])];
+    const specials = [];
+    for (const t of allTiles) {
+      if (isSpecialTile(t)) specials.push(t);
+      else renderTileShapeOnly(ctx, x, y, t);
     }
+    for (const t of specials) renderTileShapeOnly(ctx, x, y, t);
   }
 
   // ── Wall tile ─────────────────────────────────────────────────────────────
