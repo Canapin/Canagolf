@@ -254,31 +254,30 @@ const Renderer = (function () {
       return;
     }
 
-    // Exit-only teleporters: hollow center, 4 outward arrows
+    // Exit-only teleporters: two rings (like regular) but hollow center + 4 arrows
     const TP_EXIT_COLORS = {
-      "\u2190": { rim: "#1a0830", arrow: "#c070ff" },
-      "\u2191": { rim: "#081828", arrow: "#50c8ff" },
-      "\u2192": { rim: "#1a1000", arrow: "#ffe050" },
+      "\u2190": { ring1: "#9030d0", ring2: "#c070ff", arrow: "#9030d0" },
+      "\u2191": { ring1: "#1878c8", ring2: "#50c8ff", arrow: "#1878c8" },
+      "\u2192": { ring1: "#b87010", ring2: "#ffe050", arrow: "#b87010" },
     };
     if (TP_EXIT_COLORS[tile]) {
-      const { rim, arrow } = TP_EXIT_COLORS[tile];
+      const { ring1, ring2, arrow } = TP_EXIT_COLORS[tile];
       const hx = x + T / 2, hy = y + T / 2;
-      // Thick rim, hollow center
-      ctx.strokeStyle = rim; ctx.lineWidth = 3.5;
-      ctx.beginPath(); ctx.arc(hx, hy, T / 2 - 2, 0, Math.PI * 2); ctx.stroke();
+      // Outer ring (hollow center — no bg fill)
+      ctx.strokeStyle = ring1; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(hx, hy, T * 0.36, 0, Math.PI * 2); ctx.stroke();
+      // Inner ring
+      ctx.strokeStyle = ring2; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2); ctx.stroke();
       // Four outward arrows
       ctx.strokeStyle = arrow; ctx.lineWidth = 2; ctx.lineCap = "round";
       const L = T * 0.32, W = T * 0.07;
-      // Right
       ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + L, hy);
       ctx.moveTo(hx + L - W, hy - W); ctx.lineTo(hx + L, hy); ctx.lineTo(hx + L - W, hy + W); ctx.stroke();
-      // Left
       ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - L, hy);
       ctx.moveTo(hx - L + W, hy - W); ctx.lineTo(hx - L, hy); ctx.lineTo(hx - L + W, hy + W); ctx.stroke();
-      // Down
       ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy + L);
       ctx.moveTo(hx - W, hy + L - W); ctx.lineTo(hx, hy + L); ctx.lineTo(hx + W, hy + L - W); ctx.stroke();
-      // Up
       ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy - L);
       ctx.moveTo(hx - W, hy - L + W); ctx.lineTo(hx, hy - L); ctx.lineTo(hx + W, hy - L + W); ctx.stroke();
       return;
