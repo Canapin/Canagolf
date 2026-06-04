@@ -675,7 +675,7 @@
 
     if (wasMoving) {
       // Swap — exchange position, transfer velocity to target; only on entry; radius-limited
-      const swapTile = Physics.checkSwap(ball, game.map.ground);
+      const swapTile = Physics.checkSwap(ball, game.map.swapTiles);
       if (!turnEnded && swapTile && !ball._wasOnSwap) {
         const swapCX = swapTile.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
         const swapCY = swapTile.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
@@ -745,7 +745,7 @@
     game.players.forEach((p, i) => {
       if (i === game.currentPlayerIndex || p.sunk || p.eliminated || p.waterPending) return;
       const swapTile2 = Physics.isMoving(p.ball) && !p.ball._wasOnSwap
-        ? Physics.checkSwap(p.ball, game.map.ground) : null;
+        ? Physics.checkSwap(p.ball, game.map.swapTiles) : null;
       if (swapTile2) {
         const swapCX = swapTile2.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
         const swapCY = swapTile2.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
@@ -847,8 +847,8 @@
     // Track teleporter and swap occupancy to implement entry-only triggering
     game.players.forEach(p => {
       if (!p.sunk && !p.eliminated) {
-        p.ball._tpOccupied = Physics.isOnTeleporter(p.ball, game.map.ground);
-        p.ball._wasOnSwap = Physics.checkSwap(p.ball, game.map.ground);
+        p.ball._tpOccupied = Physics.isOnTeleporter(p.ball, game.map.teleporterPairs);
+        p.ball._wasOnSwap = Physics.checkSwap(p.ball, game.map.swapTiles);
         p.ball._wasOnBlackHole = Physics.checkBlackHole(p.ball, game.map.blackHoleTiles);
         if (p.ball._tpExitTile) {
           const [ec, er] = p.ball._tpExitTile.split(',').map(Number);

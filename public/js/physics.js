@@ -612,6 +612,19 @@ const Physics = (function () {
                 });
               }
               layer[row][col] = ".";
+            } else if (TP_CHARS.has(ch)) {
+              const tp = { col, row, x: col * TILE_SIZE + TILE_SIZE / 2, y: row * TILE_SIZE + TILE_SIZE / 2 };
+              (tpByType[ch] = tpByType[ch] || []).push(tp);
+            } else if (ch === TILE.BLACKHOLE) {
+              const bhEntry = { col, row, dormant: false };
+              const bhR = bhRadiiData[col + ',' + row] ?? legacyBhRadius;
+              if (bhR != null) bhEntry.radius = bhR;
+              blackHoleTiles.push(bhEntry);
+            } else if (ch === TILE.SWAP) {
+              const swEntry = { col, row };
+              const swR = swapRadiiData[col + ',' + row] ?? legacySwapRadius;
+              if (swR != null) swEntry.radius = swR;
+              swapTiles.push(swEntry);
             }
           }
         }
@@ -1486,24 +1499,13 @@ const Physics = (function () {
 
   // ── Teleporter detection ──────────────────────────────────────────────────
 
-  function isOnTeleporter(ball, groundTiles) {
+  function isOnTeleporter(ball, teleporterPairs) {
     const r2 = (TILE_SIZE / 2) ** 2;
-    const TP_CHARS = new Set([
-      TILE.TELEPORTER,
-      TILE.TELEPORTER_B,
-      TILE.TELEPORTER_C,
-    ]);
     const occupied = new Set();
-    const minCol = Math.floor((ball.x - TILE_SIZE / 2) / TILE_SIZE);
-    const maxCol = Math.floor((ball.x + TILE_SIZE / 2) / TILE_SIZE);
-    const minRow = Math.floor((ball.y - TILE_SIZE / 2) / TILE_SIZE);
-    const maxRow = Math.floor((ball.y + TILE_SIZE / 2) / TILE_SIZE);
-    for (let row = minRow; row <= maxRow; row++) {
-      for (let col = minCol; col <= maxCol; col++) {
-        if (!TP_CHARS.has(getTile(groundTiles, col, row))) continue;
-        const cx = col * TILE_SIZE + TILE_SIZE / 2;
-        const cy = row * TILE_SIZE + TILE_SIZE / 2;
-        if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) occupied.add(`${col},${row}`);
+    for (const pair of teleporterPairs) {
+      for (const tp of pair) {
+        const key = `${tp.col},${tp.row}`;
+        if ((ball.x - tp.x) ** 2 + (ball.y - tp.y) ** 2 < r2) occupied.add(key);
       }
     }
     return occupied;
@@ -1535,19 +1537,12 @@ const Physics = (function () {
   // ── Swap detection (circular hitbox, radius = TILE_SIZE/2) ───────────────
   // Returns the swap tile {col,row} the ball is on, or null.
 
-  function checkSwap(ball, groundTiles) {
+  function checkSwap(ball, swapTiles) {
     const r2 = (TILE_SIZE / 2) ** 2;
-    const minCol = Math.floor((ball.x - TILE_SIZE / 2) / TILE_SIZE);
-    const maxCol = Math.floor((ball.x + TILE_SIZE / 2) / TILE_SIZE);
-    const minRow = Math.floor((ball.y - TILE_SIZE / 2) / TILE_SIZE);
-    const maxRow = Math.floor((ball.y + TILE_SIZE / 2) / TILE_SIZE);
-    for (let row = minRow; row <= maxRow; row++) {
-      for (let col = minCol; col <= maxCol; col++) {
-        if (getTile(groundTiles, col, row) !== TILE.SWAP) continue;
-        const cx = col * TILE_SIZE + TILE_SIZE / 2;
-        const cy = row * TILE_SIZE + TILE_SIZE / 2;
-        if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) return { col, row };
-      }
+    for (const sw of swapTiles) {
+      const cx = sw.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = sw.row * TILE_SIZE + TILE_SIZE / 2;
+      if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) return { col: sw.col, row: sw.row };
     }
     return null;
   }
@@ -1590,6 +1585,16 @@ const Physics = (function () {
     if (row < 0 || row >= tiles.length || col < 0 || col >= tiles[0].length)
       return TILE.WALL;
     return tiles[row][col];
+  }
+
+  function getCellContent(col, row, groundTiles, groundLayers) {
+    if (groundLayers) {
+      for (let i = groundLayers.length - 1; i >= 0; i--) {
+        const ch = getTile(groundLayers[i], col, row);
+        if (ch !== ".") return ch;
+      }
+    }
+    return getTile(groundTiles, col, row);
   }
 
   function tileAt(tiles, worldX, worldY) {
