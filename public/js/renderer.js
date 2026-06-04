@@ -254,22 +254,19 @@ const Renderer = (function () {
       return;
     }
 
-    // Exit-only teleporters: two rings (like regular) but hollow center + 4 arrows
+    // Exit-only teleporters: dark bg + inner ring + 4 outward arrows
     const TP_EXIT_COLORS = {
-      "\u2190": { ring1: "#9030d0", ring2: "#c070ff", arrow: "#9030d0" },
-      "\u2191": { ring1: "#1878c8", ring2: "#50c8ff", arrow: "#1878c8" },
-      "\u2192": { ring1: "#b87010", ring2: "#ffe050", arrow: "#b87010" },
+      "\u2190": { bg: "#1a0830", ring: "#c070ff", arrow: "#9030d0" },
+      "\u2191": { bg: "#081828", ring: "#50c8ff", arrow: "#1878c8" },
+      "\u2192": { bg: "#1a1000", ring: "#ffe050", arrow: "#b87010" },
     };
     if (TP_EXIT_COLORS[tile]) {
-      const { ring1, ring2, arrow } = TP_EXIT_COLORS[tile];
+      const { bg, ring, arrow } = TP_EXIT_COLORS[tile];
       const hx = x + T / 2, hy = y + T / 2;
-      // Outer ring (hollow center — no bg fill)
-      ctx.strokeStyle = ring1; ctx.lineWidth = 2;
-      ctx.beginPath(); ctx.arc(hx, hy, T * 0.36, 0, Math.PI * 2); ctx.stroke();
-      // Inner ring
-      ctx.strokeStyle = ring2; ctx.lineWidth = 1;
+      ctx.fillStyle = bg;
+      ctx.beginPath(); ctx.arc(hx, hy, T / 2 - 1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = ring; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2); ctx.stroke();
-      // Four outward arrows
       ctx.strokeStyle = arrow; ctx.lineWidth = 2; ctx.lineCap = "round";
       const L = T * 0.32, W = T * 0.07;
       ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + L, hy);
