@@ -254,6 +254,31 @@ const Renderer = (function () {
       return;
     }
 
+    // Exit-only teleporters: same bg + inner dot, arrow instead of outer ring
+    const TP_EXIT_COLORS = {
+      "\u2190": { bg: "#1a0830", arrow: "#c070ff", dot: "#9030d0" },
+      "\u2191": { bg: "#081828", arrow: "#50c8ff", dot: "#1878c8" },
+      "\u2192": { bg: "#1a1000", arrow: "#ffe050", dot: "#b87010" },
+    };
+    if (TP_EXIT_COLORS[tile]) {
+      const { bg, arrow, dot } = TP_EXIT_COLORS[tile];
+      const hx = x + T / 2, hy = y + T / 2;
+      ctx.fillStyle = bg;
+      ctx.beginPath();
+      ctx.arc(hx, hy, T / 2 - 1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = dot; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2); ctx.stroke();
+      // Outward arrow (NE) in arrow color
+      ctx.strokeStyle = arrow; ctx.lineWidth = 2; ctx.lineCap = "round";
+      const ax = hx + T * 0.2, ay = hy - T * 0.2;
+      ctx.beginPath(); ctx.moveTo(hx + T * 0.04, hy - T * 0.04);
+      ctx.lineTo(ax, ay);
+      ctx.lineTo(ax - T * 0.1, ay + T * 0.04);
+      ctx.stroke();
+      return;
+    }
+
     if (tile === Physics.TILE.SWAP) {
       const cx = x + T / 2, cy = y + T / 2;
       ctx.fillStyle = "#c08000"; ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 2, 0, Math.PI * 2); ctx.fill();
@@ -399,7 +424,9 @@ const Renderer = (function () {
   }
 
   function isSpecialTile(tile) {
-    return tile === "=" || tile === "|" || tile === "/" || tile === "?" || tile === Physics.TILE.BLACKHOLE;
+    return tile === "=" || tile === "|" || tile === "/"
+      || tile === "\u2190" || tile === "\u2191" || tile === "\u2192"
+      || tile === "?" || tile === Physics.TILE.BLACKHOLE;
   }
 
   function renderGroundTile(ctx, col, row, baseTile, layerTiles) {

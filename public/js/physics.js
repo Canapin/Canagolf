@@ -171,6 +171,9 @@ const Physics = (function () {
     TELEPORTER: "=", // teleporter pair 1 (purple)
     TELEPORTER_B: "|", // teleporter pair 2 (cyan)
     TELEPORTER_C: "/", // teleporter pair 3 (gold)
+    TP_EXIT: "\u2190", // exit-only teleporter A (purple, pairs with =)
+    TP_EXIT_B: "\u2191", // exit-only teleporter B (cyan, pairs with |)
+    TP_EXIT_C: "\u2192", // exit-only teleporter C (gold, pairs with /)
     SWAP: "?", // ball swaps position with a random opponent's ball and stops
     BLACKHOLE: "Ū", // pulls nearby balls toward it on activation; one use per turn
     // One-way walls — diagonal (complement GHOST_R/L/U/D for 8-direction coverage)
@@ -543,7 +546,15 @@ const Physics = (function () {
       TILE.TELEPORTER,
       TILE.TELEPORTER_B,
       TILE.TELEPORTER_C,
+      TILE.TP_EXIT,
+      TILE.TP_EXIT_B,
+      TILE.TP_EXIT_C,
     ]);
+    const TP_EXIT_BASE = {
+      [TILE.TP_EXIT]: TILE.TELEPORTER,
+      [TILE.TP_EXIT_B]: TILE.TELEPORTER_B,
+      [TILE.TP_EXIT_C]: TILE.TELEPORTER_C,
+    };
 
     const foundSpawnHole = new Set();
 
@@ -565,6 +576,7 @@ const Physics = (function () {
           foundSpawnHole.add(col + ',' + row);
           ground[row][col] = ".";
         } else if (TP_CHARS.has(ch)) {
+          const groupKey = TP_EXIT_BASE[ch] || ch;
           const tp = {
             ch,
             col,
@@ -572,7 +584,8 @@ const Physics = (function () {
             x: col * TILE_SIZE + TILE_SIZE / 2,
             y: row * TILE_SIZE + TILE_SIZE / 2,
           };
-          (tpByType[ch] = tpByType[ch] || []).push(tp);
+          if (TP_EXIT_BASE[ch]) tp.exitOnly = true;
+          (tpByType[groupKey] = tpByType[groupKey] || []).push(tp);
           ground[row][col] = ".";
         } else if (ch === TILE.BLACKHOLE) {
           const bhEntry = { col, row, dormant: false, ch };
@@ -617,8 +630,10 @@ const Physics = (function () {
               }
               layer[row][col] = ".";
             } else if (TP_CHARS.has(ch)) {
+              const groupKey = TP_EXIT_BASE[ch] || ch;
               const tp = { ch, col, row, x: col * TILE_SIZE + TILE_SIZE / 2, y: row * TILE_SIZE + TILE_SIZE / 2 };
-              (tpByType[ch] = tpByType[ch] || []).push(tp);
+              if (TP_EXIT_BASE[ch]) tp.exitOnly = true;
+              (tpByType[groupKey] = tpByType[groupKey] || []).push(tp);
               layer[row][col] = ".";
             } else if (ch === TILE.BLACKHOLE) {
               const bhEntry = { col, row, dormant: false, ch };
@@ -1527,12 +1542,14 @@ const Physics = (function () {
       const bKey = `${b.col},${b.row}`;
       if ((ball.x - a.x) ** 2 + (ball.y - a.y) ** 2 < r2) {
         if (ball._tpOccupied.has(aKey) || ball._tpExitTile === aKey) continue;
+        if (a.exitOnly) continue;
         pair.uses++;
         ball._tpExitTile = bKey;
         return b;
       }
       if ((ball.x - b.x) ** 2 + (ball.y - b.y) ** 2 < r2) {
         if (ball._tpOccupied.has(bKey) || ball._tpExitTile === bKey) continue;
+        if (b.exitOnly) continue;
         pair.uses++;
         ball._tpExitTile = aKey;
         return a;

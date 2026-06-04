@@ -793,6 +793,48 @@
           ctx.fill();
           return;
         }
+        const TP_EDIT_COLORS = {
+          "=": { bg: "#1a0830", ring1: "#9030d0", ring2: "#c070ff" },
+          "|": { bg: "#081828", ring1: "#1878c8", ring2: "#50c8ff" },
+          "/": { bg: "#1a1000", ring1: "#b87010", ring2: "#ffe050" },
+        };
+        if (TP_EDIT_COLORS[ch]) {
+          const c = TP_EDIT_COLORS[ch];
+          const cx = x + T / 2, cy = y + T / 2;
+          ctx.fillStyle = c.bg;
+          ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 1, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = c.ring1; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(cx, cy, T * 0.36, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = c.ring2; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(cx, cy, T * 0.16, 0, Math.PI * 2); ctx.stroke();
+          return;
+        }
+        if (ch === '?') {
+          const cx = x + T / 2, cy = y + T / 2;
+          ctx.fillStyle = "#c08000"; ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 2, 0, Math.PI * 2); ctx.fill();
+          ctx.fillStyle = "#805000"; ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 5, 0, Math.PI * 2); ctx.fill();
+          const hw = T * 0.27, hs = 2.5;
+          ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.lineJoin = "round";
+          ctx.beginPath();
+          ctx.moveTo(cx - hw, cy - hs); ctx.lineTo(cx + hw, cy - hs);
+          ctx.moveTo(cx + hw - 4, cy - hs - 3); ctx.lineTo(cx + hw, cy - hs); ctx.lineTo(cx + hw - 4, cy - hs + 3);
+          ctx.moveTo(cx + hw, cy + hs); ctx.lineTo(cx - hw, cy + hs);
+          ctx.moveTo(cx - hw + 4, cy + hs - 3); ctx.lineTo(cx - hw, cy + hs); ctx.lineTo(cx - hw + 4, cy + hs + 3);
+          ctx.stroke();
+          return;
+        }
+        if (ch === 'Ū') {
+          const cx = x + T / 2, cy = y + T / 2;
+          ctx.fillStyle = "#000";
+          ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 1, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = "#7000cc"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 3, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = "#aa50ff"; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(cx, cy, T * 0.18, 0, Math.PI * 2); ctx.stroke();
+          ctx.fillStyle = "#fff";
+          ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
+          return;
+        }
         const info = getLayerShapeInfo()[ch];
         if (!info) return;
         function arcParams(corner) {
@@ -1119,6 +1161,28 @@
           ctx.lineWidth = 1;
           ctx.beginPath();
           ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2);
+          ctx.stroke();
+        };
+      }
+
+      function teleporterExitOnly(
+        bg = "#1a0830",
+        arrow = "#c070ff",
+        dot = "#9030d0"
+      ) {
+        return (ctx, x, y) => {
+          const hx = x + T / 2, hy = y + T / 2;
+          ctx.fillStyle = bg;
+          ctx.beginPath();
+          ctx.arc(hx, hy, T / 2 - 1, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = dot; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = arrow; ctx.lineWidth = 2; ctx.lineCap = "round";
+          const ax = hx + T * 0.2, ay = hy - T * 0.2;
+          ctx.beginPath(); ctx.moveTo(hx + T * 0.04, hy - T * 0.04);
+          ctx.lineTo(ax, ay);
+          ctx.lineTo(ax - T * 0.1, ay + T * 0.04);
           ctx.stroke();
         };
       }
@@ -1923,6 +1987,27 @@
           sg: "",
           d: teleporter("#1a1000", "#b87010", "#ffe050"),
         },
+        {
+          c: "\u2190",
+          l: "TP Exit A",
+          g: "Special",
+          sg: "",
+          d: teleporterExitOnly("#1a0830", "#c070ff", "#9030d0"),
+        },
+        {
+          c: "\u2191",
+          l: "TP Exit B",
+          g: "Special",
+          sg: "",
+          d: teleporterExitOnly("#081828", "#50c8ff", "#1878c8"),
+        },
+        {
+          c: "\u2192",
+          l: "TP Exit C",
+          g: "Special",
+          sg: "",
+          d: teleporterExitOnly("#1a1000", "#ffe050", "#b87010"),
+        },
         { c: "?", l: "Swap", g: "Special", sg: "", d: swap() },
         { c: "Ū", l: "Black Hole", g: "Special", sg: "", d: blackHole() },
         { c: "S", l: "Start", g: "Special", sg: "", d: drawStart },
@@ -2358,6 +2443,10 @@
         canvas.height = mapH * T;
       }
 
+      function isSpec(c) {
+        return c === "=" || c === "|" || c === "/" || c === "?" || c === "Ū";
+      }
+
       function render() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         for (let r = 0; r < mapH; r++) {
@@ -2368,12 +2457,18 @@
             const wCh = wallGrid[r][c];
             const gTile = TILE_BY_CHAR[gCh] || TILE_BY_CHAR["."];
             const wTile = wCh !== "." ? TILE_BY_CHAR[wCh] || null : null;
-            gTile.d(ctx, x, y);
+            const specs = [];
+            if (isSpec(gCh)) specs.push(gCh);
+            else gTile.d(ctx, x, y);
             for (const layer of groundLayersGrid) {
               const lCh = layer[r][c];
-              if (lCh && lCh !== ".") drawTileShapeOnly(ctx, x, y, lCh);
+              if (lCh && lCh !== ".") {
+                if (isSpec(lCh)) specs.push(lCh);
+                else drawTileShapeOnly(ctx, x, y, lCh);
+              }
             }
             if (wTile) wTile.d(ctx, x, y);
+            for (const s of specs) drawTileShapeOnly(ctx, x, y, s);
             ctx.strokeStyle = "rgba(0,0,0,0.18)";
             ctx.lineWidth = 0.5;
             ctx.strokeRect(x, y, T, T);
