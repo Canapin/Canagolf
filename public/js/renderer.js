@@ -254,28 +254,33 @@ const Renderer = (function () {
       return;
     }
 
-    // Exit-only teleporters: same bg + inner dot, arrow instead of outer ring
+    // Exit-only teleporters: hollow center, 4 outward arrows
     const TP_EXIT_COLORS = {
-      "\u2190": { bg: "#1a0830", arrow: "#c070ff", dot: "#9030d0" },
-      "\u2191": { bg: "#081828", arrow: "#50c8ff", dot: "#1878c8" },
-      "\u2192": { bg: "#1a1000", arrow: "#ffe050", dot: "#b87010" },
+      "\u2190": { rim: "#1a0830", arrow: "#c070ff" },
+      "\u2191": { rim: "#081828", arrow: "#50c8ff" },
+      "\u2192": { rim: "#1a1000", arrow: "#ffe050" },
     };
     if (TP_EXIT_COLORS[tile]) {
-      const { bg, arrow, dot } = TP_EXIT_COLORS[tile];
+      const { rim, arrow } = TP_EXIT_COLORS[tile];
       const hx = x + T / 2, hy = y + T / 2;
-      ctx.fillStyle = bg;
-      ctx.beginPath();
-      ctx.arc(hx, hy, T / 2 - 1, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = dot; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2); ctx.stroke();
-      // Outward arrow (NE) in arrow color
+      // Thick rim, hollow center
+      ctx.strokeStyle = rim; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.arc(hx, hy, T / 2 - 2, 0, Math.PI * 2); ctx.stroke();
+      // Four outward arrows
       ctx.strokeStyle = arrow; ctx.lineWidth = 2; ctx.lineCap = "round";
-      const ax = hx + T * 0.2, ay = hy - T * 0.2;
-      ctx.beginPath(); ctx.moveTo(hx + T * 0.04, hy - T * 0.04);
-      ctx.lineTo(ax, ay);
-      ctx.lineTo(ax - T * 0.1, ay + T * 0.04);
-      ctx.stroke();
+      const L = T * 0.32, W = T * 0.07;
+      // Right
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + L, hy);
+      ctx.moveTo(hx + L - W, hy - W); ctx.lineTo(hx + L, hy); ctx.lineTo(hx + L - W, hy + W); ctx.stroke();
+      // Left
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - L, hy);
+      ctx.moveTo(hx - L + W, hy - W); ctx.lineTo(hx - L, hy); ctx.lineTo(hx - L + W, hy + W); ctx.stroke();
+      // Down
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy + L);
+      ctx.moveTo(hx - W, hy + L - W); ctx.lineTo(hx, hy + L); ctx.lineTo(hx + W, hy + L - W); ctx.stroke();
+      // Up
+      ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy - L);
+      ctx.moveTo(hx - W, hy - L + W); ctx.lineTo(hx, hy - L); ctx.lineTo(hx + W, hy - L + W); ctx.stroke();
       return;
     }
 

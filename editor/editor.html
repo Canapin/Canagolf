@@ -1166,24 +1166,23 @@
       }
 
       function teleporterExitOnly(
-        bg = "#1a0830",
-        arrow = "#c070ff",
-        dot = "#9030d0"
+        rim = "#1a0830",
+        arrow = "#c070ff"
       ) {
         return (ctx, x, y) => {
           const hx = x + T / 2, hy = y + T / 2;
-          ctx.fillStyle = bg;
-          ctx.beginPath();
-          ctx.arc(hx, hy, T / 2 - 1, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.strokeStyle = dot; ctx.lineWidth = 1;
-          ctx.beginPath(); ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = rim; ctx.lineWidth = 3.5;
+          ctx.beginPath(); ctx.arc(hx, hy, T / 2 - 2, 0, Math.PI * 2); ctx.stroke();
           ctx.strokeStyle = arrow; ctx.lineWidth = 2; ctx.lineCap = "round";
-          const ax = hx + T * 0.2, ay = hy - T * 0.2;
-          ctx.beginPath(); ctx.moveTo(hx + T * 0.04, hy - T * 0.04);
-          ctx.lineTo(ax, ay);
-          ctx.lineTo(ax - T * 0.1, ay + T * 0.04);
-          ctx.stroke();
+          const L = T * 0.32, W = T * 0.07;
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + L, hy);
+          ctx.moveTo(hx + L - W, hy - W); ctx.lineTo(hx + L, hy); ctx.lineTo(hx + L - W, hy + W); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - L, hy);
+          ctx.moveTo(hx - L + W, hy - W); ctx.lineTo(hx - L, hy); ctx.lineTo(hx - L + W, hy + W); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy + L);
+          ctx.moveTo(hx - W, hy + L - W); ctx.lineTo(hx, hy + L); ctx.lineTo(hx + W, hy + L - W); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy - L);
+          ctx.moveTo(hx - W, hy - L + W); ctx.lineTo(hx, hy - L); ctx.lineTo(hx + W, hy - L + W); ctx.stroke();
         };
       }
 
@@ -1992,21 +1991,21 @@
           l: "TP Exit A",
           g: "Special",
           sg: "",
-          d: teleporterExitOnly("#1a0830", "#c070ff", "#9030d0"),
+          d: teleporterExitOnly("#1a0830", "#c070ff"),
         },
         {
           c: "\u2191",
           l: "TP Exit B",
           g: "Special",
           sg: "",
-          d: teleporterExitOnly("#081828", "#50c8ff", "#1878c8"),
+          d: teleporterExitOnly("#081828", "#50c8ff"),
         },
         {
           c: "\u2192",
           l: "TP Exit C",
           g: "Special",
           sg: "",
-          d: teleporterExitOnly("#1a1000", "#ffe050", "#b87010"),
+          d: teleporterExitOnly("#1a1000", "#ffe050"),
         },
         { c: "?", l: "Swap", g: "Special", sg: "", d: swap() },
         { c: "Ū", l: "Black Hole", g: "Special", sg: "", d: blackHole() },
