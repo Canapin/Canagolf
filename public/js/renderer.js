@@ -189,24 +189,33 @@ const Renderer = (function () {
         renderWallTile(ctx, col, row, walls[row][col], topTile);
       }
     }
+    // Special tiles drawn from stored arrays (cleared from ground/layers in parseMap)
+    // Teleporter pairs — draw each endpoint, then darken if depleted
     if (map.teleporterPairs) {
-      ctx.fillStyle = "rgba(0,0,0,0.6)";
       for (const pair of map.teleporterPairs) {
-        if (pair.uses < 5) continue;
-        for (const tile of pair) {
-          ctx.beginPath();
-          ctx.arc(tile.col * T + T / 2, tile.row * T + T / 2, T / 2 - 1, 0, Math.PI * 2);
-          ctx.fill();
+        for (const tp of pair) {
+          renderTileShapeOnly(ctx, tp.col * T, tp.row * T, tp.ch);
+        }
+        if (pair.uses >= 5) {
+          ctx.fillStyle = "rgba(0,0,0,0.6)";
+          for (const tp of pair) {
+            ctx.beginPath();
+            ctx.arc(tp.col * T + T / 2, tp.row * T + T / 2, T / 2 - 1, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
       }
     }
+    // Swap tiles
+    if (map.swapTiles) {
+      for (const sw of map.swapTiles) {
+        renderTileShapeOnly(ctx, sw.col * T, sw.row * T, sw.ch || Physics.TILE.SWAP);
+      }
+    }
+    // Black hole tiles
     if (map.blackHoleTiles) {
-      ctx.fillStyle = "rgba(80,80,80,0.65)";
       for (const bh of map.blackHoleTiles) {
-        if (!bh.dormant) continue;
-        ctx.beginPath();
-        ctx.arc(bh.col * T + T / 2, bh.row * T + T / 2, T / 2 - 1, 0, Math.PI * 2);
-        ctx.fill();
+        renderTileShapeOnly(ctx, bh.col * T, bh.row * T, bh.ch || Physics.TILE.BLACKHOLE);
       }
     }
     if (map.holes) {

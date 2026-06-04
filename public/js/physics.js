@@ -566,22 +566,26 @@ const Physics = (function () {
           ground[row][col] = ".";
         } else if (TP_CHARS.has(ch)) {
           const tp = {
+            ch,
             col,
             row,
             x: col * TILE_SIZE + TILE_SIZE / 2,
             y: row * TILE_SIZE + TILE_SIZE / 2,
           };
           (tpByType[ch] = tpByType[ch] || []).push(tp);
+          ground[row][col] = ".";
         } else if (ch === TILE.BLACKHOLE) {
-          const bhEntry = { col, row, dormant: false };
+          const bhEntry = { col, row, dormant: false, ch };
           const bhR = bhRadiiData[col + ',' + row] ?? legacyBhRadius;
           if (bhR != null) bhEntry.radius = bhR;
           blackHoleTiles.push(bhEntry);
+          ground[row][col] = ".";
         } else if (ch === TILE.SWAP) {
-          const swEntry = { col, row };
+          const swEntry = { col, row, ch };
           const swR = swapRadiiData[col + ',' + row] ?? legacySwapRadius;
           if (swR != null) swEntry.radius = swR;
           swapTiles.push(swEntry);
+          ground[row][col] = ".";
         }
       }
     }
@@ -613,18 +617,21 @@ const Physics = (function () {
               }
               layer[row][col] = ".";
             } else if (TP_CHARS.has(ch)) {
-              const tp = { col, row, x: col * TILE_SIZE + TILE_SIZE / 2, y: row * TILE_SIZE + TILE_SIZE / 2 };
+              const tp = { ch, col, row, x: col * TILE_SIZE + TILE_SIZE / 2, y: row * TILE_SIZE + TILE_SIZE / 2 };
               (tpByType[ch] = tpByType[ch] || []).push(tp);
+              layer[row][col] = ".";
             } else if (ch === TILE.BLACKHOLE) {
-              const bhEntry = { col, row, dormant: false };
+              const bhEntry = { col, row, dormant: false, ch };
               const bhR = bhRadiiData[col + ',' + row] ?? legacyBhRadius;
               if (bhR != null) bhEntry.radius = bhR;
               blackHoleTiles.push(bhEntry);
+              layer[row][col] = ".";
             } else if (ch === TILE.SWAP) {
-              const swEntry = { col, row };
+              const swEntry = { col, row, ch };
               const swR = swapRadiiData[col + ',' + row] ?? legacySwapRadius;
               if (swR != null) swEntry.radius = swR;
               swapTiles.push(swEntry);
+              layer[row][col] = ".";
             }
           }
         }
