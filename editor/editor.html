@@ -835,6 +835,31 @@
           ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
           return;
         }
+        // Exit-only teleporters
+        const TP_EXIT_COLORS = {
+          "\u2190": { ring1: "#9030d0", ring2: "#c070ff", arrow: "#9030d0" },
+          "\u2191": { ring1: "#1878c8", ring2: "#50c8ff", arrow: "#1878c8" },
+          "\u2192": { ring1: "#b87010", ring2: "#ffe050", arrow: "#b87010" },
+        };
+        if (TP_EXIT_COLORS[ch]) {
+          const { ring1, ring2, arrow } = TP_EXIT_COLORS[ch];
+          const hx = x + T / 2, hy = y + T / 2;
+          ctx.strokeStyle = ring1; ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(hx, hy, T * 0.36, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = ring2; ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(hx, hy, T * 0.16, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = arrow; ctx.lineWidth = 2; ctx.lineCap = "round";
+          const L = T * 0.32, W = T * 0.07;
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx + L, hy);
+          ctx.moveTo(hx + L - W, hy - W); ctx.lineTo(hx + L, hy); ctx.lineTo(hx + L - W, hy + W); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx - L, hy);
+          ctx.moveTo(hx - L + W, hy - W); ctx.lineTo(hx - L, hy); ctx.lineTo(hx - L + W, hy + W); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy + L);
+          ctx.moveTo(hx - W, hy + L - W); ctx.lineTo(hx, hy + L); ctx.lineTo(hx + W, hy + L - W); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(hx, hy); ctx.lineTo(hx, hy - L);
+          ctx.moveTo(hx - W, hy - L + W); ctx.lineTo(hx, hy - L); ctx.lineTo(hx + W, hy - L + W); ctx.stroke();
+          return;
+        }
         const info = getLayerShapeInfo()[ch];
         if (!info) return;
         function arcParams(corner) {
@@ -2446,7 +2471,9 @@
       }
 
       function isSpec(c) {
-        return c === "=" || c === "|" || c === "/" || c === "?" || c === "Ū";
+        return c === "=" || c === "|" || c === "/"
+          || c === "\u2190" || c === "\u2191" || c === "\u2192"
+          || c === "?" || c === "Ū" || c === "S" || c === "O";
       }
 
       function render() {
