@@ -176,6 +176,7 @@ const Physics = (function () {
     TP_EXIT_C: "\u2192", // exit-only teleporter C (gold, pairs with /)
     SWAP: "?", // ball swaps position with a random opponent's ball and stops
     BLACKHOLE: "Ū", // pulls nearby balls toward it on activation; one use per turn
+    REPULSOR: "Ō", // pushes nearby balls away on activation; one use per turn
     // One-way walls — diagonal (complement GHOST_R/L/U/D for 8-direction coverage)
     PHANTOM_UR: "-", // passes if ball moves up-right (vx>0 && vy<0)
     PHANTOM_UL: "!", // passes if ball moves up-left
@@ -203,6 +204,8 @@ const Physics = (function () {
   let STICKY_RESTITUTION = 0.1;
   let BH_IMPULSE_FACTOR = 0.75;
   let BH_RADIUS_TILES = 10;
+  let REP_IMPULSE_FACTOR = 0.75;
+  let REP_RADIUS_TILES = 10;
   let SWAP_RADIUS_TILES = 8;
 
   const ICE_SET = new Set([
@@ -305,6 +308,9 @@ const Physics = (function () {
   }
   function isSwapTile(t) {
     return t === TILE.SWAP;
+  }
+  function isRepulsorTile(t) {
+    return t === TILE.REPULSOR;
   }
   function isIceTile(t) {
     return ICE_SET.has(t);
@@ -483,8 +489,8 @@ const Physics = (function () {
 
   function parseMap(input, variationMode) {
     let ground, walls, groundLayers = [];
-    let swapRadiiData = {}, bhRadiiData = {};
-    let legacySwapRadius, legacyBhRadius;
+    let swapRadiiData = {}, bhRadiiData = {}, repRadiiData = {};
+    let legacySwapRadius, legacyBhRadius, legacyRepRadius;
 
     if (input.trim().startsWith("{")) {
       const data = JSON.parse(input);
@@ -495,8 +501,10 @@ const Physics = (function () {
       }
       if (data.swapRadii) swapRadiiData = data.swapRadii;
       if (data.bhRadii) bhRadiiData = data.bhRadii;
+      if (data.repRadii) repRadiiData = data.repRadii;
       if (typeof data.swapRadius === 'number') legacySwapRadius = data.swapRadius;
       if (typeof data.bhRadius === 'number') legacyBhRadius = data.bhRadius;
+      if (typeof data.repRadius === 'number') legacyRepRadius = data.repRadius;
     } else {
       const rows = input
         .trim()
@@ -533,6 +541,7 @@ const Physics = (function () {
       }
       if (Object.keys(swapRadiiData).length) swapRadiiData = remapRadii(swapRadiiData);
       if (Object.keys(bhRadiiData).length) bhRadiiData = remapRadii(bhRadiiData);
+      if (Object.keys(repRadiiData).length) repRadiiData = remapRadii(repRadiiData);
     }
 
     let startX = null,
@@ -541,6 +550,7 @@ const Physics = (function () {
     const holes = [];
     const tpByType = {};
     const blackHoleTiles = [];
+    const repulsorTiles = [];
     const swapTiles = [];
     const TP_CHARS = new Set([
       TILE.TELEPORTER,
@@ -593,6 +603,12 @@ const Physics = (function () {
           if (bhR != null) bhEntry.radius = bhR;
           blackHoleTiles.push(bhEntry);
           ground[row][col] = ".";
+        } else if (ch === TILE.REPULSOR) {
+          const repEntry = { col, row, dormant: false, ch };
+          const repR = repRadiiData[col + ',' + row] ?? legacyRepRadius;
+          if (repR != null) repEntry.radius = repR;
+          repulsorTiles.push(repEntry);
+          ground[row][col] = ".";
         } else if (ch === TILE.SWAP) {
           const swEntry = { col, row, ch };
           const swR = swapRadiiData[col + ',' + row] ?? legacySwapRadius;
@@ -641,6 +657,12 @@ const Physics = (function () {
               if (bhR != null) bhEntry.radius = bhR;
               blackHoleTiles.push(bhEntry);
               layer[row][col] = ".";
+            } else if (ch === TILE.REPULSOR) {
+              const repEntry = { col, row, dormant: false, ch };
+              const repR = repRadiiData[col + ',' + row] ?? legacyRepRadius;
+              if (repR != null) repEntry.radius = repR;
+              repulsorTiles.push(repEntry);
+              layer[row][col] = ".";
             } else if (ch === TILE.SWAP) {
               const swEntry = { col, row, ch };
               const swR = swapRadiiData[col + ',' + row] ?? legacySwapRadius;
@@ -675,6 +697,7 @@ const Physics = (function () {
       holes,
       teleporterPairs,
       blackHoleTiles,
+      repulsorTiles,
       swapTiles,
     };
   }
@@ -695,7 +718,6 @@ const Physics = (function () {
       _tpOccupied: new Set(),
       _tpExitTile: null,
       _wasOnSwap: false,
-      _wasOnBlackHole: false,
     };
   }
 
@@ -1603,6 +1625,38 @@ const Physics = (function () {
     ball.vy += (dy / dist) * v;
   }
 
+  // ── Repulsor detection & impulse ──────────────────────────────────────────
+
+  function checkRepulsor(ball, repulsorTiles) {
+    const r2 = (TILE_SIZE / 2) ** 2;
+    for (const rep of repulsorTiles) {
+      const cx = rep.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = rep.row * TILE_SIZE + TILE_SIZE / 2;
+      if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) return true;
+    }
+    return false;
+  }
+
+  function getActiveRepulsor(ball, repulsorTiles) {
+    const r2 = (TILE_SIZE / 2) ** 2;
+    for (const rep of repulsorTiles) {
+      if (rep.dormant) continue;
+      const cx = rep.col * TILE_SIZE + TILE_SIZE / 2;
+      const cy = rep.row * TILE_SIZE + TILE_SIZE / 2;
+      if ((ball.x - cx) ** 2 + (ball.y - cy) ** 2 < r2) return rep;
+    }
+    return null;
+  }
+
+  function applyRepulsorImpulse(ball, repX, repY) {
+    const dx = ball.x - repX, dy = ball.y - repY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist < 1) return;
+    const v = REP_IMPULSE_FACTOR * dist * (1 - FRICTION);
+    ball.vx += (dx / dist) * v;
+    ball.vy += (dy / dist) * v;
+  }
+
   // ── Tile helpers ──────────────────────────────────────────────────────────
 
   function getTile(tiles, col, row) {
@@ -1824,6 +1878,18 @@ const Physics = (function () {
     set BH_RADIUS_TILES(v) {
       BH_RADIUS_TILES = v;
     },
+    get REP_IMPULSE_FACTOR() {
+      return REP_IMPULSE_FACTOR;
+    },
+    set REP_IMPULSE_FACTOR(v) {
+      REP_IMPULSE_FACTOR = v;
+    },
+    get REP_RADIUS_TILES() {
+      return REP_RADIUS_TILES;
+    },
+    set REP_RADIUS_TILES(v) {
+      REP_RADIUS_TILES = v;
+    },
     get SWAP_RADIUS_TILES() {
       return SWAP_RADIUS_TILES;
     },
@@ -1867,6 +1933,10 @@ const Physics = (function () {
     checkBlackHole,
     getActiveBlackHole,
     applyBlackHoleImpulse,
+    isRepulsorTile,
+    checkRepulsor,
+    getActiveRepulsor,
+    applyRepulsorImpulse,
     getTile,
     tileAt,
     getSurfaceAt,

@@ -216,6 +216,24 @@ const Renderer = (function () {
     if (map.blackHoleTiles) {
       for (const bh of map.blackHoleTiles) {
         renderTileShapeOnly(ctx, bh.col * T, bh.row * T, bh.ch || Physics.TILE.BLACKHOLE);
+        if (bh.dormant) {
+          ctx.fillStyle = "rgba(0,0,0,0.55)";
+          ctx.beginPath();
+          ctx.arc(bh.col * T + T / 2, bh.row * T + T / 2, T / 2 - 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    }
+    // Repulsor tiles
+    if (map.repulsorTiles) {
+      for (const rep of map.repulsorTiles) {
+        renderTileShapeOnly(ctx, rep.col * T, rep.row * T, rep.ch || Physics.TILE.REPULSOR);
+        if (rep.dormant) {
+          ctx.fillStyle = "rgba(0,0,0,0.55)";
+          ctx.beginPath();
+          ctx.arc(rep.col * T + T / 2, rep.row * T + T / 2, T / 2 - 1, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
     }
     if (map.holes) {
@@ -299,9 +317,21 @@ const Renderer = (function () {
       const cx = x + T / 2, cy = y + T / 2;
       ctx.fillStyle = "#000";
       ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 1, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "#7000cc"; ctx.lineWidth = 2;
+      ctx.strokeStyle = "#0088aa"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 3, 0, Math.PI * 2); ctx.stroke();
-      ctx.strokeStyle = "#aa50ff"; ctx.lineWidth = 2;
+      ctx.strokeStyle = "#88ddff"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, T * 0.18, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = "#fff";
+      ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
+      return;
+    }
+    if (tile === Physics.TILE.REPULSOR) {
+      const cx = x + T / 2, cy = y + T / 2;
+      ctx.fillStyle = "#000";
+      ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 1, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "#cc3300"; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(cx, cy, T / 2 - 3, 0, Math.PI * 2); ctx.stroke();
+      ctx.strokeStyle = "#ff8800"; ctx.lineWidth = 2;
       ctx.beginPath(); ctx.arc(cx, cy, T * 0.18, 0, Math.PI * 2); ctx.stroke();
       ctx.fillStyle = "#fff";
       ctx.beginPath(); ctx.arc(cx, cy, 2, 0, Math.PI * 2); ctx.fill();
@@ -979,44 +1009,49 @@ const Renderer = (function () {
     ctx.restore();
   }
 
-  function renderSiphonCones(ctx, map, players) {
-    if (!map.blackHoleTiles) return;
+  function renderFieldCones(ctx, map, players, currentPlayerIndex) {
     const BR = Physics.BALL_RADIUS, TT = Physics.TILE_SIZE;
-    const TILE_R = TT / 2 - 3;
-    for (const p of players) {
-      if (p.sunk || p.eliminated || p.waterPending || !Physics.isMoving(p.ball)) continue;
-      const b = p.ball;
-      for (const bh of map.blackHoleTiles) {
-        if (!bh.dormant) continue;
-        const cx = bh.col * TT + TT / 2, cy = bh.row * TT + TT / 2;
-        const effectR = (bh.radius ?? Physics.BH_RADIUS_TILES) * TT;
-        const dx = b.x - cx, dy = b.y - cy;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist >= effectR || dist < 1) continue;
-        if (b._triggeredSiphon) continue;
-        if (b.vx * dx + b.vy * dy >= 0) continue;
-        const t = dist / effectR;
-        const nx = dx / dist, ny = dy / dist;
-        const px = -ny, py = nx;
-        const sx = cx + nx * TILE_R, sy = cy + ny * TILE_R;
-        const bx = b.x - nx * BR, by = b.y - ny * BR;
-        const halfW = t * 8;
-        ctx.fillStyle = "rgba(130,50,210,0.35)";
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(bx + px * halfW, by + py * halfW);
-        ctx.lineTo(bx - px * halfW, by - py * halfW);
-        ctx.closePath();
-        ctx.fill();
-        ctx.strokeStyle = "rgba(160,80,240,0.5)";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(sx, sy);
-        ctx.lineTo(bx + px * halfW, by + py * halfW);
-        ctx.lineTo(bx - px * halfW, by - py * halfW);
-        ctx.closePath();
-        ctx.stroke();
-      }
+    const allTiles = [];
+    if (map.blackHoleTiles) {
+      for (const bh of map.blackHoleTiles)
+        allTiles.push({ tile: bh, radius: bh.radius ?? Physics.BH_RADIUS_TILES, fill: "rgba(0,136,170,0.3)", stroke: "rgba(136,221,255,0.5)" });
+    }
+    if (map.repulsorTiles) {
+      for (const rep of map.repulsorTiles)
+        allTiles.push({ tile: rep, radius: rep.radius ?? Physics.REP_RADIUS_TILES, fill: "rgba(204,51,0,0.3)", stroke: "rgba(255,136,0,0.5)" });
+    }
+    if (!allTiles.length) return;
+    const p = players[currentPlayerIndex];
+    if (!p || p.sunk || p.eliminated || p.waterPending || !(p.started || Physics.isMoving(p.ball))) return;
+    const b = p.ball;
+    for (const entry of allTiles) {
+      const t = entry.tile;
+      const cx = t.col * TT + TT / 2, cy = t.row * TT + TT / 2;
+      const effectR = entry.radius * TT;
+      const dx = b.x - cx, dy = b.y - cy;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist >= effectR || dist < 1) continue;
+      const nd = dist / effectR;
+      const nx = dx / dist, ny = dy / dist;
+      const px = -ny, py = nx;
+      const sx = cx + nx * (TT / 2 - 3), sy = cy + ny * (TT / 2 - 3);
+      const bx = b.x - nx * BR, by = b.y - ny * BR;
+      const halfW = (1 - nd) * 8;
+      ctx.fillStyle = entry.fill;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(bx + px * halfW, by + py * halfW);
+      ctx.lineTo(bx - px * halfW, by - py * halfW);
+      ctx.closePath();
+      ctx.fill();
+      ctx.strokeStyle = entry.stroke;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(bx + px * halfW, by + py * halfW);
+      ctx.lineTo(bx - px * halfW, by - py * halfW);
+      ctx.closePath();
+      ctx.stroke();
     }
   }
 
@@ -1057,6 +1092,6 @@ const Renderer = (function () {
     renderBall,
     renderAimLine,
     renderSwapDots,
-    renderSiphonCones,
+    renderFieldCones,
   };
 })();

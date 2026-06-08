@@ -67,6 +67,8 @@
       { id: 'sl-slope-rf',  val: 'val-slope-rf',  edit: 'edit-slope-rf',  prop: 'SLOPE_ROLL_FRICTION',fmt: v => v.toFixed(4) },
       { id: 'sl-bh-impulse',  val: 'val-bh-impulse',  edit: 'edit-bh-impulse',  prop: 'BH_IMPULSE_FACTOR',  fmt: v => v.toFixed(2) },
       { id: 'sl-bh-radius',   val: 'val-bh-radius',   edit: 'edit-bh-radius',   prop: 'BH_RADIUS_TILES',    fmt: v => v.toFixed(0) },
+      { id: 'sl-rep-impulse',  val: 'val-rep-impulse',  edit: 'edit-rep-impulse',  prop: 'REP_IMPULSE_FACTOR',  fmt: v => v.toFixed(2) },
+      { id: 'sl-rep-radius',   val: 'val-rep-radius',   edit: 'edit-rep-radius',   prop: 'REP_RADIUS_TILES',    fmt: v => v.toFixed(0) },
       { id: 'sl-swap-radius', val: 'val-swap-radius', edit: 'edit-swap-radius', prop: 'SWAP_RADIUS_TILES',  fmt: v => v.toFixed(0) },
     ];
     sliders.forEach(({ id, val, edit, prop, fmt }) => {
@@ -698,23 +700,6 @@
         }
       }
 
-      // Black hole — pull nearby opponents toward it; one activation per turn
-      if (!turnEnded && !ball._wasOnBlackHole) {
-        const bh = Physics.getActiveBlackHole(ball, game.map.blackHoleTiles);
-        if (bh) {
-          bh.dormant = true;
-          ball._triggeredSiphon = true;
-          const bhX = bh.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
-          const bhY = bh.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
-          const pullR2 = (Physics.TILE_SIZE * (bh.radius ?? Physics.BH_RADIUS_TILES)) ** 2;
-          game.players.forEach((p, i) => {
-            if (i === game.currentPlayerIndex || p.sunk || p.eliminated) return;
-            const dx = bhX - p.ball.x, dy = bhY - p.ball.y;
-            if (dx * dx + dy * dy <= pullR2) Physics.applyBlackHoleImpulse(p.ball, bhX, bhY);
-          });
-        }
-      }
-
       // Hole — sink ball
       if (!turnEnded) {
         const hole = Physics.checkHole(ball, game.map.holes);
@@ -767,22 +752,6 @@
           nonCurStateChanged = true;
         }
       }
-      if (Physics.isMoving(p.ball) && !p.ball._wasOnBlackHole) {
-        const bh2 = Physics.getActiveBlackHole(p.ball, game.map.blackHoleTiles);
-        if (bh2) {
-          bh2.dormant = true;
-          p.ball._triggeredSiphon = true;
-          const bhX = bh2.col * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
-          const bhY = bh2.row * Physics.TILE_SIZE + Physics.TILE_SIZE / 2;
-          const pullR2 = (Physics.TILE_SIZE * (bh2.radius ?? Physics.BH_RADIUS_TILES)) ** 2;
-          game.players.forEach((tp, ti) => {
-            if (ti === i || tp.sunk || tp.eliminated) return;
-            const dx = bhX - tp.ball.x, dy = bhY - tp.ball.y;
-            if (dx * dx + dy * dy <= pullR2) Physics.applyBlackHoleImpulse(tp.ball, bhX, bhY);
-          });
-          nonCurStateChanged = true;
-        }
-      }
       // Hazard detection for non-current balls — only active client is authoritative
       if (!isOnlineMode || localPlayerIndex === game.currentPlayerIndex) {
         const gt = Physics.getSurfaceAt(game.map.ground, p.ball.x, p.ball.y, game.map.groundLayers);
@@ -830,16 +799,47 @@
     if (!turnEnded && game.turnActive && wasAnyMoving && !game.over) {
       const nowAnyMoving = game.players.some(p => !p.sunk && !p.eliminated && Physics.isMoving(p.ball));
       if (!nowAnyMoving) {
-        if (isOnlineMode && localPlayerIndex === game.currentPlayerIndex) {
-          const playerStates = game.players.map(p => ({
-            x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
-            y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
-            sunk: p.sunk, eliminated: p.eliminated,
-          }));
-          waitingForTurnSwitch = true;
-          socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
-        } else if (!isOnlineMode) {
-          Game.onBallStopped(game); updateHUD();
+        // Turn-end BH/repulsor activation — self-effect on current player's ball
+        const TT = Physics.TILE_SIZE;
+        let fieldTriggered = false;
+        const curP = game.players[game.currentPlayerIndex];
+        if (!curP.sunk && !curP.eliminated) {
+          const cb = curP.ball;
+          for (const bh of (game.map.blackHoleTiles || [])) {
+            if (bh.dormant) continue;
+            const cx = bh.col * TT + TT / 2, cy = bh.row * TT + TT / 2;
+            const effectR = (bh.radius ?? Physics.BH_RADIUS_TILES) * TT;
+            const dx = cx - cb.x, dy = cy - cb.y;
+            if (dx * dx + dy * dy < effectR * effectR) {
+              Physics.applyBlackHoleImpulse(cb, cx, cy);
+              bh.dormant = true;
+              fieldTriggered = true;
+            }
+          }
+          for (const rep of (game.map.repulsorTiles || [])) {
+            if (rep.dormant) continue;
+            const cx = rep.col * TT + TT / 2, cy = rep.row * TT + TT / 2;
+            const effectR = (rep.radius ?? Physics.REP_RADIUS_TILES) * TT;
+            const dx = cx - cb.x, dy = cy - cb.y;
+            if (dx * dx + dy * dy < effectR * effectR) {
+              Physics.applyRepulsorImpulse(cb, cx, cy);
+              rep.dormant = true;
+              fieldTriggered = true;
+            }
+          }
+        }
+        if (!fieldTriggered) {
+          if (isOnlineMode && localPlayerIndex === game.currentPlayerIndex) {
+            const playerStates = game.players.map(p => ({
+              x: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.x : p.ball.x,
+              y: p.waterPending && p.waterRespawnPos ? p.waterRespawnPos.y : p.ball.y,
+              sunk: p.sunk, eliminated: p.eliminated,
+            }));
+            waitingForTurnSwitch = true;
+            socket.emit('c:stopped', { x: ball.x, y: ball.y, sunk: false, playerStates });
+          } else if (!isOnlineMode) {
+            Game.onBallStopped(game); updateHUD();
+          }
         }
       }
     }
@@ -849,7 +849,7 @@
       if (!p.sunk && !p.eliminated) {
         p.ball._tpOccupied = Physics.isOnTeleporter(p.ball, game.map.teleporterPairs);
         p.ball._wasOnSwap = Physics.checkSwap(p.ball, game.map.swapTiles);
-        p.ball._wasOnBlackHole = Physics.checkBlackHole(p.ball, game.map.blackHoleTiles);
+
         if (p.ball._tpExitTile) {
           const [ec, er] = p.ball._tpExitTile.split(',').map(Number);
           if (Math.floor(p.ball.x / Physics.TILE_SIZE) !== ec ||
@@ -930,7 +930,7 @@
     }
 
     Renderer.renderSwapDots(ctx, game.map, game.players);
-    Renderer.renderSiphonCones(ctx, game.map, game.players);
+    Renderer.renderFieldCones(ctx, game.map, game.players, game.currentPlayerIndex);
 
     game.players.forEach((p, i) => {
       if (!p.sunk && !p.eliminated && !p.waterPending && (p.started || Physics.isMoving(p.ball)))

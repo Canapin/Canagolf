@@ -368,6 +368,36 @@
           />
         </label>
       </div>
+
+      <div class="debug-section">
+        <div class="debug-section-title">Repulsor</div>
+        <label
+          >Impulse
+          <span id="val-rep-impulse">0.75</span>
+          <input type="number" id="edit-rep-impulse" class="debug-edit" step="0.01" />
+          <input
+            type="range"
+            id="sl-rep-impulse"
+            min="0.1"
+            max="2.0"
+            step="0.01"
+            value="0.75"
+          />
+        </label>
+        <label
+          >Radius (tiles)
+          <span id="val-rep-radius">10</span>
+          <input type="number" id="edit-rep-radius" class="debug-edit" step="1" />
+          <input
+            type="range"
+            id="sl-rep-radius"
+            min="1"
+            max="30"
+            step="1"
+            value="10"
+          />
+        </label>
+      </div>
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
