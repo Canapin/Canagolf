@@ -202,9 +202,9 @@ const Physics = (function () {
   let BALL_FRICTION = 0.3; // ball-to-ball tangential friction (Coulomb μ)
   let BOUNCY_RESTITUTION = 1.5;
   let STICKY_RESTITUTION = 0.1;
-  let BH_IMPULSE_FACTOR = 0.75;
+  let BH_IMPULSE_FACTOR = 0.9;
   let BH_RADIUS_TILES = 10;
-  let REP_IMPULSE_FACTOR = 0.75;
+  let REP_IMPULSE_FACTOR = 0.9;
   let REP_RADIUS_TILES = 10;
   let SWAP_RADIUS_TILES = 8;
 
