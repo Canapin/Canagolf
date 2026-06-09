@@ -753,6 +753,10 @@ const Physics = (function () {
     )
       return 1.0;
     if (PHANTOM_TILES.has(tile)) return 1.0;
+    // Wall curves — full AABB to prevent ghost-wall gap at junction tiles
+    if (tile === TILE.CURVE_TL || tile === TILE.CURVE_TR || tile === TILE.CURVE_BL || tile === TILE.CURVE_BR) return 1.0;
+    if (tile === TILE.BOUNCY_CURVE_TL || tile === TILE.BOUNCY_CURVE_TR || tile === TILE.BOUNCY_CURVE_BL || tile === TILE.BOUNCY_CURVE_BR) return BOUNCY_RESTITUTION;
+    if (tile === TILE.STICKY_CURVE_TL || tile === TILE.STICKY_CURVE_TR || tile === TILE.STICKY_CURVE_BL || tile === TILE.STICKY_CURVE_BR) return STICKY_RESTITUTION;
     return undefined;
   }
 
